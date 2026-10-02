@@ -265,6 +265,39 @@
   opacity: 0.6;
 }
 
+/* Bibliotekssynkens statusindikator: Sparat, Sparar… eller Ej sparat */
+.syncStatus {
+  min-width: 8em;
+  padding: 6px 12px;
+  border-left: 1px solid color-mix(in srgb, var(--foreground) 20%, transparent);
+  background: var(--background);
+  color: var(--foreground);
+  text-align: center;
+}
+
+.syncStatus:not([data-status="saved"], [data-status="saving"]) {
+  background: #fbe9e7;
+  color: #a52714;
+}
+
+/* Konflikten med en annan flik eller enhet, med valen på en egen rad under knapparna */
+.conflictBanner {
+  order: 1;
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 16px;
+  max-width: 210mm;
+  margin: 0 auto;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #fef7e0;
+  color: #3c2f00;
+  font-size: 13px;
+}
+
 .buttonGroup button[aria-pressed="true"] {
   background: #1e6fd9;
   color: #fff;

@@ -1,5 +1,6 @@
+import type { ExpectedRevision } from "./library";
 import type { Score } from "./score";
-import { serialize } from "./scoreFile";
+import { parse, serialize } from "./scoreFile";
 
 /**
  * Tunt skal kring Bibliotekets API i webbläsaren. Fel blir resultat i stället för undantag, så
@@ -22,17 +23,41 @@ export function addToLibrary(score: Score): Promise<LibraryResult<{ id: string; 
   return send("/api/library", "POST", serialize(score));
 }
 
-/** Sparar Partituret i Biblioteket, om revisionen där fortfarande är `revision`. */
-export function saveToLibrary(id: string, score: Score, revision: number): Promise<LibraryResult<{ revision: number }>> {
-  const body = `{"revision":${revision},"document":${serialize(score)}}`;
+/**
+ * Sparar Partituret i Biblioteket, om revisionen där fortfarande är `revision`. Med "overwrite"
+ * sparas det oavsett revision (Skriv över).
+ */
+export function saveToLibrary(
+  id: string,
+  score: Score,
+  revision: ExpectedRevision,
+): Promise<LibraryResult<{ revision: number }>> {
+  const condition = revision === "overwrite" ? `"overwrite":true` : `"revision":${revision}`;
+  const body = `{${condition},"document":${serialize(score)}}`;
   return send(`/api/library/${encodeURIComponent(id)}`, "PUT", body);
 }
 
-async function send<T>(url: string, method: string, body: string): Promise<LibraryResult<T>> {
+/** Hämtar den senaste revisionen av ett Partitur i Biblioteket. */
+export async function loadFromLibrary(id: string): Promise<LibraryResult<{ revision: number; score: Score }>> {
+  const result = await send<{ revision: number; document: unknown }>(`/api/library/${encodeURIComponent(id)}`, "GET");
+  if (!result.ok) return result;
+  const parsed = parse(JSON.stringify(result.document));
+  if (!parsed.ok) return { ok: false, reason: "failed" };
+  return { ok: true, revision: result.revision, score: parsed.score };
+}
+
+/**
+ * Webbläsare skickar ett anrop med `keepalive` även när fliken stängs, men bara upp till 64 kB.
+ * Ett större Partitur skickas utan och kan då avbrytas. Det ligger ändå kvar i Utkastet.
+ */
+const KEEPALIVE_LIMIT_BYTES = 60_000;
+
+async function send<T>(url: string, method: string, body?: string): Promise<LibraryResult<T>> {
   let response: Response;
   let data: Record<string, unknown>;
   try {
-    response = await fetch(url, { method, body, headers: { "content-type": "application/json" } });
+    const keepalive = body !== undefined && new Blob([body]).size < KEEPALIVE_LIMIT_BYTES;
+    response = await fetch(url, { method, body, keepalive, headers: { "content-type": "application/json" } });
     data = await response.json();
   } catch {
     return { ok: false, reason: "failed" };

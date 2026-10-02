@@ -181,6 +181,17 @@ describe("Spara", () => {
     expect(parse(JSON.stringify(body.document))).toEqual({ ok: true, score: scoreWith("Från en annan flik") });
   });
 
+  it("en sparning som redan har gjorts ger ingen konflikt, t.ex. när svaret inte nådde en stängd flik", async () => {
+    const { id } = await createScore(scoreWith("Original"));
+    const mine = scoreWith("Sparad när fliken stängdes");
+    await saveRequest(id, mine, 1);
+
+    const response = await saveRequest(id, mine, 1);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ revision: 2 });
+  });
+
   it("av två samtidiga sparningar med samma revision lyckas bara den ena", async () => {
     const { id } = await createScore(scoreWith("Samtidigt"));
 
@@ -197,6 +208,54 @@ describe("Spara", () => {
     const unknown = "00000000-0000-4000-8000-000000000000";
 
     expect((await saveRequest(unknown, scoreWith("Finns inte"), 1)).status).toBe(404);
+  });
+
+  it("Skriv över sparar oavsett revision och ger ny revision", async () => {
+    const { id } = await createScore(scoreWith("Original"));
+    await saveRequest(id, scoreWith("Från en annan flik"), 1);
+    const mine = scoreWith("Min version");
+
+    const response = await save(
+      request(`/api/library/${id}`, "owner", { method: "PUT", body: { document: documentOf(mine), overwrite: true } }),
+      context(id),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ revision: 3 });
+    const body = await (await get(request(`/api/library/${id}`, "owner"), context(id))).json();
+    expect(body.revision).toBe(3);
+    expect(parse(JSON.stringify(body.document))).toEqual({ ok: true, score: mine });
+  });
+
+  it("Skriv över kräver inloggning och ett Partitur som finns", async () => {
+    const { id } = await createScore(scoreWith("Skyddad"));
+    const unknown = "00000000-0000-4000-8000-000000000000";
+    const overwrite = (target: string, who: Who) =>
+      save(
+        request(`/api/library/${target}`, who, {
+          method: "PUT",
+          body: { document: documentOf(scoreWith("Överskriven")), overwrite: true },
+        }),
+        context(target),
+      );
+
+    expect((await overwrite(id, "guest")).status).toBe(401);
+    expect((await overwrite(unknown, "owner")).status).toBe(404);
+    const body = await (await get(request(`/api/library/${id}`, "owner"), context(id))).json();
+    expect(body.revision).toBe(1);
+  });
+
+  it("Spara som kopia skapar ett nytt Partitur och lämnar originalet orört", async () => {
+    const { id } = await createScore(scoreWith("Original"));
+    await saveRequest(id, scoreWith("Från en annan flik"), 1);
+
+    const copy = await createScore(scoreWith("Min version"));
+
+    expect(copy.id).not.toBe(id);
+    const original = await (await get(request(`/api/library/${id}`, "owner"), context(id))).json();
+    expect(parse(JSON.stringify(original.document))).toEqual({ ok: true, score: scoreWith("Från en annan flik") });
+    const copied = await (await get(request(`/api/library/${copy.id}`, "owner"), context(copy.id))).json();
+    expect(parse(JSON.stringify(copied.document))).toEqual({ ok: true, score: scoreWith("Min version") });
   });
 
   it("sparning utan giltig revision eller med ett ogiltigt dokument ger 400", async () => {

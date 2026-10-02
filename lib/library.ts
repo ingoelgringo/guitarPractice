@@ -14,6 +14,9 @@ export type LibraryEntry = { id: string; title: string; artist: string; updatedA
 /** Ett Partitur i Biblioteket med sitt dokument, en Partiturfil som JSON. */
 export type LibraryScore = { id: string; revision: number; updatedAt: string; document: unknown };
 
+/** Den revision som klienten senast kände till, eller "overwrite" för att spara oavsett revision (Skriv över). */
+export type ExpectedRevision = number | "overwrite";
+
 export type SaveResult =
   | { ok: true; revision: number }
   /** Partituret har sparats från en annan flik eller enhet sedan revisionen klienten kände till. */
@@ -70,22 +73,36 @@ export async function getScore(id: string): Promise<LibraryScore | null> {
   return { id: row.id, revision: row.revision, updatedAt: row.updated_at.toISOString(), document: row.document };
 }
 
-/** Sparar Partituret om revisionen i databasen fortfarande är `expectedRevision`. */
-export async function saveScore(id: string, score: Score, expectedRevision: number): Promise<SaveResult> {
+/**
+ * Sparar Partituret om revisionen i databasen fortfarande är `expectedRevision`. Med "overwrite"
+ * sparas det oavsett revision: Ägaren har valt att skriva över en version som sparats någon annanstans.
+ */
+export async function saveScore(
+  id: string,
+  score: Score,
+  expectedRevision: ExpectedRevision,
+): Promise<SaveResult> {
   if (!isLibraryId(id)) return { ok: false, reason: "notFound" };
-  // Villkoret på revisionen gör kontrollen och sparningen till en enda atomisk sats.
+  // Villkoret på revisionen gör kontrollen och sparningen till en enda atomisk sats. Ett tomt
+  // villkor ($6 är null) är Skriv över.
   const { rows } = await db().query(
     `UPDATE scores
         SET title = $1, artist = $2, document = $3, schema_version = $4,
             revision = revision + 1, updated_at = now()
-      WHERE id = $5 AND revision = $6
+      WHERE id = $5 AND ($6::integer IS NULL OR revision = $6)
       RETURNING revision`,
-    [...columnsFor(score), id, expectedRevision],
+    [...columnsFor(score), id, expectedRevision === "overwrite" ? null : expectedRevision],
   );
   if (rows.length > 0) return { ok: true, revision: rows[0].revision };
 
   // Sparningen är redan avgjord. Den här läsningen tar bara reda på varför den inte blev av.
-  const current = await db().query("SELECT revision FROM scores WHERE id = $1", [id]);
+  const current = await db().query("SELECT revision, document = $2::jsonb AS same FROM scores WHERE id = $1", [
+    id,
+    serialize(score),
+  ]);
   if (current.rows.length === 0) return { ok: false, reason: "notFound" };
+  // Exakt det här dokumentet är redan sparat, t.ex. av en sparning vars svar aldrig nådde en
+  // flik som stängdes. Det är ingen konflikt, och klienten får revisionen som det har.
+  if (current.rows[0].same) return { ok: true, revision: current.rows[0].revision };
   return { ok: false, reason: "conflict", revision: current.rows[0].revision };
 }

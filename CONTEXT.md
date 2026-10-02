@@ -71,6 +71,10 @@ _Avoid_: Export, sparfil
 Ägarens samling av Partitur i databasen. Ett Partitur i Biblioteket sparas automatiskt och har ett revisionsnummer. Ett Partitur utanför Biblioteket finns bara som Utkast och Partiturfil.
 _Avoid_: Molnet, databasen, mina projekt
 
+**Konflikt** (`conflict`):
+När ett Partitur i Biblioteket har sparats på en annan flik eller enhet sedan den revision man utgick från. Den automatiska sparningen stoppas tills Ägaren väljer *Ladda om* (ta den sparade versionen), *Spara som kopia* (ett nytt Partitur i Biblioteket) eller *Skriv över* (spara oavsett revision).
+_Avoid_: Krock, versionsfel
+
 **Utkast** (`Draft`):
 Den automatiskt sparade kopian av det Partitur man arbetar med. Den finns bara i den aktuella webbläsaren och är inte en säker lagring.
 _Avoid_: Autosave, cache

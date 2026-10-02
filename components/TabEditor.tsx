@@ -1,11 +1,12 @@
 "use client";
 
 import type { AlphaTabApi } from "@coderline/alphatab";
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
 import { browserStorage, loadDraft, saveDraft, type Draft } from "@/lib/draft";
 import { apply, createEditor, type Cursor } from "@/lib/editor";
 import { keyToCommand, SHORTCUTS } from "@/lib/keyboard";
-import { addToLibrary, saveToLibrary, type LibraryFailure } from "@/lib/libraryClient";
+import { addToLibrary, loadFromLibrary, saveToLibrary, type LibraryFailure } from "@/lib/libraryClient";
+import { LibrarySync } from "@/lib/librarySync";
 import type { Score } from "@/lib/score";
 import { serialize } from "@/lib/scoreFile";
 import { invalidBars } from "@/lib/validation";
@@ -27,8 +28,12 @@ const VIEW_ONLY_MEDIA = "(max-width: 640px), (pointer: coarse)";
 /** Ett Partitur som Ägaren har öppnat från Biblioteket. */
 export type OpenedFromLibrary = { id: string; revision: number; score: Score };
 
-/** Ett Partitur i Biblioteket: id, senast kända revision och texten som den revisionen motsvarar. */
-type LibraryState = { id: string; revision: number; savedText: string | null };
+/** En synk för ett Partitur i Biblioteket, i en revision som motsvarar `savedText` (null när den inte är känd). */
+function syncFor(id: string, revision: number, score: Score, savedText: string | null): LibrarySync {
+  return new LibrarySync({ id, revision, savedText, score, save: saveToLibrary });
+}
+
+const noSubscription = () => () => {};
 
 /** Ett begripligt meddelande när Biblioteket inte tog emot Partituret. */
 function libraryErrorMessage(failure: LibraryFailure): string {
@@ -36,7 +41,7 @@ function libraryErrorMessage(failure: LibraryFailure): string {
     case "unauthorized":
       return "You have been logged out. Log in again to use the library. Your changes are kept in this browser.";
     case "conflict":
-      return `This score has been changed in another tab or on another device (revision ${failure.revision}), so it wasn't saved. Your changes are kept in this browser.`;
+      return "This score has been changed in another tab or on another device. Your changes are kept in this browser.";
     case "notFound":
       return "This score is no longer in the library.";
     case "failed":
@@ -73,15 +78,26 @@ export function TabEditor({ owner, fromLibrary }: { owner: boolean; fromLibrary?
   // Jämförelsen görs mot texten, så ändringar som ångras tillbaka räknas inte
   const downloaded = scoreText === fileText;
 
-  const [library, setLibrary] = useState<LibraryState | null>(() =>
+  // Synken skapas utan sidoeffekter och startas av en effekt, så att den går att skapa vid rendering
+  const [sync, setSync] = useState<LibrarySync | null>(() =>
     restored?.library
-      ? { ...restored.library, savedText: restored.library.saved ? serialize(restored.score) : null }
+      ? syncFor(
+          restored.library.id,
+          restored.library.revision,
+          restored.score,
+          restored.library.saved ? serialize(restored.score) : null,
+        )
       : null,
   );
-  const saved = library !== null && scoreText === library.savedText;
+  const syncState = useSyncExternalStore(
+    sync?.subscribe ?? noSubscription,
+    () => sync?.state ?? null,
+    () => null,
+  );
+  const saved = syncState?.saved ?? false;
   // Ett Partitur i Biblioteket är säkert när det är sparat, andra när de är nedladdade. Utloggad
   // ser Ägaren inget av Biblioteket och arbetar som en Gäst.
-  const nothingToLose = owner && library ? saved : downloaded;
+  const nothingToLose = owner && syncState ? saved : downloaded;
   const [libraryPending, setLibraryPending] = useState(false);
   const [libraryMessage, setLibraryMessage] = useState<string | null>(null);
   // Ökar när ett annat Partitur tar det nuvarandes plats, så att svar som gäller det förra ignoreras
@@ -93,6 +109,34 @@ export function TabEditor({ owner, fromLibrary }: { owner: boolean; fromLibrary?
     if (fromLibrary) window.history.replaceState(null, "", "/tab-editor");
   }, [fromLibrary]);
 
+  useEffect(() => {
+    if (!sync) return;
+    sync.start();
+    return () => sync.stop();
+  }, [sync]);
+
+  useEffect(() => {
+    sync?.edit(state.score);
+  }, [sync, state.score]);
+
+  useEffect(() => {
+    if (!sync) return;
+    const flush = () => sync.flush();
+    // Sista ändringen sparas direkt när fliken döljs eller stängs, och när nätet kommer tillbaka
+    function onVisibilityChange() {
+      if (document.visibilityState === "hidden") flush();
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pagehide", flush);
+    window.addEventListener("online", flush);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pagehide", flush);
+      window.removeEventListener("online", flush);
+    };
+  }, [sync]);
+
+  /** Lägger Partituret i Biblioteket som ett nytt Partitur. Används också för Spara som kopia. */
   async function addScore(score: Score) {
     const current = generation.current;
     setLibraryPending(true);
@@ -100,26 +144,32 @@ export function TabEditor({ owner, fromLibrary }: { owner: boolean; fromLibrary?
     const result = await addToLibrary(score);
     if (current !== generation.current) return;
     setLibraryPending(false);
-    if (result.ok) setLibrary({ id: result.id, revision: result.revision, savedText: serialize(score) });
+    if (result.ok) setSync(syncFor(result.id, result.revision, score, serialize(score)));
     else setLibraryMessage(libraryErrorMessage(result));
   }
 
-  async function saveScore() {
-    if (!library) return;
+  /** Ladda om: ersätter ändringarna med den senast sparade versionen i Biblioteket. */
+  async function reloadScore() {
+    if (!syncState) return;
     const current = generation.current;
-    const text = scoreText;
     setLibraryPending(true);
     setLibraryMessage(null);
-    const result = await saveToLibrary(library.id, state.score, library.revision);
+    const result = await loadFromLibrary(syncState.id);
     if (current !== generation.current) return;
     setLibraryPending(false);
-    if (result.ok) setLibrary({ id: library.id, revision: result.revision, savedText: text });
-    else setLibraryMessage(libraryErrorMessage(result));
+    if (!result.ok) {
+      setLibraryMessage(libraryErrorMessage(result));
+      return;
+    }
+    generation.current++;
+    setFileText(serialize(result.score));
+    setSync(syncFor(syncState.id, result.revision, result.score, serialize(result.score)));
+    dispatch({ type: "openScore", score: result.score });
   }
 
   function onReplaced(score: Score, by: ReplacedBy) {
     generation.current++;
-    setLibrary(null);
+    setSync(null);
     setLibraryPending(false);
     setLibraryMessage(null);
     // Ägarens nya Partitur hamnar i Biblioteket direkt. En öppnad fil gör det inte. Det tomma
@@ -131,14 +181,14 @@ export function TabEditor({ owner, fromLibrary }: { owner: boolean; fromLibrary?
   // Utkastet sparas först när något har ändrats sedan start. Ett Utkast som inte gick att läsa,
   // t.ex. från en nyare version av editorn, skrivs då inte över bara för att editorn öppnades.
   // Ett Partitur som har öppnats från Biblioteket ersätter däremot Utkastet direkt.
-  const [atStart] = useState({ score: state.score, downloaded, library });
+  const [atStart] = useState({ score: state.score, downloaded, syncState });
   const changedSinceStart = useRef(fromLibrary !== undefined);
   useEffect(() => {
     if (
       !changedSinceStart.current &&
       state.score === atStart.score &&
       downloaded === atStart.downloaded &&
-      library === atStart.library
+      syncState === atStart.syncState
     ) {
       return;
     }
@@ -146,9 +196,9 @@ export function TabEditor({ owner, fromLibrary }: { owner: boolean; fromLibrary?
     saveDraft(browserStorage(), {
       score: state.score,
       downloaded,
-      library: library ? { id: library.id, revision: library.revision, saved } : undefined,
+      library: syncState ? { id: syncState.id, revision: syncState.revision, saved: syncState.saved } : undefined,
     });
-  }, [atStart, state.score, downloaded, library, saved]);
+  }, [atStart, state.score, downloaded, syncState]);
 
   useEffect(() => {
     if (nothingToLose) return;
@@ -224,12 +274,13 @@ export function TabEditor({ owner, fromLibrary }: { owner: boolean; fromLibrary?
         />
         {owner && (
           <LibraryButtons
-            inLibrary={library !== null}
-            saved={saved}
+            sync={syncState}
             pending={libraryPending}
             message={libraryMessage}
             onAdd={() => void addScore(state.score)}
-            onSave={() => void saveScore()}
+            onReload={() => void reloadScore()}
+            onSaveCopy={() => void addScore(state.score)}
+            onOverwrite={() => sync?.overwrite()}
             onDismissMessage={() => setLibraryMessage(null)}
           />
         )}
@@ -243,7 +294,7 @@ export function TabEditor({ owner, fromLibrary }: { owner: boolean; fromLibrary?
             Print…
           </button>
         </div>
-        {!(owner && library) && (
+        {!(owner && syncState) && (
           <p className={styles.draftNotice} role="note">
             Your work is saved as a draft in this browser only. Download the score to keep a safe copy.
           </p>
