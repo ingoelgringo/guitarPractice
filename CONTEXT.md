@@ -15,8 +15,16 @@ En stämma för ett instrument i ett Partitur, med egen Stämning och Capo. Vers
 _Avoid_: Instrument, stämma
 
 **Takt** (`Bar`):
-En tidsenhet i ett Spår som avgränsas av taktstreck och har en taktart.
+En tidsenhet i ett Spår som avgränsas av taktstreck och har en taktart. Taktarten och tempot gäller från Partiturets start eller från det senaste Bytet före.
 _Avoid_: Measure
+
+**Byte** (`BarChange`):
+En ny taktart eller ett nytt tempo från och med en viss Takt, till nästa byte. Första Takten har inga byten, där gäller Partiturets starttaktart och starttempo.
+_Avoid_: Ändring, övergång
+
+**Repris** (`repeatStart`, `repeatEnd`):
+En följd av Takter som spelas flera varv. Den börjar med en reprisstart och slutar med ett reprisslut som anger antalet varv sammanlagt. Utan reprisstart går reprisen tillbaka till början. Repriser kan ligga i varandra.
+_Avoid_: Loop, upprepning
 
 **Slag** (`Beat`):
 En tidpunkt i en Takt med ett Notvärde. Ett slag utan toner är en paus, och ett slag med flera toner är ett ackord.

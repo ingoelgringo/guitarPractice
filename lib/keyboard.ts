@@ -34,7 +34,9 @@ export type KeyPress = Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "altK
 /** Tunt tangentbordsskal: översätter ett tangenttryck till ett Editor-kommando. */
 export function keyToCommand(press: KeyPress): Command | null {
   const { key } = press;
-  if (press.altKey) return null;
+  // På t.ex. svenskt tangentbord skrivs [ och ] med AltGr (Ctrl+Alt på Windows) eller Option.
+  // Andra tangenter med Alt är kortkommandon för annat och lämnas orörda.
+  if (press.altKey) return key === "[" || key === "]" ? symbolToCommand(key) : null;
   if (press.ctrlKey || press.metaKey) {
     const lower = key.toLowerCase();
     if (lower === "z") return { type: press.shiftKey ? "redo" : "undo" };
@@ -44,13 +46,22 @@ export function keyToCommand(press: KeyPress): Command | null {
   if (key === "Delete" || key === "Backspace") return { type: press.shiftKey ? "deleteBeat" : "deleteNote" };
   if (Object.hasOwn(ARROW_KEYS, key)) return { type: "moveCursor", direction: ARROW_KEYS[key] };
   if (/^[0-9]$/.test(key)) return { type: "typeDigit", digit: Number(key), time: press.timeStamp };
-  if (key === ".") return { type: "toggleDot" };
-  if (key === "/") return { type: "toggleTriplet" };
+  const symbol = symbolToCommand(key);
+  if (symbol) return symbol;
   const lower = key.toLowerCase();
   if (lower === "r") return { type: "insertRest" };
   if (Object.hasOwn(TECHNIQUE_KEYS, lower)) return { type: TECHNIQUE_KEYS[lower].command };
   const duration = DURATION_KEYS.find((d) => d.key === lower);
   return duration ? { type: "setDuration", duration: duration.duration } : null;
+}
+
+/** Kommandot för ett tecken som varken är bokstav eller siffra. */
+function symbolToCommand(key: string): Command | null {
+  if (key === ".") return { type: "toggleDot" };
+  if (key === "/") return { type: "toggleTriplet" };
+  if (key === "[") return { type: "toggleRepeatStart" };
+  if (key === "]") return { type: "toggleRepeatEnd" };
+  return null;
 }
 
 /** Kortkommandona som de visas i editorns hjälpruta. */
@@ -62,6 +73,8 @@ export const SHORTCUTS: readonly { keys: string; action: string }[] = [
   { keys: "/", action: "Toggle triplet" },
   { keys: "R", action: "Insert rest and move on" },
   ...Object.entries(TECHNIQUE_KEYS).map(([key, { name }]) => ({ keys: key.toUpperCase(), action: name })),
+  { keys: "[", action: "Toggle repeat start on the bar" },
+  { keys: "]", action: "Toggle repeat end on the bar (set the count under Bar)" },
   { keys: "Delete", action: "Delete note on the cursor's string" },
   { keys: "Shift+Delete", action: "Delete beat" },
   { keys: "Ctrl+Z", action: "Undo" },

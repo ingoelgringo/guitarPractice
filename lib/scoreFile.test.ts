@@ -62,6 +62,15 @@ describe("Partiturfil: rundtur", () => {
           { beats: [{ duration: 2, notes: [] }] },
         ]),
     ],
+    [
+      "takt- och tempobyten samt repriser",
+      (s) =>
+        (s.tracks[0].bars = [
+          { beats: [{ duration: 1, notes: [] }], repeatEnd: 2 },
+          { beats: [{ duration: 2, dotted: true, notes: [] }], timeSignature: { beats: 3, beatValue: 4 }, repeatStart: true },
+          { beats: [{ duration: 2, dotted: true, notes: [] }], tempo: 72, repeatStart: true, repeatEnd: 99 },
+        ]),
+    ],
   ])("%s kommer tillbaka likadant", (_, change) => {
     const score = scoreWith(change);
 
@@ -136,6 +145,13 @@ describe("Partiturfil: trasigt Partitur", () => {
           { duration: 4, notes: [{ string: 1, fret: 5 }] },
         ]),
     ],
+    ["ett taktartsbyte i första Takten", (s) => (s.tracks[0].bars[0].timeSignature = { beats: 3, beatValue: 4 })],
+    ["ett tempobyte i första Takten", (s) => (s.tracks[0].bars[0].tempo = 90)],
+    ["ett ogiltigt taktartsbyte", (s) => s.tracks[0].bars.push({ beats: [{ duration: 4, notes: [] }], timeSignature: { beats: 0, beatValue: 4 } })],
+    ["ett tempobyte utanför 20–400", (s) => s.tracks[0].bars.push({ beats: [{ duration: 4, notes: [] }], tempo: 10 })],
+    ["en reprisstart som inte är sant eller falskt", (s) => (s.tracks[0].bars[0].repeatStart = "yes")],
+    ["ett reprisslut med ett varv", (s) => (s.tracks[0].bars[0].repeatEnd = 1)],
+    ["ett reprisslut med över 99 varv", (s) => (s.tracks[0].bars[0].repeatEnd = 100)],
     [
       "två toner på samma sträng i ett slag",
       (s) => (s.tracks[0].bars[0].beats[0].notes = [{ string: 1, fret: 0 }, { string: 1, fret: 2 }]),
@@ -217,6 +233,16 @@ describe("Partiturfil: äldre versioner", () => {
         ],
       },
       { beats: [{ duration: 2, notes: [{ string: 1, fret: 10, bend: 2 }, { string: 2, fret: 12, bend: 3 }] }] },
+    ]);
+  });
+
+  it("en fil i version 3 går att öppna, med takt- och tempobyten samt repriser", () => {
+    const result = parse(fixture(3));
+
+    expect(result.ok && result.score.tracks[0].bars).toEqual([
+      { beats: [{ duration: 2, notes: [{ string: 1, fret: 3 }] }], repeatStart: true },
+      { beats: [{ duration: 2, dotted: true, notes: [] }], timeSignature: { beats: 3, beatValue: 4 }, repeatEnd: 3 },
+      { beats: [{ duration: 2, dotted: true, notes: [{ string: 2, fret: 5 }] }], tempo: 140, repeatEnd: 2 },
     ]);
   });
 

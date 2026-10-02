@@ -80,7 +80,7 @@ export function TabEditor() {
 
   return (
     <div className={styles.editor}>
-      <ScoreSettings score={state.score} trackIndex={state.cursor.track} dispatch={dispatch} />
+      <ScoreSettings score={state.score} cursor={state.cursor} dispatch={dispatch} />
       <details className={styles.help}>
         <summary>Keyboard shortcuts</summary>
         <table>

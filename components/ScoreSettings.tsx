@@ -1,17 +1,22 @@
 "use client";
 
 import { useState, type InputHTMLAttributes } from "react";
-import type { Command } from "@/lib/editor";
+import type { Command, Cursor } from "@/lib/editor";
 import {
   MAX_FRET,
+  MAX_REPEAT_COUNT,
   MAX_TEMPO,
   MAX_TIME_SIGNATURE_BEATS,
+  MIN_REPEAT_COUNT,
   MIN_TEMPO,
   MIN_TIME_SIGNATURE_BEATS,
+  tempoAt,
   TIME_SIGNATURE_BEAT_VALUES,
+  timeSignatureAt,
   type Duration,
   type Metadata,
   type Score,
+  type TimeSignature,
 } from "@/lib/score";
 import { findTuningPreset, noteName, TUNING_PRESETS } from "@/lib/tuning";
 import styles from "./TabEditor.module.css";
@@ -27,20 +32,20 @@ const METADATA_FIELDS: readonly { field: keyof Metadata; label: string }[] = [
 const PITCHES = Array.from({ length: 49 }, (_, i) => 28 + i);
 
 /**
- * Tunt skal: panel för metadata, Stämning, Capo, tempo och taktart.
- * Varje ändring blir ett Editor-kommando och går därför att ångra.
+ * Tunt skal: panel för metadata, Stämning, Capo, starttempo och starttaktart, samt byten och
+ * repriser på markörens Takt. Varje ändring blir ett Editor-kommando och går därför att ångra.
  */
 export function ScoreSettings({
   score,
-  trackIndex,
+  cursor,
   dispatch,
 }: {
   score: Score;
-  /** Markörens Spår, som Stämning och Capo gäller. */
-  trackIndex: number;
+  /** Markören: Stämning och Capo gäller dess Spår, och byten och repriser dess Takt. */
+  cursor: Cursor;
   dispatch: (command: Command) => void;
 }) {
-  const track = score.tracks[trackIndex];
+  const track = score.tracks[cursor.track];
   const preset = findTuningPreset(track.tuning);
 
   function setString(index: number, pitch: number) {
@@ -113,35 +118,105 @@ export function ScoreSettings({
         </label>
         <label>
           <span>Time signature</span>
-          <span className={styles.timeSignature}>
-            <NumberInput
-              min={MIN_TIME_SIGNATURE_BEATS}
-              max={MAX_TIME_SIGNATURE_BEATS}
-              aria-label="Beats per bar"
-              value={score.timeSignature.beats}
-              onCommit={(beats) => dispatch({ type: "setTimeSignature", timeSignature: { ...score.timeSignature, beats } })}
-            />
-            /
-            <select
-              aria-label="Beat value"
-              value={score.timeSignature.beatValue}
-              onChange={(e) =>
-                dispatch({
-                  type: "setTimeSignature",
-                  timeSignature: { ...score.timeSignature, beatValue: Number(e.target.value) as Duration },
-                })
-              }
-            >
-              {TIME_SIGNATURE_BEAT_VALUES.map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </span>
+          <TimeSignatureInput
+            value={score.timeSignature}
+            onChange={(timeSignature) => dispatch({ type: "setTimeSignature", timeSignature })}
+          />
         </label>
+
+        <BarSettings score={score} cursor={cursor} dispatch={dispatch} />
       </div>
     </details>
+  );
+}
+
+/**
+ * Taktart, tempo och repriser på markörens Takt. Fälten visar det som gäller i Takten, och en
+ * ändring där blir ett byte från och med Takten.
+ */
+function BarSettings({ score, cursor, dispatch }: { score: Score; cursor: Cursor; dispatch: (command: Command) => void }) {
+  const bar = score.tracks[cursor.track].bars[cursor.bar];
+
+  return (
+    <fieldset className={styles.bar}>
+      <legend>Bar {cursor.bar + 1}</legend>
+      <label>
+        <span>Time signature from here</span>
+        <span className={styles.barChange}>
+          <TimeSignatureInput
+            value={timeSignatureAt(score, cursor.track, cursor.bar)}
+            onChange={(timeSignature) => dispatch({ type: "setBarTimeSignature", timeSignature })}
+          />
+          {bar.timeSignature && (
+            <button type="button" onClick={() => dispatch({ type: "clearBarTimeSignature" })}>
+              Remove change
+            </button>
+          )}
+        </span>
+      </label>
+      <label>
+        <span>Tempo from here (BPM)</span>
+        <span className={styles.barChange}>
+          <NumberInput
+            min={MIN_TEMPO}
+            max={MAX_TEMPO}
+            value={tempoAt(score, cursor.track, cursor.bar)}
+            onCommit={(tempo) => dispatch({ type: "setBarTempo", tempo })}
+          />
+          {bar.tempo !== undefined && (
+            <button type="button" onClick={() => dispatch({ type: "clearBarTempo" })}>
+              Remove change
+            </button>
+          )}
+        </span>
+      </label>
+      <label className={styles.checkbox}>
+        <input type="checkbox" checked={bar.repeatStart === true} onChange={() => dispatch({ type: "toggleRepeatStart" })} />
+        Repeat start
+      </label>
+      <label className={styles.checkbox}>
+        <input type="checkbox" checked={bar.repeatEnd !== undefined} onChange={() => dispatch({ type: "toggleRepeatEnd" })} />
+        Repeat end
+      </label>
+      {bar.repeatEnd !== undefined && (
+        <label>
+          <span>Times played</span>
+          <NumberInput
+            min={MIN_REPEAT_COUNT}
+            max={MAX_REPEAT_COUNT}
+            value={bar.repeatEnd}
+            onCommit={(count) => dispatch({ type: "setRepeatCount", count })}
+          />
+        </label>
+      )}
+    </fieldset>
+  );
+}
+
+/** Antal slag och slagets Notvärde i en taktart. */
+function TimeSignatureInput({ value, onChange }: { value: TimeSignature; onChange: (value: TimeSignature) => void }) {
+  return (
+    <span className={styles.timeSignature}>
+      <NumberInput
+        min={MIN_TIME_SIGNATURE_BEATS}
+        max={MAX_TIME_SIGNATURE_BEATS}
+        aria-label="Beats per bar"
+        value={value.beats}
+        onCommit={(beats) => onChange({ ...value, beats })}
+      />
+      /
+      <select
+        aria-label="Beat value"
+        value={value.beatValue}
+        onChange={(e) => onChange({ ...value, beatValue: Number(e.target.value) as Duration })}
+      >
+        {TIME_SIGNATURE_BEAT_VALUES.map((v) => (
+          <option key={v} value={v}>
+            {v}
+          </option>
+        ))}
+      </select>
+    </span>
   );
 }
 

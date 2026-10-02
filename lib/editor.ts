@@ -8,13 +8,17 @@ import {
   DURATIONS,
   MAX_FRET,
   MAX_PITCH,
+  MAX_REPEAT_COUNT,
   MAX_TEMPO,
   MAX_TIME_SIGNATURE_BEATS,
   MIN_PITCH,
+  MIN_REPEAT_COUNT,
   MIN_TEMPO,
   MIN_TIME_SIGNATURE_BEATS,
   STANDARD_TUNING,
-  TIME_SIGNATURE_BEAT_VALUES, type Bar, type Beat, type Connection, type Duration, type Metadata, type Note, type Score, type TimeSignature, type Track, VIEW_MODES, type ViewMode, withValidConnections } from "./score";
+  tempoAt,
+  TIME_SIGNATURE_BEAT_VALUES,
+  timeSignatureAt, type Bar, type BarChange, type Beat, type Connection, type Duration, type Metadata, type Note, type Score, type TimeSignature, type Track, VIEW_MODES, type ViewMode, withValidConnections } from "./score";
 
 export interface Cursor {
   track: number;
@@ -94,6 +98,23 @@ export type Command =
   | { type: "setTempo"; tempo: number }
   /** Sätter starttaktarten. Takter som inte längre stämmer flaggas av valideringen men rättas inte. */
   | { type: "setTimeSignature"; timeSignature: TimeSignature }
+  /**
+   * Byter taktart från och med markörens Takt. På första Takten ändras starttaktarten. Ett byte
+   * till den taktart som redan gäller före Takten tar bort bytet.
+   */
+  | { type: "setBarTimeSignature"; timeSignature: TimeSignature }
+  /** Tar bort taktartsbytet på markörens Takt, som då följer taktarten före den. */
+  | { type: "clearBarTimeSignature" }
+  /** Byter tempo från och med markörens Takt, på samma sätt som `setBarTimeSignature`. */
+  | { type: "setBarTempo"; tempo: number }
+  /** Tar bort tempobytet på markörens Takt. */
+  | { type: "clearBarTempo" }
+  /** Växlar reprisstart på markörens Takt. */
+  | { type: "toggleRepeatStart" }
+  /** Växlar reprisslut på markörens Takt. Ett nytt reprisslut spelas två varv. */
+  | { type: "toggleRepeatEnd" }
+  /** Sätter antalet varv för reprisslutet på markörens Takt. Utan reprisslut händer ingenting. */
+  | { type: "setRepeatCount"; count: number }
   /** Byter Vy-läge. Inmatningen är tab-först i alla lägen. */
   | { type: "setViewMode"; viewMode: ViewMode }
   /** Byter Partituret i Editorn mot ett annat, t.ex. en öppnad Partiturfil. Historiken börjar om. */
@@ -248,15 +269,33 @@ function applyCommand(
       });
     case "setTempo":
       return updateScore(state, (score) => {
-        if (isInRange(command.tempo, MIN_TEMPO, MAX_TEMPO)) score.tempo = command.tempo;
+        if (isValidTempo(command.tempo)) score.tempo = command.tempo;
       });
     case "setTimeSignature":
       return updateScore(state, (score) => {
-        const { beats, beatValue } = command.timeSignature;
-        const valid =
-          isInRange(beats, MIN_TIME_SIGNATURE_BEATS, MAX_TIME_SIGNATURE_BEATS) &&
-          TIME_SIGNATURE_BEAT_VALUES.includes(beatValue);
-        if (valid) score.timeSignature = { beats, beatValue };
+        if (isValidTimeSignature(command.timeSignature)) score.timeSignature = copyTimeSignature(command.timeSignature);
+      });
+    case "setBarTimeSignature":
+      if (!isValidTimeSignature(command.timeSignature)) return state;
+      return setBarChange(state, "timeSignature", copyTimeSignature(command.timeSignature), timeSignatureAt);
+    case "clearBarTimeSignature":
+      return updateBars(state, (bar) => delete bar.timeSignature);
+    case "setBarTempo":
+      if (!isValidTempo(command.tempo)) return state;
+      return setBarChange(state, "tempo", command.tempo, tempoAt);
+    case "clearBarTempo":
+      return updateBars(state, (bar) => delete bar.tempo);
+    case "toggleRepeatStart":
+      return updateBars(state, (bar) => toggle(bar, "repeatStart"));
+    case "toggleRepeatEnd":
+      return updateBars(state, (bar) => {
+        if (bar.repeatEnd) delete bar.repeatEnd;
+        else bar.repeatEnd = MIN_REPEAT_COUNT;
+      });
+    case "setRepeatCount":
+      if (!isInRange(command.count, MIN_REPEAT_COUNT, MAX_REPEAT_COUNT)) return state;
+      return updateBars(state, (bar) => {
+        if (bar.repeatEnd) bar.repeatEnd = command.count;
       });
     case "setViewMode":
       return updateScore(state, (score) => {
@@ -279,6 +318,48 @@ function updateScore(state: EditorState, change: (score: Score) => void): Editor
 /** Ändrar en kopia av markörens Spår. */
 function updateTrack(state: EditorState, change: (track: Track) => void): EditorState {
   return updateScore(state, (score) => change(score.tracks[state.cursor.track]));
+}
+
+/** Ändrar en kopia av markörens Takt i alla Spår, eftersom byten och repriser gäller hela Partituret. */
+function updateBars(state: EditorState, change: (bar: Bar) => void): EditorState {
+  return updateScore(state, (score) => {
+    for (const track of score.tracks) {
+      const bar = track.bars[state.cursor.bar];
+      if (bar) change(bar);
+    }
+  });
+}
+
+/**
+ * Sätter ett taktarts- eller tempobyte på markörens Takt. På första Takten ändras starten i
+ * stället, och ett byte till det som redan gäller före Takten blir inget byte.
+ */
+function setBarChange<F extends BarChange>(
+  state: EditorState,
+  field: F,
+  value: Score[F],
+  inEffect: (score: Score, track: number, bar: number) => Score[F],
+): EditorState {
+  const { cursor } = state;
+  if (cursor.bar === 0) return updateScore(state, (score) => (score[field] = value));
+  const unchanged = equal(inEffect(state.score, cursor.track, cursor.bar - 1), value);
+  return updateBars(state, (bar) => {
+    if (unchanged) delete bar[field];
+    else bar[field] = value as Bar[F];
+  });
+}
+
+function isValidTempo(tempo: number): boolean {
+  return isInRange(tempo, MIN_TEMPO, MAX_TEMPO);
+}
+
+function isValidTimeSignature({ beats, beatValue }: TimeSignature): boolean {
+  return isInRange(beats, MIN_TIME_SIGNATURE_BEATS, MAX_TIME_SIGNATURE_BEATS) && TIME_SIGNATURE_BEAT_VALUES.includes(beatValue);
+}
+
+/** En taktart utan andra fält än de som hör dit. */
+function copyTimeSignature({ beats, beatValue }: TimeSignature): TimeSignature {
+  return { beats, beatValue };
 }
 
 /** Om `value` är ett heltal från `min` till och med `max`. */
@@ -438,7 +519,7 @@ function advance(state: EditorState, { force }: { force: boolean }): EditorState
 
   const current = bar.beats[cursor.beat];
   const canExtend = force || current.notes.length > 0;
-  const room = barCapacity(score.timeSignature) - barTicks(bar);
+  const room = barCapacity(timeSignatureAt(score, cursor.track, cursor.bar)) - barTicks(bar);
   const hasNextBar = cursor.bar < bars.length - 1;
 
   if (room > 0 && canExtend) {

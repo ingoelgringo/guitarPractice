@@ -58,12 +58,20 @@ export function toAlphaTab(score: Score): model.Score {
   );
 
   const barCount = Math.max(...score.tracks.map((t) => t.bars.length));
+  let timeSignature = score.timeSignature;
   for (let i = 0; i < barCount; i++) {
+    // Byten och repriser är lika i alla Spår, så de läses från det första Spår som har Takten
+    const bar = score.tracks.map((t) => t.bars[i]).find((b) => b !== undefined)!;
     const masterBar = new model.MasterBar();
-    masterBar.timeSignatureNumerator = score.timeSignature.beats;
-    masterBar.timeSignatureDenominator = score.timeSignature.beatValue;
+    timeSignature = bar.timeSignature ?? timeSignature;
+    masterBar.timeSignatureNumerator = timeSignature.beats;
+    masterBar.timeSignatureDenominator = timeSignature.beatValue;
     // alphaTab läser Partiturets tempo från tempomarkeringen i första Takten
-    if (i === 0) masterBar.tempoAutomations.push(model.Automation.buildTempoAutomation(false, 0, score.tempo, 2));
+    const tempo = i === 0 ? score.tempo : bar.tempo;
+    if (tempo !== undefined) masterBar.tempoAutomations.push(model.Automation.buildTempoAutomation(false, 0, tempo, 2));
+    masterBar.isRepeatStart = bar.repeatStart === true;
+    // alphaTab räknar varven på samma sätt: ett reprisslut har minst två
+    if (bar.repeatEnd) masterBar.repeatCount = bar.repeatEnd;
     result.addMasterBar(masterBar);
   }
   score.tracks.forEach((track, index) => result.addTrack(toTrack(track, index, score.viewMode)));

@@ -44,6 +44,14 @@ describe("invalidBars", () => {
 
     expect(invalidBars(score)).toEqual([{ track: 0, bar: 1, problem: "tooLong" }]);
   });
+
+  it("följer taktartsbyten från Takten där de står", () => {
+    const score = scoreWithBars([[4, 4, 4, 4], [4, 4, 4], [4, 4, 4], [2, 2], [4]]);
+    score.tracks[0].bars[1].timeSignature = { beats: 3, beatValue: 4 };
+    score.tracks[0].bars[3].timeSignature = { beats: 6, beatValue: 8 };
+
+    expect(invalidBars(score)).toEqual([{ track: 0, bar: 3, problem: "tooLong" }]);
+  });
 });
 
 function scoreWithBars(bars: Duration[][]): Score {

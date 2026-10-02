@@ -936,6 +936,163 @@ describe("speltekniker", () => {
   });
 });
 
+describe("taktartsbyten", () => {
+  /** Två fulla Takter i 4/4 med markören i den andra. */
+  const twoBars = () => run(createEditor(), [...quarters(8)]);
+
+  it("ett taktartsbyte sätts på markörens Takt och gäller därifrån, och det kan ångras", () => {
+    const state = apply(twoBars(), { type: "setBarTimeSignature", timeSignature: { beats: 3, beatValue: 4 } });
+
+    expect(state.score.tracks[0].bars[1].timeSignature).toEqual({ beats: 3, beatValue: 4 });
+    expect(state.score.tracks[0].bars[0].timeSignature).toBeUndefined();
+    expect(state.score.timeSignature).toEqual({ beats: 4, beatValue: 4 });
+    expect(apply(state, { type: "undo" }).score).toEqual(twoBars().score);
+  });
+
+  it("på första Takten ändrar det starttaktarten", () => {
+    const state = apply(createEditor(), { type: "setBarTimeSignature", timeSignature: { beats: 6, beatValue: 8 } });
+
+    expect(state.score.timeSignature).toEqual({ beats: 6, beatValue: 8 });
+    expect(state.score.tracks[0].bars[0].timeSignature).toBeUndefined();
+  });
+
+  it("ett byte till den taktart som redan gäller blir inget byte", () => {
+    const start = twoBars();
+    const changed = apply(start, { type: "setBarTimeSignature", timeSignature: { beats: 3, beatValue: 4 } });
+    const back = apply(changed, { type: "setBarTimeSignature", timeSignature: { beats: 4, beatValue: 4 } });
+
+    expect(apply(start, { type: "setBarTimeSignature", timeSignature: { beats: 4, beatValue: 4 } }).score).toBe(start.score);
+    expect(back.score.tracks[0].bars[1].timeSignature).toBeUndefined();
+  });
+
+  it("ogiltiga taktarter avvisas", () => {
+    const state = twoBars();
+    for (const timeSignature of [
+      { beats: 0, beatValue: 4 },
+      { beats: 33, beatValue: 4 },
+      { beats: 3, beatValue: 3 },
+      { beats: 2.5, beatValue: 4 },
+    ] as TimeSignature[]) {
+      expect(apply(state, { type: "setBarTimeSignature", timeSignature }).score, JSON.stringify(timeSignature)).toBe(
+        state.score,
+      );
+    }
+  });
+
+  it("att ta bort bytet låter Takten följa taktarten före den igen", () => {
+    const changed = apply(twoBars(), { type: "setBarTimeSignature", timeSignature: { beats: 3, beatValue: 4 } });
+    const state = apply(changed, { type: "clearBarTimeSignature" });
+
+    expect(state.score).toEqual(twoBars().score);
+    expect(apply(state, { type: "undo" }).score).toEqual(changed.score);
+  });
+
+  it("Takterna fylls efter den taktart som gäller, även i nya Takter efter bytet", () => {
+    const state = run(createEditor(), [
+      ...quarters(4),
+      { type: "moveCursor", direction: "right" },
+      { type: "setBarTimeSignature", timeSignature: { beats: 3, beatValue: 4 } },
+      ...quarters(4),
+    ]);
+
+    expect(state.score.tracks[0].bars.map((bar) => bar.beats.length)).toEqual([4, 3, 1]);
+    expect(state.score.tracks[0].bars[2].timeSignature).toBeUndefined();
+    expect(state.cursor).toMatchObject({ bar: 2, beat: 0 });
+  });
+
+  it("ett byte flaggar Takter som inte längre stämmer, utan att rätta dem", () => {
+    const state = run(createEditor(), [
+      ...quarters(9),
+      { type: "moveCursor", direction: "left" },
+      { type: "setBarTimeSignature", timeSignature: { beats: 3, beatValue: 4 } },
+    ]);
+
+    expect(state.cursor.bar).toBe(1);
+    expect(invalidBars(state.score)).toEqual([{ track: 0, bar: 1, problem: "tooLong" }]);
+  });
+});
+
+describe("tempobyten", () => {
+  const twoBars = () => run(createEditor(), [...quarters(5)]);
+
+  it("ett tempobyte sätts på markörens Takt, kan tas bort och kan ångras", () => {
+    const state = apply(twoBars(), { type: "setBarTempo", tempo: 90 });
+
+    expect(state.score.tracks[0].bars[1].tempo).toBe(90);
+    expect(state.score.tempo).toBe(120);
+    expect(apply(state, { type: "undo" }).score).toEqual(twoBars().score);
+    expect(apply(state, { type: "clearBarTempo" }).score).toEqual(twoBars().score);
+  });
+
+  it("på första Takten ändrar det starttempot", () => {
+    const state = apply(createEditor(), { type: "setBarTempo", tempo: 80 });
+
+    expect(state.score.tempo).toBe(80);
+    expect(state.score.tracks[0].bars[0].tempo).toBeUndefined();
+  });
+
+  it("ett byte till det tempo som redan gäller blir inget byte", () => {
+    const changed = apply(twoBars(), { type: "setBarTempo", tempo: 90 });
+
+    expect(apply(changed, { type: "setBarTempo", tempo: 120 }).score.tracks[0].bars[1].tempo).toBeUndefined();
+  });
+
+  it("tempon utanför 20–400 BPM och decimaltal avvisas", () => {
+    const state = twoBars();
+    for (const tempo of [19, 401, 90.5]) {
+      expect(apply(state, { type: "setBarTempo", tempo }).score, String(tempo)).toBe(state.score);
+    }
+  });
+});
+
+describe("repriser", () => {
+  const twoBars = () => run(createEditor(), [...quarters(5)]);
+
+  it("reprisstart växlas på markörens Takt", () => {
+    const on = apply(twoBars(), { type: "toggleRepeatStart" });
+    const off = apply(on, { type: "toggleRepeatStart" });
+
+    expect(on.score.tracks[0].bars[1].repeatStart).toBe(true);
+    expect(on.score.tracks[0].bars[0].repeatStart).toBeUndefined();
+    expect(off.score).toEqual(twoBars().score);
+  });
+
+  it("reprisslut växlas på markörens Takt och spelas två varv från början", () => {
+    const on = apply(twoBars(), { type: "toggleRepeatEnd" });
+    const off = apply(on, { type: "toggleRepeatEnd" });
+
+    expect(on.score.tracks[0].bars[1].repeatEnd).toBe(2);
+    expect(off.score).toEqual(twoBars().score);
+    expect(apply(on, { type: "undo" }).score).toEqual(twoBars().score);
+  });
+
+  it("en Takt kan både börja och sluta en repris", () => {
+    const state = run(twoBars(), [{ type: "toggleRepeatStart" }, { type: "toggleRepeatEnd" }]);
+
+    expect(state.score.tracks[0].bars[1]).toMatchObject({ repeatStart: true, repeatEnd: 2 });
+  });
+
+  it("antalet varv sätts på reprisslutet, och att ta bort slutet tar bort antalet", () => {
+    const state = run(twoBars(), [{ type: "toggleRepeatEnd" }, { type: "setRepeatCount", count: 4 }]);
+
+    expect(state.score.tracks[0].bars[1].repeatEnd).toBe(4);
+    expect(apply(state, { type: "toggleRepeatEnd" }).score).toEqual(twoBars().score);
+  });
+
+  it("antal varv utan reprisslut avvisas", () => {
+    const state = twoBars();
+
+    expect(apply(state, { type: "setRepeatCount", count: 3 }).score).toBe(state.score);
+  });
+
+  it("antal varv under 2, över 99 eller med decimaler avvisas", () => {
+    const state = apply(twoBars(), { type: "toggleRepeatEnd" });
+    for (const count of [0, 1, 100, 2.5]) {
+      expect(apply(state, { type: "setRepeatCount", count }).score, String(count)).toBe(state.score);
+    }
+  });
+});
+
 describe("öppna ett Partitur", () => {
   it("ersätter Partituret, ställer markören först och börjar om historiken", () => {
     const opened = apply(createEditor(), { type: "setMetadata", metadata: { title: "Opened" } }).score;

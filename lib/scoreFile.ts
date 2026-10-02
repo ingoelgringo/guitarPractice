@@ -3,9 +3,11 @@ import {
   DURATIONS,
   MAX_FRET,
   MAX_PITCH,
+  MAX_REPEAT_COUNT,
   MAX_TEMPO,
   MAX_TIME_SIGNATURE_BEATS,
   MIN_PITCH,
+  MIN_REPEAT_COUNT,
   MIN_TEMPO,
   MIN_TIME_SIGNATURE_BEATS,
   TIME_SIGNATURE_BEAT_VALUES,
@@ -36,7 +38,7 @@ const FORMAT = "itab";
 export const FILE_EXTENSION = ".itab";
 
 /** Formatets nuvarande version. */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /** En migrering tar Partituret i ett dokument från en version till nästa. */
 export type Migration = (score: unknown) => unknown;
@@ -45,6 +47,9 @@ export type Migration = (score: unknown) => unknown;
 const MIGRATIONS: Readonly<Record<number, Migration>> = {
   // Version 2 lade till speltekniker på tonerna. Ett Partitur i version 1 har inga och är oförändrat.
   1: (score) => score,
+  // Version 3 lade till takt- och tempobyten samt repriser på Takterna. Ett Partitur i version 2
+  // har inga och är oförändrat.
+  2: (score) => score,
 };
 
 export type ParseError =
@@ -174,13 +179,22 @@ function readTrack(data: unknown): Track {
   ensure(tuning.length > 0);
   const bars = readList(track.bars, (bar) => readBar(bar, tuning.length));
   ensure(bars.length > 0);
+  // I första Takten gäller Partiturets starttaktart och starttempo, som i Editorn
+  ensure(bars[0].timeSignature === undefined && bars[0].tempo === undefined);
   return { tuning, capo: readInteger(track.capo, 0, MAX_FRET), bars };
 }
 
 function readBar(data: unknown, stringCount: number): Bar {
-  const beats = readList(readRecord(data).beats, (beat) => readBeat(beat, stringCount));
+  const bar = readRecord(data);
+  const beats = readList(bar.beats, (beat) => readBeat(beat, stringCount));
   ensure(beats.length > 0);
-  return { beats };
+  return {
+    beats,
+    ...(bar.timeSignature !== undefined && { timeSignature: readTimeSignature(bar.timeSignature) }),
+    ...(bar.tempo !== undefined && { tempo: readInteger(bar.tempo, MIN_TEMPO, MAX_TEMPO) }),
+    ...(readFlag(bar.repeatStart) && { repeatStart: true }),
+    ...(bar.repeatEnd !== undefined && { repeatEnd: readInteger(bar.repeatEnd, MIN_REPEAT_COUNT, MAX_REPEAT_COUNT) }),
+  };
 }
 
 function readBeat(data: unknown, stringCount: number): Beat {

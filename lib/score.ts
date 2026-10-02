@@ -40,8 +40,26 @@ export interface Beat {
   notes: Note[];
 }
 
+/**
+ * En Takt. Byten och repriser gäller hela Partituret och utelämnas när de inte gäller. Editorn
+ * sätter dem i varje Spår som har Takten, och översättaren läser dem från det första. Första
+ * Takten har inga byten: där gäller Partiturets start.
+ */
 export interface Bar {
   beats: Beat[];
+  /** Taktartsbyte: taktarten från och med den här Takten. */
+  timeSignature?: TimeSignature;
+  /** Tempobyte: tempot i BPM från och med den här Takten. */
+  tempo?: number;
+  /** Takten börjar en repris. */
+  repeatStart?: boolean;
+  /**
+   * Takten slutar en repris, som spelas så här många varv sammanlagt. Reprisen går tillbaka
+   * till den senaste reprisstart som inte redan hör till en avslutad inre repris, eller till
+   * början om det inte finns någon. Repriser kan alltså ligga i varandra, och ett andra
+   * reprisslut efter samma start spelar om allt från starten. Så spelar alphaTab dem.
+   */
+  repeatEnd?: number;
 }
 
 export interface Track {
@@ -77,9 +95,9 @@ export type ViewMode = (typeof VIEW_MODES)[number];
 export interface Score {
   metadata: Metadata;
   viewMode: ViewMode;
-  /** Starttempo i slag (fjärdedelar) per minut. */
+  /** Starttempo i slag (fjärdedelar) per minut. Byten ligger på Takterna. */
   tempo: number;
-  /** Starttaktart. Byten mitt i Partituret kommer i ticket 11. */
+  /** Starttaktart. Byten ligger på Takterna. */
   timeSignature: TimeSignature;
   tracks: Track[];
 }
@@ -93,7 +111,7 @@ export const STANDARD_TUNING: readonly number[] = [64, 59, 55, 50, 45, 40];
 /** Det högsta band som går att skriva eller sätta Capo på. */
 export const MAX_FRET = 24;
 
-/** Det lägsta och högsta starttempot i BPM. */
+/** Det lägsta och högsta tempot i BPM, vid start och i tempobyten. */
 export const MIN_TEMPO = 20;
 export const MAX_TEMPO = 400;
 
@@ -103,6 +121,10 @@ export const MAX_TIME_SIGNATURE_BEATS = 32;
 
 /** De Notvärden som en taktarts slag kan ha, t.ex. 8 i 6/8. */
 export const TIME_SIGNATURE_BEAT_VALUES: readonly Duration[] = [2, 4, 8, 16];
+
+/** Det lägsta och högsta antalet varv i en repris. */
+export const MIN_REPEAT_COUNT = 2;
+export const MAX_REPEAT_COUNT = 99;
 
 /** Den lägsta och högsta MIDI-tonhöjd som en lös sträng kan ha. */
 export const MIN_PITCH = 0;
@@ -122,6 +144,27 @@ export function beatTicks(beat: Pick<Beat, "duration" | "dotted" | "triplet">): 
 /** Hur många ticks en Takt rymmer i taktarten. */
 export function barCapacity(timeSignature: TimeSignature): number {
   return (timeSignature.beats * WHOLE_NOTE_TICKS) / timeSignature.beatValue;
+}
+
+/** Taktarten som gäller i Takt `bar` i Spår `track`: det senaste bytet, annars starttaktarten. */
+export function timeSignatureAt(score: Score, track: number, bar: number): TimeSignature {
+  return inEffect(score.tracks[track].bars, bar, "timeSignature") ?? score.timeSignature;
+}
+
+/** Tempot som gäller i Takt `bar` i Spår `track`: det senaste bytet, annars starttempot. */
+export function tempoAt(score: Score, track: number, bar: number): number {
+  return inEffect(score.tracks[track].bars, bar, "tempo") ?? score.tempo;
+}
+
+/** Det som kan bytas från en viss Takt: taktarten och tempot. */
+export type BarChange = "timeSignature" | "tempo";
+
+/** Det senaste bytet av `field` till och med Takt `bar`. */
+function inEffect<F extends BarChange>(bars: readonly Bar[], bar: number, field: F): Bar[F] {
+  for (let i = Math.min(bar, bars.length - 1); i > 0; i--) {
+    if (bars[i][field] !== undefined) return bars[i][field];
+  }
+  return undefined;
 }
 
 /** Hur många ticks slagen i en Takt tar upp tillsammans. */

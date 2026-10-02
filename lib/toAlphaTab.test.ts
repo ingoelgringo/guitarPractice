@@ -1,4 +1,4 @@
-import { model, Settings, StaveProfile, TabRhythmMode } from "@coderline/alphatab";
+import { midi, model, Settings, StaveProfile, TabRhythmMode } from "@coderline/alphatab";
 import { describe, expect, it } from "vitest";
 import { createEditor } from "./editor";
 import type { Beat, BendTarget, Score, ViewMode } from "./score";
@@ -400,5 +400,86 @@ describe("speltekniker i toAlphaTab", () => {
       false,
       false,
     ]);
+  });
+});
+
+describe("takt- och tempobyten samt repriser i toAlphaTab", () => {
+  /** Ett Partitur med `count` Takter i 4/4, där varje Takt är en helnot. */
+  function scoreWithBars(count: number): Score {
+    const score = createEditor().score;
+    score.tracks[0].bars = Array.from({ length: count }, () => ({ beats: [{ duration: 1, notes: [{ string: 1, fret: 0 }] }] }));
+    return score;
+  }
+
+  /** Takterna (nollräknade) i den ordning de spelas, och tempot när var och en börjar. */
+  function playback(score: Score): { bar: number; tempo: number }[] {
+    const generator = new midi.MidiFileGenerator(
+      toAlphaTab(score),
+      new Settings(),
+      new midi.AlphaSynthMidiFileHandler(new midi.MidiFile()),
+    );
+    generator.generate();
+    return generator.tickLookup.masterBars.map((lookup) => ({
+      bar: lookup.masterBar.index,
+      tempo: lookup.tempoChanges[0].tempo,
+    }));
+  }
+
+  it("ett taktartsbyte gäller från sin Takt och framåt", () => {
+    const score = scoreWithBars(3);
+    score.tracks[0].bars[1].timeSignature = { beats: 6, beatValue: 8 };
+
+    const signatures = toAlphaTab(score).masterBars.map((m) => [m.timeSignatureNumerator, m.timeSignatureDenominator]);
+
+    expect(signatures).toEqual([
+      [4, 4],
+      [6, 8],
+      [6, 8],
+    ]);
+  });
+
+  it("ett tempobyte blir en tempomarkering i sin Takt, och uppspelningen följer det", () => {
+    const score = scoreWithBars(3);
+    score.tempo = 100;
+    score.tracks[0].bars[1].tempo = 70;
+
+    const masterBars = toAlphaTab(score).masterBars;
+
+    expect(masterBars.map((m) => m.tempoAutomations.map((a) => a.value))).toEqual([[100], [70], []]);
+    expect(playback(score).map((p) => p.tempo)).toEqual([100, 70, 70]);
+  });
+
+  it("repriser får start, slut och antal varv, och spelas så många varv", () => {
+    const score = scoreWithBars(4);
+    score.tracks[0].bars[1].repeatStart = true;
+    score.tracks[0].bars[2].repeatEnd = 3;
+
+    const [, start, end, after] = toAlphaTab(score).masterBars;
+
+    expect([start.isRepeatStart, end.isRepeatEnd, end.repeatCount]).toEqual([true, true, 3]);
+    expect([after.isRepeatStart, after.isRepeatEnd]).toEqual([false, false]);
+    expect(playback(score).map((p) => p.bar)).toEqual([0, 1, 2, 1, 2, 1, 2, 3]);
+  });
+
+  it("repriser kan ligga i varandra, och ett andra reprisslut spelar om allt från starten", () => {
+    const nested = scoreWithBars(5);
+    nested.tracks[0].bars[0].repeatStart = true;
+    nested.tracks[0].bars[1].repeatStart = true;
+    nested.tracks[0].bars[2].repeatEnd = 2;
+    nested.tracks[0].bars[3].repeatEnd = 2;
+    const twoEnds = scoreWithBars(3);
+    twoEnds.tracks[0].bars[0].repeatStart = true;
+    twoEnds.tracks[0].bars[0].repeatEnd = 2;
+    twoEnds.tracks[0].bars[1].repeatEnd = 2;
+
+    expect(playback(nested).map((p) => p.bar)).toEqual([0, 1, 2, 1, 2, 3, 0, 1, 2, 1, 2, 3, 4]);
+    expect(playback(twoEnds).map((p) => p.bar)).toEqual([0, 0, 1, 0, 0, 1, 2]);
+  });
+
+  it("ett reprisslut utan start går tillbaka till början", () => {
+    const score = scoreWithBars(3);
+    score.tracks[0].bars[1].repeatEnd = 2;
+
+    expect(playback(score).map((p) => p.bar)).toEqual([0, 1, 0, 1, 2]);
   });
 });
