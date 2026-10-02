@@ -1,5 +1,6 @@
-import { model, Settings } from "@coderline/alphatab";
+import { model, platform, Settings } from "@coderline/alphatab";
 import type { Beat, Duration, Score, Track } from "./score";
+import { findTuningPreset, STANDARD_TUNING_NAME } from "./tuning";
 
 // Översätter Partiturmodellen till alphaTabs modell för rendering och uppspelning (ADR 0001).
 
@@ -14,12 +15,24 @@ const DURATIONS: Record<Duration, model.Duration> = {
 
 export function toAlphaTab(score: Score): model.Score {
   const result = new model.Score();
+  result.title = score.metadata.title;
+  result.subTitle = score.metadata.subtitle;
+  result.artist = score.metadata.artist;
+  result.tab = score.metadata.tabbedBy;
+  // alphaTab döljer "Tabbed by" som standard. Tom rad utelämnas ändå.
+  result.style = new model.ScoreStyle();
+  result.style.headerAndFooter.set(
+    model.ScoreSubElement.Transcriber,
+    new model.HeaderFooterStyle("Tabbed by %TABBER%", true, platform.TextAlign.Right),
+  );
 
   const barCount = Math.max(...score.tracks.map((t) => t.bars.length));
   for (let i = 0; i < barCount; i++) {
     const masterBar = new model.MasterBar();
     masterBar.timeSignatureNumerator = score.timeSignature.beats;
     masterBar.timeSignatureDenominator = score.timeSignature.beatValue;
+    // alphaTab läser Partiturets tempo från tempomarkeringen i första Takten
+    if (i === 0) masterBar.tempoAutomations.push(model.Automation.buildTempoAutomation(false, 0, score.tempo, 2));
     result.addMasterBar(masterBar);
   }
   for (const track of score.tracks) {
@@ -34,7 +47,11 @@ function toTrack(track: Track): model.Track {
   const result = new model.Track();
   const staff = new model.Staff();
   result.addStaff(staff);
-  staff.stringTuning = new model.Tuning("", [...track.tuning], false);
+  // Stämningen ritas i huvudet: med namn för förvalen och med strängarna utom för standardstämningen
+  const name = findTuningPreset(track.tuning)?.name ?? "";
+  staff.stringTuning = new model.Tuning(name, [...track.tuning], name === STANDARD_TUNING_NAME);
+  // alphaTab lägger Capo till tonhöjden och visar banden relativt Capo, precis som modellen
+  staff.capo = track.capo;
   staff.showStandardNotation = true;
   staff.showTablature = true;
 

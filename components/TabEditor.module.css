@@ -81,3 +81,69 @@
   font-family: ui-monospace, monospace;
   white-space: nowrap;
 }
+
+/* Partiturinställningar, i hörnet mittemot hjälprutan */
+.settings {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 1;
+  max-width: 300px;
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+  box-shadow: 0 2px 12px rgb(0 0 0 / 0.2);
+  font-size: 13px;
+}
+
+.settings summary {
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.settingsGrid {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.settingsGrid label {
+  display: grid;
+  gap: 2px;
+}
+
+.settingsGrid input,
+.settingsGrid select {
+  font: inherit;
+  padding: 2px 4px;
+}
+
+.strings {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px 8px;
+  margin: 0;
+  padding: 4px 8px 8px;
+  border: 1px solid color-mix(in srgb, var(--foreground) 25%, transparent);
+  border-radius: 4px;
+}
+
+.strings label {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 4px;
+}
+
+.timeSignature {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.timeSignature input {
+  width: 4em;
+}
+

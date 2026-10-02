@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { apply, createEditor, TWO_DIGIT_WINDOW_MS, type Command, type EditorState } from "./editor";
+import type { TimeSignature } from "./score";
+import { invalidBars } from "./validation";
 
 describe("Editor", () => {
   it("startar med ett tomt Partitur: ett Spår för 6-strängad gitarr i standardstämning med en Takt", () => {
@@ -619,6 +621,124 @@ describe("ångra och gör om", () => {
     ]);
 
     expect(beatsOf(state)[0].notes).toEqual([{ string: 1, fret: 3 }]);
+  });
+});
+
+describe("partiturinställningar", () => {
+  it("ett nytt Partitur har tom metadata, 120 BPM och ingen Capo", () => {
+    const { score } = createEditor();
+
+    expect(score.metadata).toEqual({ title: "", subtitle: "", artist: "", tabbedBy: "" });
+    expect(score.tempo).toBe(120);
+    expect(score.tracks[0].capo).toBe(0);
+  });
+
+  it("metadata sätts fält för fält och kan ångras", () => {
+    const state = run(createEditor(), [
+      { type: "setMetadata", metadata: { title: "Blackbird" } },
+      { type: "setMetadata", metadata: { artist: "The Beatles", tabbedBy: "Ingo" } },
+    ]);
+
+    expect(state.score.metadata).toEqual({
+      title: "Blackbird",
+      subtitle: "",
+      artist: "The Beatles",
+      tabbedBy: "Ingo",
+    });
+    expect(apply(state, { type: "undo" }).score.metadata.artist).toBe("");
+    expect(apply(state, { type: "undo" }).score.metadata.title).toBe("Blackbird");
+  });
+
+  it("metadata trimmas, så att ett fält med bara mellanslag blir tomt och utelämnas", () => {
+    const state = apply(createEditor(), { type: "setMetadata", metadata: { title: "  Blackbird ", artist: "   " } });
+
+    expect(state.score.metadata.title).toBe("Blackbird");
+    expect(state.score.metadata.artist).toBe("");
+  });
+
+  it("Stämningen byts för markörens Spår och kan ångras", () => {
+    const dropD = [64, 59, 55, 50, 45, 38];
+    const state = apply(createEditor(), { type: "setTuning", tuning: dropD });
+
+    expect(state.score.tracks[0].tuning).toEqual(dropD);
+    expect(apply(state, { type: "undo" }).score.tracks[0].tuning).toEqual([64, 59, 55, 50, 45, 40]);
+  });
+
+  it("en Stämning med fel antal strängar eller orimliga tonhöjder avvisas", () => {
+    const start = createEditor();
+
+    for (const tuning of [[64, 59, 55, 50, 45], [64, 59, 55, 50, 45, 40, 35], [64, 59, 55, 50, 45, 40.5], [200, 59, 55, 50, 45, 40]]) {
+      const state = apply(start, { type: "setTuning", tuning });
+      expect(state.score, String(tuning)).toBe(start.score);
+    }
+  });
+
+  it("Capo sätts för markörens Spår och kan ångras, men inte under band 0 eller över band 24", () => {
+    const state = apply(createEditor(), { type: "setCapo", capo: 3 });
+
+    expect(state.score.tracks[0].capo).toBe(3);
+    expect(apply(state, { type: "undo" }).score.tracks[0].capo).toBe(0);
+    for (const capo of [-1, 25, 2.5]) {
+      expect(apply(state, { type: "setCapo", capo }).score.tracks[0].capo, String(capo)).toBe(3);
+    }
+  });
+
+  it("Capo ändrar inte bandnumren i tabben, eftersom de är relativa till Capo", () => {
+    const state = run(createEditor(), [
+      { type: "enterFret", fret: 2 },
+      { type: "setCapo", capo: 5 },
+    ]);
+
+    expect(beatsOf(state)[0].notes).toEqual([{ string: 1, fret: 2 }]);
+  });
+
+  it("starttempot sätts i BPM och kan ångras, men bara som heltal från 20 till 400", () => {
+    const state = apply(createEditor(), { type: "setTempo", tempo: 90 });
+
+    expect(state.score.tempo).toBe(90);
+    expect(apply(state, { type: "undo" }).score.tempo).toBe(120);
+    for (const tempo of [19, 401, 90.5]) {
+      expect(apply(state, { type: "setTempo", tempo }).score.tempo, String(tempo)).toBe(90);
+    }
+  });
+
+  it("starttaktarten sätts och kan ångras, men bara med 1–32 slag och halvnot till sextondel som slagets Notvärde", () => {
+    const state = apply(createEditor(), { type: "setTimeSignature", timeSignature: { beats: 6, beatValue: 8 } });
+
+    expect(state.score.timeSignature).toEqual({ beats: 6, beatValue: 8 });
+    expect(apply(state, { type: "undo" }).score.timeSignature).toEqual({ beats: 4, beatValue: 4 });
+    for (const timeSignature of [
+      { beats: 0, beatValue: 4 },
+      { beats: 33, beatValue: 4 },
+      { beats: 3, beatValue: 3 },
+      { beats: 3, beatValue: 1 },
+      { beats: 3, beatValue: 32 },
+    ] as TimeSignature[]) {
+      expect(apply(state, { type: "setTimeSignature", timeSignature }).score.timeSignature).toEqual({
+        beats: 6,
+        beatValue: 8,
+      });
+    }
+  });
+
+  it("en ändrad starttaktart flaggar Takter som inte längre stämmer, utan att rätta dem", () => {
+    const state = run(createEditor(), [
+      ...quarters(5),
+      { type: "setTimeSignature", timeSignature: { beats: 3, beatValue: 4 } },
+    ]);
+
+    expect(beatsOf(state, 0)).toHaveLength(4);
+    expect(invalidBars(state.score)).toEqual([{ track: 0, bar: 0, problem: "tooLong" }]);
+  });
+
+  it("efter en ändrad starttaktart fylls Takterna efter den nya taktarten", () => {
+    const state = run(createEditor(), [
+      { type: "setTimeSignature", timeSignature: { beats: 3, beatValue: 4 } },
+      ...quarters(4),
+    ]);
+
+    expect(beatsOf(state, 0)).toHaveLength(3);
+    expect(state.cursor).toMatchObject({ bar: 1, beat: 0 });
   });
 });
 

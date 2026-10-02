@@ -129,6 +129,118 @@ describe("toAlphaTab", () => {
   });
 });
 
+describe("Stämning och Capo i toAlphaTab", () => {
+  /** Tonhöjden för varje lös sträng, sträng 1 först, när Spåret har `tuning` och `capo`. */
+  function openStringPitches(tuning: readonly number[], capo = 0): number[] {
+    const score = scoreWithBeats(
+      [1, 2, 3, 4, 5, 6].map((string) => ({ duration: 4, notes: [{ string, fret: 0 }] })),
+    );
+    score.tracks[0].tuning = [...tuning];
+    score.tracks[0].capo = capo;
+    return firstBarBeats(score).map((b) => b.notes[0].realValue);
+  }
+
+  it("de förvalda stämningarna ger rätt tonhöjd på lösa strängar", () => {
+    // E4 B3 G3 D3 A2 E2
+    expect(openStringPitches([64, 59, 55, 50, 45, 40])).toEqual([64, 59, 55, 50, 45, 40]);
+    // Drop D: E4 B3 G3 D3 A2 D2
+    expect(openStringPitches([64, 59, 55, 50, 45, 38])).toEqual([64, 59, 55, 50, 45, 38]);
+    // DADGAD: D4 A3 G3 D3 A2 D2
+    expect(openStringPitches([62, 57, 55, 50, 45, 38])).toEqual([62, 57, 55, 50, 45, 38]);
+  });
+
+  it("en egen Stämning ger rätt tonhöjd", () => {
+    // Open G: D4 B3 G3 D3 G2 D2
+    expect(openStringPitches([62, 59, 55, 50, 43, 38])).toEqual([62, 59, 55, 50, 43, 38]);
+  });
+
+  it("Capo höjer tonhöjden lika många halvtoner som bandet, medan bandnumren i tabben står kvar", () => {
+    for (const [capo, expected] of [
+      [0, 66],
+      [2, 68],
+      [5, 71],
+      [7, 73],
+    ]) {
+      const score = scoreWithBeats([{ duration: 4, notes: [{ string: 1, fret: 2 }] }]);
+      score.tracks[0].capo = capo;
+
+      const [beat] = firstBarBeats(score);
+
+      // Band 2 på ljusa e är F#4 = 66 utan Capo
+      expect(beat.notes[0].realValue, `capo ${capo}`).toBe(expected);
+      expect(beat.notes[0].fret, `capo ${capo}`).toBe(2);
+    }
+  });
+
+  it("Capo och Stämning verkar tillsammans", () => {
+    // DADGAD med Capo 2: lösa strängar blir E4 B3 A3 E3 B2 E2
+    expect(openStringPitches([62, 57, 55, 50, 45, 38], 2)).toEqual([64, 59, 57, 52, 47, 40]);
+  });
+});
+
+describe("huvudet i toAlphaTab", () => {
+  it("titel, undertitel, artist och \"tabbad av\" följer med, och raden \"Tabbed by\" visas", () => {
+    const score = createEditor().score;
+    score.metadata = { title: "Blackbird", subtitle: "Live", artist: "The Beatles", tabbedBy: "Ingo" };
+
+    const result = toAlphaTab(score);
+
+    expect([result.title, result.subTitle, result.artist, result.tab]).toEqual([
+      "Blackbird",
+      "Live",
+      "The Beatles",
+      "Ingo",
+    ]);
+    expect(tabbedByLine(result)).toBe("Tabbed by Ingo");
+  });
+
+  it("tomma fält utelämnas i huvudet", () => {
+    const result = toAlphaTab(createEditor().score);
+
+    expect([result.title, result.subTitle, result.artist, result.tab]).toEqual(["", "", "", ""]);
+    expect(tabbedByLine(result)).toBe("");
+  });
+
+  it("starttempot blir Partiturets tempo och en tempomarkering i första Takten", () => {
+    const score = createEditor().score;
+    score.tempo = 90;
+
+    const result = toAlphaTab(score);
+
+    expect(result.tempo).toBe(90);
+    expect(result.masterBars[0].tempoAutomations.map((a) => a.value)).toEqual([90]);
+  });
+
+  it("Stämningen visas med namn för förvalen och utan namn för en egen Stämning", () => {
+    const tuningLabels = [
+      [64, 59, 55, 50, 45, 40],
+      [64, 59, 55, 50, 45, 38],
+      [62, 57, 55, 50, 45, 38],
+      // En egen Stämning som alphaTab inte heller har något namn på (känner den igen den, t.ex. Open G, sätter den sitt eget)
+      [64, 59, 55, 50, 45, 41],
+    ].map((tuning) => {
+      const score = createEditor().score;
+      score.tracks[0].tuning = tuning;
+      const { stringTuning } = toAlphaTab(score).tracks[0].staves[0];
+      return [stringTuning.name, stringTuning.isStandard];
+    });
+
+    // Bara standardstämningen ritas utan lista över strängarna
+    expect(tuningLabels).toEqual([
+      ["Standard tuning", true],
+      ["Drop D", false],
+      ["DADGAD", false],
+      ["", false],
+    ]);
+  });
+});
+
+/** Raden "Tabbed by" som alphaTab ritar i huvudet, eller "" om den inte ritas. */
+function tabbedByLine(score: model.Score): string {
+  const style = score.style?.headerAndFooter.get(model.ScoreSubElement.Transcriber);
+  return style?.isVisible ? style.buildText(score) : "";
+}
+
 function firstBarBeats(score: Score): model.Beat[] {
   return toAlphaTab(score).tracks[0].staves[0].bars[0].voices[0].beats;
 }

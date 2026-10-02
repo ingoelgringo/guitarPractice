@@ -1,4 +1,4 @@
-import { barCapacity, barTicks, beatTicks, STANDARD_TUNING, type Bar, type Beat, type Duration, type Note, type Score } from "./score";
+import { barCapacity, barTicks, beatTicks, STANDARD_TUNING, type Bar, type Beat, type Duration, type Metadata, type Note, type Score, type TimeSignature, type Track } from "./score";
 
 export interface Cursor {
   track: number;
@@ -41,8 +41,23 @@ interface History {
 /** Hur länge (ms) efter en siffra som nästa siffra slås ihop med den till ett tvåsiffrigt band. */
 export const TWO_DIGIT_WINDOW_MS = 1000;
 
-/** Det högsta band som två siffror kan bilda. */
-const MAX_FRET = 24;
+/** Det högsta band som går att skriva eller sätta Capo på. */
+export const MAX_FRET = 24;
+
+/** Det lägsta och högsta starttempot i BPM. */
+export const MIN_TEMPO = 20;
+export const MAX_TEMPO = 400;
+
+/** Det lägsta och högsta antalet slag i en taktart. */
+export const MIN_TIME_SIGNATURE_BEATS = 1;
+export const MAX_TIME_SIGNATURE_BEATS = 32;
+
+/** De Notvärden som en taktarts slag kan ha, t.ex. 8 i 6/8. */
+export const TIME_SIGNATURE_BEAT_VALUES: readonly Duration[] = [2, 4, 8, 16];
+
+/** Den lägsta och högsta MIDI-tonhöjd som en lös sträng kan ha. */
+export const MIN_PITCH = 0;
+export const MAX_PITCH = 127;
 
 /** Notvärdena från längst till kortast. */
 const DURATIONS: readonly Duration[] = [1, 2, 4, 8, 16, 32];
@@ -63,16 +78,29 @@ export type Command =
   | { type: "deleteNote" }
   /** Tar bort slaget under markören. En Takt behåller alltid minst ett slag. */
   | { type: "deleteBeat" }
+  /** Sätter de angivna fälten i metadatan och lämnar resten orörda. */
+  | { type: "setMetadata"; metadata: Partial<Metadata> }
+  /** Byter Stämning för markörens Spår. Antalet strängar ändras inte. */
+  | { type: "setTuning"; tuning: number[] }
+  /** Sätter Capo för markörens Spår. Bandnumren i tabben ändras inte, eftersom de är relativa till Capo. */
+  | { type: "setCapo"; capo: number }
+  /** Sätter starttempot i BPM. */
+  | { type: "setTempo"; tempo: number }
+  /** Sätter starttaktarten. Takter som inte längre stämmer flaggas av valideringen men rättas inte. */
+  | { type: "setTimeSignature"; timeSignature: TimeSignature }
   | { type: "undo" }
   | { type: "redo" };
 
 export function createEditor(): EditorState {
   return {
     score: {
+      metadata: { title: "", subtitle: "", artist: "", tabbedBy: "" },
+      tempo: 120,
       timeSignature: { beats: 4, beatValue: 4 },
       tracks: [
         {
           tuning: [...STANDARD_TUNING],
+          capo: 0,
           bars: [{ beats: [{ duration: 4, notes: [] }] }],
         },
       ],
@@ -169,11 +197,57 @@ function applyCommand(
       });
     case "deleteBeat":
       return deleteBeat(state);
+    case "setMetadata":
+      return updateScore(state, (score) => {
+        for (const [field, value] of Object.entries(command.metadata)) {
+          score.metadata[field as keyof Metadata] = value.trim();
+        }
+      });
+    case "setTuning":
+      return updateTrack(state, (track) => {
+        const valid =
+          command.tuning.length === track.tuning.length &&
+          command.tuning.every((pitch) => isInRange(pitch, MIN_PITCH, MAX_PITCH));
+        if (valid) track.tuning = [...command.tuning];
+      });
+    case "setCapo":
+      return updateTrack(state, (track) => {
+        if (isInRange(command.capo, 0, MAX_FRET)) track.capo = command.capo;
+      });
+    case "setTempo":
+      return updateScore(state, (score) => {
+        if (isInRange(command.tempo, MIN_TEMPO, MAX_TEMPO)) score.tempo = command.tempo;
+      });
+    case "setTimeSignature":
+      return updateScore(state, (score) => {
+        const { beats, beatValue } = command.timeSignature;
+        const valid =
+          isInRange(beats, MIN_TIME_SIGNATURE_BEATS, MAX_TIME_SIGNATURE_BEATS) &&
+          TIME_SIGNATURE_BEAT_VALUES.includes(beatValue);
+        if (valid) score.timeSignature = { beats, beatValue };
+      });
   }
 }
 
 function barAt(score: Score, cursor: Cursor): Bar {
   return score.tracks[cursor.track].bars[cursor.bar];
+}
+
+/** Ändrar en kopia av Partituret. */
+function updateScore(state: EditorState, change: (score: Score) => void): EditorState {
+  const score = structuredClone(state.score);
+  change(score);
+  return { ...state, score };
+}
+
+/** Ändrar en kopia av markörens Spår. */
+function updateTrack(state: EditorState, change: (track: Track) => void): EditorState {
+  return updateScore(state, (score) => change(score.tracks[state.cursor.track]));
+}
+
+/** Om `value` är ett heltal från `min` till och med `max`. */
+function isInRange(value: number, min: number, max: number): boolean {
+  return Number.isInteger(value) && value >= min && value <= max;
 }
 
 /** Ändrar en kopia av slaget under markören. */

@@ -26,6 +26,8 @@ export interface Bar {
 export interface Track {
   /** MIDI-tonhöjd per lös sträng, sträng 1 först. */
   tuning: number[];
+  /** Bandet som kapodastern sitter på, 0 utan Capo. Bandnumren i tabben är relativa till Capo. */
+  capo: number;
   bars: Bar[];
 }
 
@@ -35,7 +37,18 @@ export interface TimeSignature {
   beatValue: Duration;
 }
 
+/** Det som står i huvudet på första Sidan. Tomma fält visas inte. */
+export interface Metadata {
+  title: string;
+  subtitle: string;
+  artist: string;
+  tabbedBy: string;
+}
+
 export interface Score {
+  metadata: Metadata;
+  /** Starttempo i slag (fjärdedelar) per minut. */
+  tempo: number;
   /** Starttaktart. Byten mitt i Partituret kommer i ticket 11. */
   timeSignature: TimeSignature;
   tracks: Track[];
