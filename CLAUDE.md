@@ -1,3 +1,5 @@
+@AGENTS.md
+
 # guitarPractice
 
 ## Agent skills

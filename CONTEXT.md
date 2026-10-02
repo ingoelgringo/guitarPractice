@@ -18,6 +18,15 @@ _Avoid_: Instrument, stämma
 En tidsenhet i ett Spår som avgränsas av taktstreck och har en taktart.
 _Avoid_: Measure
 
+**Slag** (`Beat`):
+En tidpunkt i en Takt med ett Notvärde. Ett slag utan toner är en paus, och ett slag med flera toner är ett ackord.
+
+**Ton** (`Note`):
+Ett band på en sträng i ett Slag. Strängarna numreras från den ljusaste: sträng 1 är ljusa e i standardstämning.
+
+**Markör** (`Cursor`):
+Den position i Partituret (Spår, Takt, Slag, sträng) där nästa inmatning hamnar.
+
 **Stämning** (`Tuning`):
 Tonhöjden för varje lös sträng i ett Spår, t.ex. standard (EADGBE) eller Drop D.
 
