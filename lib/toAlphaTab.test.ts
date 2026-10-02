@@ -1,7 +1,7 @@
 import { model, Settings, StaveProfile, TabRhythmMode } from "@coderline/alphatab";
 import { describe, expect, it } from "vitest";
 import { createEditor } from "./editor";
-import type { Beat, Score, ViewMode } from "./score";
+import type { Beat, BendTarget, Score, ViewMode } from "./score";
 import { beatAt, configureStaves, noteAt, toAlphaTab } from "./toAlphaTab";
 
 describe("toAlphaTab", () => {
@@ -335,5 +335,70 @@ describe("Markörens position i alphaTabs modell", () => {
   it("en position utanför Partituret har inget slag", () => {
     expect(beatAt(rendered, { track: 0, bar: 2, beat: 0, string: 1 })).toBeNull();
     expect(beatAt(rendered, { track: 1, bar: 0, beat: 0, string: 1 })).toBeNull();
+  });
+});
+
+describe("speltekniker i toAlphaTab", () => {
+  it("hammer-on och pull-off leder till nästa ton på samma sträng", () => {
+    const [up, down, last] = firstBarBeats(
+      scoreWithBeats([
+        { duration: 4, notes: [{ string: 3, fret: 5, hammerPull: true }] },
+        { duration: 4, notes: [{ string: 3, fret: 7, hammerPull: true }] },
+        { duration: 4, notes: [{ string: 3, fret: 5 }] },
+      ]),
+    );
+
+    expect(up.notes[0].isHammerPullOrigin).toBe(true);
+    expect(up.notes[0].hammerPullDestination).toBe(down.notes[0]);
+    expect(down.notes[0].hammerPullDestination).toBe(last.notes[0]);
+    expect(last.notes[0].isHammerPullOrigin).toBe(false);
+  });
+
+  it("slide leder till nästa ton på samma sträng, även i nästa Takt", () => {
+    const score = scoreWithBeats([{ duration: 1, notes: [{ string: 2, fret: 3, slide: true }] }]);
+    score.tracks[0].bars.push({ beats: [{ duration: 1, notes: [{ string: 2, fret: 8 }] }] });
+
+    const bars = toAlphaTab(score).tracks[0].staves[0].bars;
+    const [from, to] = bars.map((bar) => bar.voices[0].beats[0].notes[0]);
+
+    expect(from.slideOutType).toBe(model.SlideOutType.Shift);
+    expect(from.slideTarget).toBe(to);
+  });
+
+  it.each([
+    [1, 2],
+    [2, 4],
+    [3, 6],
+  ])("en bend på %i halvtoner böjer upp %i kvartstoner", (semitones, quarterTones) => {
+    const [bent] = firstBarBeats(
+      scoreWithBeats([{ duration: 4, notes: [{ string: 2, fret: 8, bend: semitones as BendTarget }] }]),
+    );
+    const note = bent.notes[0];
+
+    expect(note.hasBend).toBe(true);
+    expect(note.bendType).toBe(model.BendType.Bend);
+    expect(note.bendPoints?.[0].value).toBe(0);
+    expect(note.maxBendPoint?.value).toBe(quarterTones);
+  });
+
+  it("palm mute följer med tonen", () => {
+    const [beat] = firstBarBeats(
+      scoreWithBeats([{ duration: 4, notes: [{ string: 6, fret: 0, palmMute: true }, { string: 5, fret: 2 }] }]),
+    );
+
+    expect(beat.notes.find((n) => n.fret === 0)?.isPalmMute).toBe(true);
+    expect(beat.notes.find((n) => n.fret === 2)?.isPalmMute).toBe(false);
+  });
+
+  it("toner utan tekniker spelas som vanligt", () => {
+    const [beat] = firstBarBeats(scoreWithBeats([{ duration: 4, notes: [{ string: 1, fret: 5 }] }]));
+    const note = beat.notes[0];
+
+    expect([note.isHammerPullOrigin, note.slideOutType, note.hasBend, note.isPalmMute]).toEqual([
+      false,
+      model.SlideOutType.None,
+      false,
+      false,
+    ]);
   });
 });

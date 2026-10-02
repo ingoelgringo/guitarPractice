@@ -1,4 +1,5 @@
 import {
+  BEND_TARGETS,
   DURATIONS,
   MAX_FRET,
   MAX_PITCH,
@@ -16,6 +17,7 @@ import {
   type Score,
   type TimeSignature,
   type Track,
+  withValidConnections,
 } from "./score";
 
 // Partiturfilen (.itab, ADR 0002): samma dokument laddas ner som fil och lagras i databasen.
@@ -34,13 +36,16 @@ const FORMAT = "itab";
 export const FILE_EXTENSION = ".itab";
 
 /** Formatets nuvarande version. */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /** En migrering tar Partituret i ett dokument från en version till nästa. */
 export type Migration = (score: unknown) => unknown;
 
 /** Migreringarna uppåt: `MIGRATIONS[n]` tar ett Partitur från version n till n + 1. */
-const MIGRATIONS: Readonly<Record<number, Migration>> = {};
+const MIGRATIONS: Readonly<Record<number, Migration>> = {
+  // Version 2 lade till speltekniker på tonerna. Ett Partitur i version 1 har inga och är oförändrat.
+  1: (score) => score,
+};
 
 export type ParseError =
   /** Texten är inte JSON, t.ex. en avbruten nedladdning. */
@@ -133,13 +138,16 @@ function readScore(data: unknown): Score {
   const score = readRecord(data);
   const tracks = readList(score.tracks, readTrack);
   ensure(tracks.length > 0);
-  return {
+  const result = {
     metadata: readMetadata(score.metadata),
     viewMode: readOneOf(score.viewMode, VIEW_MODES),
     tempo: readInteger(score.tempo, MIN_TEMPO, MAX_TEMPO),
     timeSignature: readTimeSignature(score.timeSignature),
     tracks,
   };
+  // Hammer-on, pull-off och slide måste leda till en ton med ett annat band, som i Editorn
+  ensure(withValidConnections(result) === result);
+  return result;
 }
 
 function readMetadata(data: unknown): Metadata {
@@ -190,7 +198,17 @@ function readBeat(data: unknown, stringCount: number): Beat {
 
 function readNote(data: unknown, stringCount: number): Note {
   const note = readRecord(data);
-  return { string: readInteger(note.string, 1, stringCount), fret: readInteger(note.fret, 0, MAX_FRET) };
+  const hammerPull = readFlag(note.hammerPull);
+  const slide = readFlag(note.slide);
+  ensure(!(hammerPull && slide));
+  return {
+    string: readInteger(note.string, 1, stringCount),
+    fret: readInteger(note.fret, 0, MAX_FRET),
+    ...(hammerPull && { hammerPull: true }),
+    ...(slide && { slide: true }),
+    ...(note.bend !== undefined && { bend: readOneOf(note.bend, BEND_TARGETS) }),
+    ...(readFlag(note.palmMute) && { palmMute: true }),
+  };
 }
 
 function ensure(condition: boolean): asserts condition {

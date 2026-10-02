@@ -6,11 +6,29 @@ export type Duration = 1 | 2 | 4 | 8 | 16 | 32;
 /** Notvärdena från längst till kortast. */
 export const DURATIONS: readonly Duration[] = [1, 2, 4, 8, 16, 32];
 
-/** En ton i tabben. Sträng 1 är den ljusaste (ljusa e i standardstämning). */
+/**
+ * En ton i tabben. Sträng 1 är den ljusaste (ljusa e i standardstämning).
+ * Teknikerna utelämnas när de inte gäller.
+ */
 export interface Note {
   string: number;
   fret: number;
+  /**
+   * Hammer-on eller pull-off till tonen på samma sträng i nästa slag. Banden avgör vilken:
+   * uppåt är det en hammer-on, nedåt en pull-off. Utesluter `slide`.
+   */
+  hammerPull?: boolean;
+  /** Slide till tonen på samma sträng i nästa slag. Utesluter `hammerPull`. */
+  slide?: boolean;
+  /** Bend upp till målet, i halvtoner: 1 är ½ ton och 2 hel ton. */
+  bend?: BendTarget;
+  palmMute?: boolean;
 }
+
+/** Målen för en bend i halvtoner: ½ ton, hel ton och 1½ ton. */
+export const BEND_TARGETS = [1, 2, 3] as const;
+
+export type BendTarget = (typeof BEND_TARGETS)[number];
 
 /** Ett slag: en tidpunkt med ett Notvärde. Utan toner är slaget en paus. */
 export interface Beat {
@@ -109,4 +127,51 @@ export function barCapacity(timeSignature: TimeSignature): number {
 /** Hur många ticks slagen i en Takt tar upp tillsammans. */
 export function barTicks(bar: Bar): number {
   return bar.beats.reduce((sum, beat) => sum + beatTicks(beat), 0);
+}
+
+/** Teknikerna som förbinder en ton med nästa ton på samma sträng. */
+export const CONNECTIONS = ["hammerPull", "slide"] as const;
+
+export type Connection = (typeof CONNECTIONS)[number];
+
+/** En ton i ett Spårs Takter: Takt, slag och sträng. */
+export interface NotePosition {
+  bar: number;
+  beat: number;
+  string: number;
+}
+
+/**
+ * Tonen som tonen vid `position` förbinds med: tonen på samma sträng i nästa slag, även när det
+ * ligger i nästa Takt. `null` om det inte finns någon ton där, eller om den har samma band,
+ * eftersom en förbindelse då varken är hammer-on, pull-off eller slide.
+ */
+export function connectionTarget(bars: readonly Bar[], { bar, beat, string }: NotePosition): Note | null {
+  const beats = bars[bar]?.beats ?? [];
+  const fret = beats[beat]?.notes.find((n) => n.string === string)?.fret;
+  const next = beat + 1 < beats.length ? beats[beat + 1] : bars[bar + 1]?.beats[0];
+  const target = next?.notes.find((n) => n.string === string);
+  return target && target.fret !== fret ? target : null;
+}
+
+/**
+ * Partituret utan förbindelser som saknar en ton att leda till, t.ex. efter att målet tagits bort.
+ * Är alla förbindelser giltiga kommer samma Partitur tillbaka.
+ */
+export function withValidConnections(score: Score): Score {
+  const result = structuredClone(score);
+  let changed = false;
+  for (const track of result.tracks) {
+    track.bars.forEach((bar, b) =>
+      bar.beats.forEach((beat, i) => {
+        for (const note of beat.notes) {
+          const position = { bar: b, beat: i, string: note.string };
+          if (!CONNECTIONS.some((c) => note[c]) || connectionTarget(track.bars, position)) continue;
+          for (const connection of CONNECTIONS) delete note[connection];
+          changed = true;
+        }
+      }),
+    );
+  }
+  return changed ? result : score;
 }

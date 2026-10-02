@@ -18,6 +18,16 @@ const DURATION_KEYS: readonly { key: string; duration: Duration; name: string }[
   { key: "t", duration: 32, name: "Thirty-second note" },
 ];
 
+/** Tangent, kommando och namn i hjälprutan för speltekniker. Tangenterna gäller oavsett skiftläge. */
+const TECHNIQUE_KEYS: Record<string, { command: TechniqueCommand; name: string }> = {
+  p: { command: "toggleHammerPull", name: "Toggle hammer-on / pull-off to the next note" },
+  l: { command: "toggleSlide", name: "Toggle slide to the next note" },
+  b: { command: "cycleBend", name: "Bend: ½ → full → 1½ → none" },
+  m: { command: "togglePalmMute", name: "Toggle palm mute" },
+};
+
+type TechniqueCommand = Extract<Command["type"], "toggleHammerPull" | "toggleSlide" | "cycleBend" | "togglePalmMute">;
+
 /** Det tangentbordsskalet behöver av ett `KeyboardEvent`. */
 export type KeyPress = Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "altKey" | "shiftKey" | "timeStamp">;
 
@@ -38,6 +48,7 @@ export function keyToCommand(press: KeyPress): Command | null {
   if (key === "/") return { type: "toggleTriplet" };
   const lower = key.toLowerCase();
   if (lower === "r") return { type: "insertRest" };
+  if (Object.hasOwn(TECHNIQUE_KEYS, lower)) return { type: TECHNIQUE_KEYS[lower].command };
   const duration = DURATION_KEYS.find((d) => d.key === lower);
   return duration ? { type: "setDuration", duration: duration.duration } : null;
 }
@@ -50,6 +61,7 @@ export const SHORTCUTS: readonly { keys: string; action: string }[] = [
   { keys: ".", action: "Toggle dotted" },
   { keys: "/", action: "Toggle triplet" },
   { keys: "R", action: "Insert rest and move on" },
+  ...Object.entries(TECHNIQUE_KEYS).map(([key, { name }]) => ({ keys: key.toUpperCase(), action: name })),
   { keys: "Delete", action: "Delete note on the cursor's string" },
   { keys: "Shift+Delete", action: "Delete beat" },
   { keys: "Ctrl+Z", action: "Undo" },

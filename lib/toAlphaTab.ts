@@ -1,6 +1,6 @@
 import { model, platform, Settings, StaveProfile, TabRhythmMode } from "@coderline/alphatab";
 import type { Cursor } from "./editor";
-import type { Beat, Duration, Score, Track, ViewMode } from "./score";
+import type { Beat, BendTarget, Duration, Score, Track, ViewMode } from "./score";
 import { findTuningPreset, STANDARD_TUNING_NAME } from "./tuning";
 
 // Översätter Partiturmodellen till alphaTabs modell för rendering och uppspelning (ADR 0001).
@@ -136,7 +136,23 @@ function toBeat(beat: Beat, stringCount: number): model.Beat {
     const alphaTabNote = new model.Note();
     alphaTabNote.string = alphaTabString(note.string, stringCount);
     alphaTabNote.fret = note.fret;
+    // alphaTab hittar själv målet för hammer-on, pull-off och slide: nästa ton på samma sträng
+    alphaTabNote.isHammerPullOrigin = note.hammerPull === true;
+    if (note.slide) alphaTabNote.slideOutType = model.SlideOutType.Shift;
+    if (note.bend) addBend(alphaTabNote, note.bend);
+    alphaTabNote.isPalmMute = note.palmMute === true;
     result.addNote(alphaTabNote);
   }
   return result;
+}
+
+/**
+ * En bend från tonens band upp till målet, som nås halvvägs in i tonen och hålls resten av den.
+ * alphaTab räknar i kvartstoner.
+ */
+function addBend(note: model.Note, semitones: BendTarget): void {
+  note.bendType = model.BendType.Bend;
+  note.addBendPoint(new model.BendPoint(0, 0));
+  note.addBendPoint(new model.BendPoint(model.BendPoint.MaxPosition / 2, semitones * 2));
+  note.addBendPoint(new model.BendPoint(model.BendPoint.MaxPosition, semitones * 2));
 }

@@ -780,6 +780,162 @@ describe("Vy-läge", () => {
   );
 });
 
+describe("speltekniker", () => {
+  /** Band 5 och 7 på sträng 1 i två slag, med markören tillbaka på det första. */
+  function twoNotes(): EditorState {
+    return run(createEditor(), [
+      { type: "enterFret", fret: 5 },
+      { type: "moveCursor", direction: "right" },
+      { type: "enterFret", fret: 7 },
+      { type: "moveCursor", direction: "left" },
+    ]);
+  }
+
+  it.each([
+    ["toggleHammerPull", "hammerPull"],
+    ["toggleSlide", "slide"],
+  ] as const)("%s förbinder tonen med nästa ton på samma sträng och tar bort förbindelsen igen", (type, field) => {
+    const on = apply(twoNotes(), { type });
+    const off = apply(on, { type });
+
+    expect(beatsOf(on)[0].notes).toEqual([{ string: 1, fret: 5, [field]: true }]);
+    expect(beatsOf(on)[1].notes).toEqual([{ string: 1, fret: 7 }]);
+    expect(beatsOf(off)[0].notes).toEqual([{ string: 1, fret: 5 }]);
+  });
+
+  it("hammer-on och pull-off är samma teknik: tonernas band avgör vilken det blir", () => {
+    const state = run(createEditor(), [
+      { type: "enterFret", fret: 7 },
+      { type: "moveCursor", direction: "right" },
+      { type: "enterFret", fret: 5 },
+      { type: "moveCursor", direction: "left" },
+      { type: "toggleHammerPull" },
+    ]);
+
+    expect(beatsOf(state)[0].notes).toEqual([{ string: 1, fret: 7, hammerPull: true }]);
+  });
+
+  it("en ton förbinds med nästa slag även när det ligger i nästa Takt", () => {
+    const state = run(createEditor(), [
+      ...quarters(4),
+      { type: "moveCursor", direction: "right" },
+      { type: "enterFret", fret: 9 },
+      { type: "moveCursor", direction: "left" },
+      { type: "toggleSlide" },
+    ]);
+
+    expect(beatsOf(state)[3].notes).toEqual([{ string: 1, fret: 3, slide: true }]);
+  });
+
+  it("hammer-on/pull-off och slide utesluter varandra", () => {
+    const state = run(twoNotes(), [{ type: "toggleHammerPull" }, { type: "toggleSlide" }]);
+
+    expect(beatsOf(state)[0].notes).toEqual([{ string: 1, fret: 5, slide: true }]);
+  });
+
+  it.each(["toggleHammerPull", "toggleSlide"] as const)(
+    "%s gör ingenting utan en efterföljande ton på samma sträng",
+    (type) => {
+      const last = apply(apply(createEditor(), { type: "enterFret", fret: 5 }), { type });
+      const otherString = run(createEditor(), [
+        { type: "enterFret", fret: 5 },
+        { type: "moveCursor", direction: "right" },
+        { type: "moveCursor", direction: "down" },
+        { type: "enterFret", fret: 7 },
+        { type: "moveCursor", direction: "left" },
+        { type: "moveCursor", direction: "up" },
+        { type },
+      ]);
+      const sameFret = run(createEditor(), [
+        { type: "enterFret", fret: 0 },
+        { type: "moveCursor", direction: "right" },
+        { type: "enterFret", fret: 0 },
+        { type: "moveCursor", direction: "left" },
+        { type },
+      ]);
+
+      expect(beatsOf(last)[0].notes).toEqual([{ string: 1, fret: 5 }]);
+      expect(beatsOf(otherString)[0].notes).toEqual([{ string: 1, fret: 5 }]);
+      expect(beatsOf(sameFret)[0].notes).toEqual([{ string: 1, fret: 0 }]);
+      // Bara inmatningen av bandet blev en ändring
+      expect(apply(last, { type: "undo" }).score).toEqual(createEditor().score);
+    },
+  );
+
+  it("förbindelsen försvinner när tonen den leder till tas bort", () => {
+    const linked = apply(twoNotes(), { type: "toggleHammerPull" });
+
+    const deletedNote = run(linked, [{ type: "moveCursor", direction: "right" }, { type: "deleteNote" }]);
+    const deletedBeat = run(linked, [{ type: "moveCursor", direction: "right" }, { type: "deleteBeat" }]);
+    const rest = run(linked, [{ type: "moveCursor", direction: "right" }, { type: "insertRest" }]);
+
+    for (const state of [deletedNote, deletedBeat, rest]) {
+      expect(beatsOf(state)[0].notes).toEqual([{ string: 1, fret: 5 }]);
+    }
+  });
+
+  it("förbindelsen försvinner när målet får samma band som tonen", () => {
+    const state = run(twoNotes(), [
+      { type: "toggleSlide" },
+      { type: "moveCursor", direction: "right" },
+      { type: "enterFret", fret: 5 },
+    ]);
+
+    expect(beatsOf(state)[0].notes).toEqual([{ string: 1, fret: 5 }]);
+  });
+
+  it("teknikerna ligger kvar när tonen får ett nytt band", () => {
+    const state = run(twoNotes(), [{ type: "toggleSlide" }, { type: "togglePalmMute" }, { type: "enterFret", fret: 3 }]);
+
+    expect(beatsOf(state)[0].notes).toEqual([{ string: 1, fret: 3, slide: true, palmMute: true }]);
+  });
+
+  it("bend växlar mellan ½ ton, hel ton, 1½ ton och ingen bend (målet i halvtoner)", () => {
+    const states = [1, 2, 3, 4].map((count) =>
+      run(createEditor(), [{ type: "enterFret", fret: 7 }, ...Array.from({ length: count }, () => ({ type: "cycleBend" }) as const)]),
+    );
+
+    expect(states.map((s) => beatsOf(s)[0].notes[0].bend)).toEqual([1, 2, 3, undefined]);
+    expect(beatsOf(states[3])[0].notes).toEqual([{ string: 1, fret: 7 }]);
+  });
+
+  it("palm mute slås på och av för tonen på markörens sträng", () => {
+    const chord = run(createEditor(), [
+      { type: "enterFret", fret: 0 },
+      { type: "moveCursor", direction: "down" },
+      { type: "enterFret", fret: 1 },
+    ]);
+
+    const on = apply(chord, { type: "togglePalmMute" });
+    const off = apply(on, { type: "togglePalmMute" });
+
+    expect(beatsOf(on)[0].notes).toEqual([{ string: 1, fret: 0 }, { string: 2, fret: 1, palmMute: true }]);
+    expect(beatsOf(off)[0].notes).toEqual([{ string: 1, fret: 0 }, { string: 2, fret: 1 }]);
+  });
+
+  it.each(["togglePalmMute", "cycleBend", "toggleHammerPull", "toggleSlide"] as const)(
+    "%s gör ingenting när markörens sträng saknar ton",
+    (type) => {
+      const before = apply(createEditor(), { type: "enterFret", fret: 5 });
+      const state = run(before, [{ type: "moveCursor", direction: "down" }, { type }]);
+
+      expect(state.score).toBe(before.score);
+      expect(apply(state, { type: "undo" }).score).toEqual(createEditor().score);
+    },
+  );
+
+  it("en teknik ångras och görs om", () => {
+    const before = twoNotes();
+    const marked = apply(before, { type: "cycleBend" });
+
+    const undone = apply(marked, { type: "undo" });
+    const redone = apply(undone, { type: "redo" });
+
+    expect(undone.score).toEqual(before.score);
+    expect(redone.score).toEqual(marked.score);
+  });
+});
+
 describe("öppna ett Partitur", () => {
   it("ersätter Partituret, ställer markören först och börjar om historiken", () => {
     const opened = apply(createEditor(), { type: "setMetadata", metadata: { title: "Opened" } }).score;

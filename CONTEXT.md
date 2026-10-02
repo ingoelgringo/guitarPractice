@@ -36,6 +36,10 @@ Det band som kapodastern sitter på. Bandnummer i tabben anges relativt capot.
 **Notvärde** (`Duration`):
 Hur länge en ton eller paus varar (fjärdedel, åttondel osv., eventuellt punkterad eller i triol). Varje ton har ett notvärde, även när bara tabulatur visas.
 
+**Speltekniker**:
+Hur en Ton spelas: hammer-on och pull-off, slide, bend med mål i halvtoner och palm mute. Hammer-on, pull-off och slide är *förbindelser* (`Connection`) från en Ton till Tonen på samma sträng i nästa Slag.
+_Avoid_: Effekter, artikulation
+
 ### Visning
 
 **Vy-läge** (`ViewMode`):

@@ -2,6 +2,9 @@ import {
   barCapacity,
   barTicks,
   beatTicks,
+  BEND_TARGETS,
+  CONNECTIONS,
+  connectionTarget,
   DURATIONS,
   MAX_FRET,
   MAX_PITCH,
@@ -11,7 +14,7 @@ import {
   MIN_TEMPO,
   MIN_TIME_SIGNATURE_BEATS,
   STANDARD_TUNING,
-  TIME_SIGNATURE_BEAT_VALUES, type Bar, type Beat, type Duration, type Metadata, type Note, type Score, type TimeSignature, type Track, VIEW_MODES, type ViewMode } from "./score";
+  TIME_SIGNATURE_BEAT_VALUES, type Bar, type Beat, type Connection, type Duration, type Metadata, type Note, type Score, type TimeSignature, type Track, VIEW_MODES, type ViewMode, withValidConnections } from "./score";
 
 export interface Cursor {
   track: number;
@@ -70,6 +73,17 @@ export type Command =
   | { type: "deleteNote" }
   /** Tar bort slaget under markören. En Takt behåller alltid minst ett slag. */
   | { type: "deleteBeat" }
+  /**
+   * Växlar hammer-on/pull-off från tonen på markörens sträng till tonen på samma sträng i nästa
+   * slag. Utan en sådan ton, eller om den har samma band, händer ingenting.
+   */
+  | { type: "toggleHammerPull" }
+  /** Växlar slide från tonen på markörens sträng, med samma krav som `toggleHammerPull`. */
+  | { type: "toggleSlide" }
+  /** Byter bend för tonen på markörens sträng i tur och ordning: ½ ton, hel ton, 1½ ton, ingen. */
+  | { type: "cycleBend" }
+  /** Växlar palm mute för tonen på markörens sträng. */
+  | { type: "togglePalmMute" }
   /** Sätter de angivna fälten i metadatan och lämnar resten orörda. */
   | { type: "setMetadata"; metadata: Partial<Metadata> }
   /** Byter Stämning för markörens Spår. Antalet strängar ändras inte. */
@@ -119,7 +133,9 @@ export function apply(state: EditorState, command: Command): EditorState {
   if (command.type === "openScore") return editorFor(command.score);
   if (command.type === "typeDigit") return typeDigit(state, command.digit, command.time);
   // Alla andra kommandon bryter ett påbörjat tvåsiffrigt band
-  return record(state, { ...applyCommand(state, command), pendingDigit: null });
+  const next = applyCommand(state, command);
+  // Varje kommando som ändrar toner kan lämna en hammer-on, pull-off eller slide utan mål
+  return record(state, { ...next, score: withValidConnections(next.score), pendingDigit: null });
 }
 
 /**
@@ -187,6 +203,19 @@ function applyCommand(
       return updateBeat(state, (beat) => toggle(beat, "dotted"));
     case "toggleTriplet":
       return updateBeat(state, (beat) => toggle(beat, "triplet"));
+    case "toggleHammerPull":
+      return toggleConnection(state, "hammerPull");
+    case "toggleSlide":
+      return toggleConnection(state, "slide");
+    case "cycleBend":
+      return updateNote(state, (note) => {
+        // Efter det största målet blir det ingen bend
+        const next = note.bend === undefined ? BEND_TARGETS[0] : BEND_TARGETS[BEND_TARGETS.indexOf(note.bend) + 1];
+        if (next) note.bend = next;
+        else delete note.bend;
+      });
+    case "togglePalmMute":
+      return updateNote(state, (note) => toggle(note, "palmMute"));
     case "insertRest":
       return advance(
         updateBeat(state, (beat) => {
@@ -265,9 +294,29 @@ function updateBeat(state: EditorState, change: (beat: Beat) => void): EditorSta
   return { ...state, score };
 }
 
-function toggle(beat: Beat, flag: "dotted" | "triplet") {
-  if (beat[flag]) delete beat[flag];
-  else beat[flag] = true;
+/** Ändrar en kopia av tonen på markörens sträng. Saknas tonen händer ingenting. */
+function updateNote(state: EditorState, change: (note: Note) => void): EditorState {
+  const { cursor } = state;
+  if (!noteOn(barAt(state.score, cursor).beats[cursor.beat], cursor.string)) return state;
+  return updateBeat(state, (beat) => change(noteOn(beat, cursor.string)!));
+}
+
+function toggleConnection(state: EditorState, connection: Connection): EditorState {
+  const { cursor } = state;
+  const bars = state.score.tracks[cursor.track].bars;
+  if (!connectionTarget(bars, cursor)) return state;
+  return updateNote(state, (note) => {
+    const on = !note[connection];
+    // En ton har högst en förbindelse till nästa ton
+    for (const c of CONNECTIONS) delete note[c];
+    if (on) note[connection] = true;
+  });
+}
+
+/** Slår på eller av en flagga, som utelämnas när den är av. */
+function toggle<F extends string>(target: Partial<Record<F, boolean>>, flag: F) {
+  if (target[flag]) delete target[flag];
+  else target[flag] = true;
 }
 
 /**
@@ -315,6 +364,11 @@ function extendLastChange(state: EditorState): EditorState {
   return { ...state, history: { ...state.history, undo: [...undo, { before, after: snapshot(state) }] } };
 }
 
+/** Slagets ton på `string`, om den finns. */
+function noteOn(beat: Beat, string: number): Note | undefined {
+  return beat.notes.find((n) => n.string === string);
+}
+
 /** Slagets toner utom den på `string`. */
 function withoutNoteOn(beat: Beat, string: number): Note[] {
   return beat.notes.filter((n) => n.string !== string);
@@ -324,11 +378,12 @@ function enterFret(state: EditorState, fret: number): EditorState {
   const { cursor } = state;
   const score = structuredClone(state.score);
   const beat = barAt(score, cursor).beats[cursor.beat];
+  // En ton som byter band behåller sina tekniker
+  const note = { ...noteOn(beat, cursor.string), string: cursor.string, fret };
   // Toner på andra strängar ligger kvar, så att flera toner i samma slag bygger ett ackord
-  beat.notes = [...withoutNoteOn(beat, cursor.string), { string: cursor.string, fret }].sort(
-    (a, b) => a.string - b.string,
-  );
-  return { ...state, score };
+  beat.notes = [...withoutNoteOn(beat, cursor.string), note].sort((a, b) => a.string - b.string);
+  // Det nya bandet kan göra en förbindelse till eller från tonen ogiltig
+  return { ...state, score: withValidConnections(score) };
 }
 
 function deleteBeat(state: EditorState): EditorState {

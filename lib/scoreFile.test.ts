@@ -40,6 +40,21 @@ describe("Partiturfil: rundtur", () => {
         ]),
     ],
     [
+      "speltekniker",
+      (s) =>
+        (s.tracks[0].bars = [
+          {
+            beats: [
+              { duration: 8, notes: [{ string: 3, fret: 5, hammerPull: true }, { string: 6, fret: 0, palmMute: true }] },
+              { duration: 8, notes: [{ string: 3, fret: 7, slide: true }] },
+              { duration: 8, notes: [{ string: 3, fret: 9 }] },
+              { duration: 8, notes: [{ string: 1, fret: 7, bend: 2 }, { string: 2, fret: 8, bend: 1 }] },
+            ],
+          },
+          { beats: [{ duration: 2, notes: [{ string: 3, fret: 10, bend: 3, palmMute: true }] }] },
+        ]),
+    ],
+    [
       "flera Takter",
       (s) =>
         (s.tracks[0].bars = [
@@ -99,6 +114,28 @@ describe("Partiturfil: trasigt Partitur", () => {
     ["en punktering som inte är sant eller falskt", (s) => (s.tracks[0].bars[0].beats[0].dotted = "yes")],
     ["en ton på en sträng som inte finns", (s) => (s.tracks[0].bars[0].beats[0].notes = [{ string: 7, fret: 0 }])],
     ["ett band över 24", (s) => (s.tracks[0].bars[0].beats[0].notes = [{ string: 1, fret: 25 }])],
+    ["ett okänt mål för en bend", (s) => (s.tracks[0].bars[0].beats[0].notes = [{ string: 1, fret: 5, bend: 4 }])],
+    ["en palm mute som inte är sant eller falskt", (s) => (s.tracks[0].bars[0].beats[0].notes = [{ string: 1, fret: 5, palmMute: 1 }])],
+    [
+      "både hammer-on/pull-off och slide från samma ton",
+      (s) =>
+        (s.tracks[0].bars[0].beats = [
+          { duration: 4, notes: [{ string: 1, fret: 5, hammerPull: true, slide: true }] },
+          { duration: 4, notes: [{ string: 1, fret: 7 }] },
+        ]),
+    ],
+    [
+      "en hammer-on utan en ton att leda till",
+      (s) => (s.tracks[0].bars[0].beats[0].notes = [{ string: 1, fret: 5, hammerPull: true }]),
+    ],
+    [
+      "en slide till samma band",
+      (s) =>
+        (s.tracks[0].bars[0].beats = [
+          { duration: 4, notes: [{ string: 1, fret: 5, slide: true }] },
+          { duration: 4, notes: [{ string: 1, fret: 5 }] },
+        ]),
+    ],
     [
       "två toner på samma sträng i ett slag",
       (s) => (s.tracks[0].bars[0].beats[0].notes = [{ string: 1, fret: 0 }, { string: 1, fret: 2 }]),
@@ -165,6 +202,22 @@ describe("Partiturfil: äldre versioner", () => {
         ],
       },
     });
+  });
+
+  it("en fil i version 2 går att öppna, med speltekniker", () => {
+    const result = parse(fixture(2));
+
+    expect(result.ok && result.score.tracks[0].bars).toEqual([
+      {
+        beats: [
+          { duration: 8, notes: [{ string: 3, fret: 5, hammerPull: true }, { string: 6, fret: 0, palmMute: true }] },
+          { duration: 8, notes: [{ string: 3, fret: 7, slide: true }] },
+          { duration: 8, notes: [{ string: 3, fret: 9 }] },
+          { duration: 8, notes: [{ string: 2, fret: 8, bend: 1 }] },
+        ],
+      },
+      { beats: [{ duration: 2, notes: [{ string: 1, fret: 10, bend: 2 }, { string: 2, fret: 12, bend: 3 }] }] },
+    ]);
   });
 
   it("migreringar kedjas från en äldre version till den nuvarande, en version i taget", () => {
