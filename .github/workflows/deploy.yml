@@ -59,10 +59,14 @@ jobs:
 
       # server.js serverar inte public/ om den inte ligger i standalone.
       # .next/static/ skickas separat och serveras av Nginx direkt från disk.
+      # Migreringarna körs på servern från releasen och använder dess node_modules/pg.
       - name: Packa standalone
         run: |
           cp -r public .next/standalone/
           cp deploy/ecosystem.config.cjs .next/standalone/
+          mkdir -p .next/standalone/scripts .next/standalone/db
+          cp scripts/migrate.mjs .next/standalone/scripts/
+          cp -r db/migrations .next/standalone/db/
 
       - name: SSH-nyckel
         env:
@@ -81,11 +85,14 @@ jobs:
           rsync -az --mkpath .next/static/ "$TARGET:$APP_DIR/static/"
           rsync -az --mkpath --link-dest="$APP_DIR/current/" .next/standalone/ "$TARGET:$APP_DIR/releases/$RELEASE/"
 
-      - name: Byt release, starta om och hälsokontroll
+      - name: Migrera, byt release, starta om och hälsokontroll
         run: |
           ssh "$TARGET" APP_DIR="$APP_DIR" RELEASE="$RELEASE" bash -s <<'SCRIPT'
           set -e
           cd "$APP_DIR"
+          # Migreringarna körs före bytet, så att en misslyckad migrering lämnar den gamla
+          # releasen igång. DATABASE_URL läses ur samma .env som ecosystem-filen använder.
+          node --env-file="$APP_DIR/.env" "releases/$RELEASE/scripts/migrate.mjs"
           ln -sfn "releases/$RELEASE" current
           cd current
           # startOrRestart startar processen första gången och gör annars pm2 restart guitar-practice.

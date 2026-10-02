@@ -5,9 +5,10 @@
 const { existsSync, readFileSync } = require("node:fs");
 const { parseEnv } = require("node:util");
 
-// Hemligheterna (OWNER_USERNAME, OWNER_PASSWORD_HASH, SESSION_SECRET) ligger i en fil utanför
-// releaserna, se .env.production.example. parseEnv expanderar inte $, så bcrypt-hashen kan stå
-// som den är. Saknas filen startar appen ändå, men ingen kan logga in.
+// Hemligheterna (DATABASE_URL, OWNER_USERNAME, OWNER_PASSWORD_HASH, SESSION_SECRET) ligger i en
+// fil utanför releaserna, se .env.production.example. parseEnv expanderar inte $, så bcrypt-hashen
+// kan stå som den är. Deployen kräver filen (migreringarna läser DATABASE_URL ur den). Saknas den
+// ändå startar appen, men ingen kan logga in eller nå Biblioteket.
 const SECRETS_FILE = "/home/deploy/guitar-practice/.env";
 const secrets = existsSync(SECRETS_FILE) ? parseEnv(readFileSync(SECRETS_FILE, "utf8")) : {};
 
