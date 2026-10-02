@@ -1,12 +1,13 @@
 "use client";
 
 import type { AlphaTabApi } from "@coderline/alphatab";
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { browserStorage, loadDraft, saveDraft } from "@/lib/draft";
-import { apply, createEditor } from "@/lib/editor";
+import { apply, createEditor, type Cursor } from "@/lib/editor";
 import { keyToCommand, SHORTCUTS } from "@/lib/keyboard";
 import { serialize } from "@/lib/scoreFile";
 import { invalidBars } from "@/lib/validation";
+import { BarButtons } from "./BarButtons";
 import { DEFAULT_PLAYBACK_OPTIONS, PlaybackControls, playNoteAt } from "./PlaybackControls";
 import { ScoreFileButtons } from "./ScoreFileButtons";
 import { ScoreSettings } from "./ScoreSettings";
@@ -70,6 +71,8 @@ export function TabEditor() {
       if (!command) return;
       // I en rullgardin styr tangenterna rullgardinen, men ångra och gör om gäller Partituret
       if (target?.closest("select") && command.type !== "undo" && command.type !== "redo") return;
+      // Markerad text på sidan kopieras som vanligt
+      if (command.type === "copy" && !window.getSelection()?.isCollapsed) return;
       event.preventDefault();
       if (command.type === "typeDigit") soundPendingRef.current = true;
       dispatch(command);
@@ -77,6 +80,9 @@ export function TabEditor() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
+
+  // Stabil, så att notvyn inte får en ny klickhanterare vid varje rendering
+  const onPositionClick = useCallback((position: Cursor) => dispatch({ type: "moveCursorTo", position }), []);
 
   return (
     <div className={styles.editor}>
@@ -104,6 +110,7 @@ export function TabEditor() {
           dispatch={dispatch}
         />
         <ViewModePicker viewMode={state.score.viewMode} dispatch={dispatch} />
+        <BarButtons dispatch={dispatch} />
         <p className={styles.draftNotice} role="note">
           Your work is saved as a draft in this browser only. Download the score to keep a safe copy.
         </p>
@@ -114,7 +121,14 @@ export function TabEditor() {
         options={playbackOptions}
         onOptionsChange={setPlaybackOptions}
       />
-      <ScoreView score={state.score} cursor={state.cursor} invalidBars={barProblems} onApiChange={setApi} />
+      <ScoreView
+        score={state.score}
+        cursor={state.cursor}
+        selection={state.selection}
+        invalidBars={barProblems}
+        onApiChange={setApi}
+        onPositionClick={onPositionClick}
+      />
     </div>
   );
 }

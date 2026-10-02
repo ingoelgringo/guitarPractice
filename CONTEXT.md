@@ -35,6 +35,10 @@ Ett band på en sträng i ett Slag. Strängarna numreras från den ljusaste: str
 **Markör** (`Cursor`):
 Den position i Partituret (Spår, Takt, Slag, sträng) där nästa inmatning hamnar.
 
+**Markering** (`Selection`):
+En följd av Slag i markörens Spår, från där markeringen började till Markören, eventuellt över flera Takter. Den kopieras, klistras in och tas bort som en enhet. Det kopierade (`clipboard`) finns kvar tills något annat kopieras.
+_Avoid_: Urval, region
+
 **Stämning** (`Tuning`):
 Tonhöjden för varje lös sträng i ett Spår, t.ex. standard (EADGBE) eller Drop D.
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { apply, createEditor, TWO_DIGIT_WINDOW_MS, type Command, type EditorState } from "./editor";
+import { apply, createEditor, TWO_DIGIT_WINDOW_MS, type Command, type EditorState, type SelectionUnit, type Side } from "./editor";
 import type { TimeSignature, ViewMode } from "./score";
 import { invalidBars } from "./validation";
 
@@ -1106,6 +1106,341 @@ describe("öppna ett Partitur", () => {
   });
 });
 
+describe("markering", () => {
+
+  it("ett nytt Partitur har ingen markering", () => {
+    expect(createEditor().selection).toBeNull();
+  });
+
+  it("markeringen utökas slag för slag, även över taktstreck, och markören följer med", () => {
+    const state = run(filled(2), [at(0, 2), extend("right"), extend("right")]);
+
+    expect(state.selection).toEqual({ anchor: { bar: 0, beat: 2 }, head: { bar: 1, beat: 0 } });
+    expect(state.cursor).toMatchObject({ bar: 1, beat: 0 });
+  });
+
+  it("markeringen kan utökas bakåt och krympa igen", () => {
+    const state = run(filled(2), [at(1, 0), extend("left"), extend("left"), extend("right")]);
+
+    expect(state.selection).toEqual({ anchor: { bar: 1, beat: 0 }, head: { bar: 0, beat: 3 } });
+  });
+
+  it("vid Partiturets kanter markeras slaget under markören utan att något nytt skapas", () => {
+    const first = run(filled(2), [at(0, 0), extend("left")]);
+    const last = apply(filled(2), extend("right"));
+
+    expect(first.selection).toEqual({ anchor: { bar: 0, beat: 0 }, head: { bar: 0, beat: 0 } });
+    expect(last.selection).toEqual({ anchor: { bar: 1, beat: 3 }, head: { bar: 1, beat: 3 } });
+    expect(last.score).toEqual(filled(2).score);
+  });
+
+  it("hela Takter markeras Takt för Takt", () => {
+    const right = run(filled(2), [at(0, 2), extend("right", "bar")]);
+    const further = apply(right, extend("right", "bar"));
+    const left = run(filled(2), [at(1, 2), extend("left", "bar"), extend("left", "bar")]);
+
+    expect(right.selection).toEqual({ anchor: { bar: 0, beat: 0 }, head: { bar: 0, beat: 3 } });
+    expect(further.selection).toEqual({ anchor: { bar: 0, beat: 0 }, head: { bar: 1, beat: 3 } });
+    expect(left.selection).toEqual({ anchor: { bar: 1, beat: 3 }, head: { bar: 0, beat: 0 } });
+  });
+
+  it("en markering av hela Takter krymper Takt för Takt och omfattar alltid hela Takter", () => {
+    const state = run(filled(3), [at(0, 2), extend("right", "bar"), extend("right", "bar"), extend("right", "bar"), extend("left", "bar")]);
+
+    expect(state.selection).toEqual({ anchor: { bar: 0, beat: 0 }, head: { bar: 1, beat: 3 } });
+  });
+
+  it("en markering av slag växer till hela Takter", () => {
+    const state = run(filled(3), [at(0, 2), extend("right"), extend("right", "bar")]);
+
+    expect(state.selection).toEqual({ anchor: { bar: 0, beat: 0 }, head: { bar: 0, beat: 3 } });
+  });
+
+  it("att flytta markören åt sidan tar bort markeringen, men inte att byta sträng", () => {
+    const selected = run(filled(2), [at(0, 2), extend("right")]);
+
+    expect(apply(selected, { type: "moveCursor", direction: "left" }).selection).toBeNull();
+    expect(apply(selected, { type: "moveCursor", direction: "down" }).selection).not.toBeNull();
+  });
+
+  it("en ändring av Partituret tar bort markeringen, och markeringen hamnar inte i historiken", () => {
+    const selected = run(filled(2), [at(0, 2), extend("right")]);
+    const changed = apply(selected, { type: "enterFret", fret: 9 });
+
+    expect(changed.selection).toBeNull();
+    // Ångra hoppar över markeringen och ångrar det senast skrivna bandet
+    expect(fretsOf(apply(selected, { type: "undo" }))[1]).toEqual([4, 5, 6, undefined]);
+  });
+});
+
+describe("flytta markören till en position", () => {
+
+  it("flyttar markören dit, t.ex. efter ett klick i notbilden", () => {
+    const state = apply(filled(2), { type: "moveCursorTo", position: { track: 0, bar: 0, beat: 1, string: 4 } });
+
+    expect(state.cursor).toEqual({ track: 0, bar: 0, beat: 1, string: 4 });
+  });
+
+  it("en position som inte finns ignoreras", () => {
+    const state = filled(2);
+    for (const position of [
+      { track: 1, bar: 0, beat: 0, string: 1 },
+      { track: 0, bar: 2, beat: 0, string: 1 },
+      { track: 0, bar: 0, beat: 4, string: 1 },
+      { track: 0, bar: 0, beat: 0, string: 7 },
+      { track: 0, bar: 0, beat: 0, string: 0 },
+    ]) {
+      expect(apply(state, { type: "moveCursorTo", position }).cursor, JSON.stringify(position)).toEqual(state.cursor);
+    }
+  });
+});
+
+describe("kopiera och klistra in", () => {
+
+  it("inklistring skriver över slagen från markören med de kopierade slagen", () => {
+    const state = run(filled(2), [at(0, 0), extend("right"), { type: "copy" }, at(0, 2), { type: "paste" }]);
+
+    expect(fretsOf(state)[0]).toEqual([0, 1, 0, 1]);
+    expect(fretsOf(state)[1]).toEqual([4, 5, 6, 7]);
+    expect(state.cursor).toMatchObject({ bar: 0, beat: 3 });
+  });
+
+  it("med en markering börjar inklistringen där markeringen börjar", () => {
+    const state = run(filled(2), [at(0, 0), extend("right"), { type: "copy" }, at(1, 0), extend("right"), extend("right"), { type: "paste" }]);
+
+    expect(fretsOf(state)[1]).toEqual([0, 1, 6, 7]);
+    expect(state.cursor).toMatchObject({ bar: 1, beat: 1 });
+  });
+
+  it("att kopiera ändrar inte Partituret och hamnar inte i historiken", () => {
+    const selected = run(filled(2), [at(0, 0), extend("right")]);
+    const copied = apply(selected, { type: "copy" });
+
+    expect(copied.score).toBe(selected.score);
+    // Ångra ångrar det senast skrivna bandet
+    expect(fretsOf(apply(copied, { type: "undo" }))[1]).toEqual([4, 5, 6, undefined]);
+  });
+
+  it("inklistringen spiller över till nästa Takt", () => {
+    const state = run(filled(2), [at(0, 0), extend("right"), extend("right"), { type: "copy" }, at(0, 3), { type: "paste" }]);
+
+    expect(fretsOf(state)[0]).toEqual([0, 1, 2, 0]);
+    expect(fretsOf(state)[1]).toEqual([1, 2, 6, 7]);
+  });
+
+  it("inklistring i slutet av Partituret fyller den sista Takten och skapar nya Takter", () => {
+    const state = run(filled(2), [
+      at(0, 0),
+      { type: "extendSelection", direction: "right", unit: "bar" },
+      { type: "copy" },
+      at(1, 2),
+      { type: "paste" },
+    ]);
+
+    expect(fretsOf(state)[1]).toEqual([4, 5, 0, 1]);
+    expect(fretsOf(state)[2]).toEqual([2, 3]);
+    expect(state.cursor).toMatchObject({ bar: 2, beat: 1 });
+  });
+
+  it("i slutet av Partituret hamnar ett slag som inte ryms i den sista Takten i en ny Takt", () => {
+    // Det kopierade är en fjärdedel och en halvnot
+    const source = run(createEditor(), [
+      { type: "enterFret", fret: 1 },
+      { type: "moveCursor", direction: "right" },
+      { type: "setDuration", duration: 2 },
+      { type: "enterFret", fret: 2 },
+      { type: "extendSelection", direction: "left", unit: "beat" },
+      { type: "copy" },
+    ]);
+    // Efter tre fjärdedelar ryms bara en fjärdedel till i Takten
+    const target = run(createEditor(), quarters(3)).score;
+
+    const state = run(source, [{ type: "openScore", score: target }, at(0, 2), { type: "paste" }]);
+
+    expect(state.score.tracks[0].bars.map((b) => b.beats.map((beat) => beat.duration))).toEqual([[4, 4, 4], [2]]);
+    expect(fretsOf(state)[0]).toEqual([0, 1, 1]);
+    expect(state.cursor).toMatchObject({ bar: 1, beat: 0 });
+  });
+
+  it("inklistring ångras som en enhet", () => {
+    const before = run(filled(2), [at(0, 0), extend("right"), extend("right"), { type: "copy" }, at(1, 3)]);
+    const pasted = apply(before, { type: "paste" });
+
+    expect(pasted.score.tracks[0].bars).toHaveLength(3);
+    expect(apply(pasted, { type: "undo" }).score).toEqual(before.score);
+  });
+
+  it("att klistra in utan något kopierat gör ingenting", () => {
+    const state = filled(2);
+
+    expect(apply(state, { type: "paste" }).score).toBe(state.score);
+  });
+
+  it("utan markering kopieras ingenting", () => {
+    const state = run(filled(2), [{ type: "copy" }, { type: "paste" }]);
+
+    expect(state.score).toEqual(filled(2).score);
+  });
+
+  it("det kopierade finns kvar efter ångra och i ett annat Partitur som öppnas", () => {
+    const copied = run(filled(2), [at(0, 0), extend("right"), { type: "copy" }]);
+    const opened = run(copied, [{ type: "openScore", score: createEditor().score }, { type: "paste" }]);
+
+    expect(fretsOf(opened)[0]).toEqual([0, 1]);
+  });
+});
+
+describe("ta bort markering", () => {
+
+  it("tar bort de markerade slagen, och markören hamnar där markeringen började", () => {
+    const state = run(filled(3), [at(0, 1), extend("right"), { type: "deleteSelection" }]);
+
+    expect(fretsOf(state)).toEqual([[0, 3], [4, 5, 6, 7], [8, 9, 10, 11]]);
+    expect(state.cursor).toMatchObject({ bar: 0, beat: 1 });
+    expect(state.selection).toBeNull();
+  });
+
+  it("hela markerade Takter tas bort, och delvis markerade Takter behåller resten av sina slag", () => {
+    const state = run(filled(3), [at(0, 2), extend("right"), extend("right"), extend("right"), extend("right"), extend("right"), extend("right"), { type: "deleteSelection" }]);
+
+    expect(fretsOf(state)).toEqual([[0, 1], [9, 10, 11]]);
+    expect(state.cursor).toMatchObject({ bar: 0, beat: 1 });
+  });
+
+  it("med en markering tar Delete och Shift+Delete bort markeringen i stället för en ton eller ett slag", () => {
+    const selected = run(filled(3), [at(1, 0), extend("right", "bar")]);
+
+    for (const type of ["deleteNote", "deleteBeat"] as const) {
+      expect(fretsOf(apply(selected, { type })), type).toEqual([[0, 1, 2, 3], [8, 9, 10, 11]]);
+    }
+  });
+
+  it("att ta bort allt lämnar en Takt med en paus", () => {
+    const state = run(filled(3), [at(0, 0), extend("right", "bar"), extend("right", "bar"), extend("right", "bar"), { type: "deleteSelection" }]);
+
+    expect(state.score.tracks[0].bars).toEqual([{ beats: [{ duration: 4, notes: [] }] }]);
+    expect(state.cursor).toMatchObject({ bar: 0, beat: 0 });
+  });
+
+  it("ångras som en enhet", () => {
+    const selected = run(filled(3), [at(0, 2), extend("right", "bar"), extend("right", "bar")]);
+    const deleted = apply(selected, { type: "deleteSelection" });
+
+    expect(apply(deleted, { type: "undo" }).score).toEqual(selected.score);
+  });
+
+  it("utan markering gör det ingenting", () => {
+    const state = filled(3);
+
+    expect(apply(state, { type: "deleteSelection" }).score).toBe(state.score);
+  });
+});
+
+describe("infoga och ta bort Takter", () => {
+  const threeFour: TimeSignature = { beats: 3, beatValue: 4 };
+
+  it("en tom Takt infogas efter markörens Takt, fylld med pauser i taktarten, och markören går dit", () => {
+    const state = run(filled(3), [at(0, 2), { type: "insertBarAfter" }]);
+
+    expect(fretsOf(state)).toEqual([[0, 1, 2, 3], [undefined, undefined, undefined, undefined], [4, 5, 6, 7], [8, 9, 10, 11]]);
+    expect(beatsOf(state, 1).every((b) => b.duration === 4)).toBe(true);
+    expect(state.cursor).toMatchObject({ bar: 1, beat: 0 });
+    expect(invalidBars(state.score)).toEqual([]);
+  });
+
+  it("en tom Takt infogas före markörens Takt, även före den första", () => {
+    const state = run(filled(3), [at(0, 2), { type: "insertBarBefore" }]);
+
+    expect(fretsOf(state)[0]).toEqual([undefined, undefined, undefined, undefined]);
+    expect(fretsOf(state)[1]).toEqual([0, 1, 2, 3]);
+    expect(state.cursor).toMatchObject({ bar: 0, beat: 0 });
+  });
+
+  it("den nya Takten följer taktarten som gäller där, och ett Byte ligger kvar i sin Takt", () => {
+    const changed = run(filled(3), [at(1), { type: "setBarTimeSignature", timeSignature: threeFour }]);
+    const before = run(changed, [{ type: "insertBarBefore" }]);
+    const after = run(changed, [{ type: "insertBarAfter" }]);
+
+    expect(beatsOf(before, 1)).toHaveLength(4);
+    expect(before.score.tracks[0].bars[2].timeSignature).toEqual(threeFour);
+    expect(beatsOf(after, 2)).toHaveLength(3);
+    expect(after.score.tracks[0].bars[2].timeSignature).toBeUndefined();
+  });
+
+  it("en Takt med 6/8 fylls med sex åttondelspauser", () => {
+    const start = apply(createEditor(), { type: "setTimeSignature", timeSignature: { beats: 6, beatValue: 8 } });
+    const state = apply(start, { type: "insertBarAfter" });
+
+    expect(beatsOf(state, 1)).toEqual(Array.from({ length: 6 }, () => ({ duration: 8, notes: [] })));
+  });
+
+  it("markörens Takt tas bort och markören hamnar i Takten som kommer efter", () => {
+    const state = run(filled(3), [at(1, 2), { type: "deleteBar" }]);
+
+    expect(fretsOf(state)).toEqual([[0, 1, 2, 3], [8, 9, 10, 11]]);
+    expect(state.cursor).toMatchObject({ bar: 1, beat: 0 });
+  });
+
+  it("tas den sista Takten bort hamnar markören i den nya sista", () => {
+    const state = run(filled(3), [{ type: "deleteBar" }]);
+
+    expect(state.cursor).toMatchObject({ bar: 1, beat: 0 });
+  });
+
+  it("den enda Takten blir en paus i stället för att försvinna", () => {
+    const state = run(createEditor(), [{ type: "enterFret", fret: 5 }, { type: "deleteBar" }]);
+
+    expect(state.score.tracks[0].bars).toEqual([{ beats: [{ duration: 4, notes: [] }] }]);
+  });
+
+  it("ett Byte i en borttagen Takt gäller från nästa Takt, så att den behåller sin taktart och sitt tempo", () => {
+    const changed = run(filled(3), [
+      at(1),
+      { type: "setBarTimeSignature", timeSignature: threeFour },
+      { type: "setBarTempo", tempo: 90 },
+    ]);
+    const state = apply(changed, { type: "deleteBar" });
+
+    expect(state.score.tracks[0].bars[1]).toMatchObject({ timeSignature: threeFour, tempo: 90 });
+  });
+
+  it("tas den första Takten bort blir det som gällde i den nya första Takten Partiturets start", () => {
+    const changed = run(filled(3), [at(1), { type: "setBarTempo", tempo: 90 }]);
+    const state = run(changed, [at(0), { type: "deleteBar" }]);
+
+    expect(state.score.tempo).toBe(90);
+    expect(state.score.tracks[0].bars[0].tempo).toBeUndefined();
+  });
+
+  it("repriser följer med sin Takt och försvinner med den", () => {
+    const repeated = run(filled(3), [at(1), { type: "toggleRepeatStart" }, at(2), { type: "toggleRepeatEnd" }]);
+    const inserted = run(repeated, [at(1), { type: "insertBarBefore" }]);
+    const deleted = run(repeated, [at(1), { type: "deleteBar" }]);
+
+    expect(inserted.score.tracks[0].bars.map((b) => [b.repeatStart, b.repeatEnd])).toEqual([
+      [undefined, undefined],
+      [undefined, undefined],
+      [true, undefined],
+      [undefined, 2],
+    ]);
+    expect(deleted.score.tracks[0].bars.map((b) => [b.repeatStart, b.repeatEnd])).toEqual([
+      [undefined, undefined],
+      [undefined, 2],
+    ]);
+  });
+
+  it("infoga och ta bort Takt ångras som en enhet", () => {
+    const start = run(filled(3), [at(1, 2)]);
+    for (const type of ["insertBarBefore", "insertBarAfter", "deleteBar"] as const) {
+      const changed = apply(start, { type });
+      expect(changed.score, type).not.toEqual(start.score);
+      const undone = apply(changed, { type: "undo" });
+      expect(undone.score, type).toEqual(start.score);
+      expect(undone.cursor, type).toEqual(start.cursor);
+    }
+  });
+});
+
 /** Skriver `count` fjärdedelar på rad och står kvar på den sista. */
 function quarters(count: number): Command[] {
   return Array.from({ length: count }, (_, i) => [
@@ -1124,4 +1459,23 @@ function beatsOf(state: EditorState, bar = 0) {
 
 function run(state: EditorState, commands: Command[]): EditorState {
   return commands.reduce(apply, state);
+}
+
+/** `count` fulla Takter i 4/4 med banden 0, 1, 2 … och markören på det sista slaget. */
+function filled(count: number): EditorState {
+  return run(createEditor(), quarters(4 * count));
+}
+
+/** Flyttar markören till slaget på sträng 1, som ett klick i notbilden. */
+function at(bar: number, beat = 0): Command {
+  return { type: "moveCursorTo", position: { track: 0, bar, beat, string: 1 } };
+}
+
+function extend(direction: Side, unit: SelectionUnit = "beat"): Command {
+  return { type: "extendSelection", direction, unit };
+}
+
+/** Banden på sträng 1, Takt för Takt. */
+function fretsOf(state: EditorState): (number | undefined)[][] {
+  return state.score.tracks[0].bars.map((bar) => bar.beats.map((beat) => beat.notes[0]?.fret));
 }

@@ -1,9 +1,15 @@
-import type { Command, Direction } from "./editor";
+import type { Command, Direction, Side } from "./editor";
 import type { Duration } from "./score";
 
 const ARROW_KEYS: Record<string, Direction> = {
   ArrowUp: "up",
   ArrowDown: "down",
+  ArrowLeft: "left",
+  ArrowRight: "right",
+};
+
+/** Piltangenterna som utökar en markering med Shift. */
+const SIDE_KEYS: Record<string, Side> = {
   ArrowLeft: "left",
   ArrowRight: "right",
 };
@@ -41,7 +47,14 @@ export function keyToCommand(press: KeyPress): Command | null {
     const lower = key.toLowerCase();
     if (lower === "z") return { type: press.shiftKey ? "redo" : "undo" };
     if (lower === "y") return { type: "redo" };
-    return null;
+    if (lower === "c") return { type: "copy" };
+    if (lower === "v") return { type: "paste" };
+    return press.shiftKey && Object.hasOwn(SIDE_KEYS, key)
+      ? { type: "extendSelection", direction: SIDE_KEYS[key], unit: "bar" }
+      : null;
+  }
+  if (press.shiftKey && Object.hasOwn(SIDE_KEYS, key)) {
+    return { type: "extendSelection", direction: SIDE_KEYS[key], unit: "beat" };
   }
   if (key === "Delete" || key === "Backspace") return { type: press.shiftKey ? "deleteBeat" : "deleteNote" };
   if (Object.hasOwn(ARROW_KEYS, key)) return { type: "moveCursor", direction: ARROW_KEYS[key] };
@@ -75,8 +88,12 @@ export const SHORTCUTS: readonly { keys: string; action: string }[] = [
   ...Object.entries(TECHNIQUE_KEYS).map(([key, { name }]) => ({ keys: key.toUpperCase(), action: name })),
   { keys: "[", action: "Toggle repeat start on the bar" },
   { keys: "]", action: "Toggle repeat end on the bar (set the count under Bar)" },
-  { keys: "Delete", action: "Delete note on the cursor's string" },
-  { keys: "Shift+Delete", action: "Delete beat" },
+  { keys: "Shift+← →", action: "Select beats" },
+  { keys: "Ctrl+Shift+← →", action: "Select whole bars" },
+  { keys: "Ctrl+C", action: "Copy selection" },
+  { keys: "Ctrl+V", action: "Paste over the beats from the cursor" },
+  { keys: "Delete", action: "Delete selection, or the note on the cursor's string" },
+  { keys: "Shift+Delete", action: "Delete selection, or the beat" },
   { keys: "Ctrl+Z", action: "Undo" },
   { keys: "Ctrl+Y / Ctrl+Shift+Z", action: "Redo" },
 ];

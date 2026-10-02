@@ -61,6 +61,13 @@
   stroke: #e67700;
 }
 
+/* Markeringen: slagen som kopieras eller tas bort */
+.selection {
+  position: absolute;
+  pointer-events: none;
+  background: rgb(30 111 217 / 0.12);
+}
+
 /* En Takt med fel antal slag. Den rättas aldrig automatiskt, bara markeras. */
 .invalidBar {
   position: absolute;

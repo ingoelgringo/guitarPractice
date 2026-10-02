@@ -8,8 +8,8 @@ import {
   Settings,
   type model,
 } from "@coderline/alphatab";
-import { useEffect, useRef, useState } from "react";
-import type { Cursor } from "@/lib/editor";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { selectionRange, type Cursor, type Selection } from "@/lib/editor";
 import type { Score } from "@/lib/score";
 import { beatAt, configureStaves, toAlphaTab } from "@/lib/toAlphaTab";
 import type { InvalidBar } from "@/lib/validation";
@@ -55,27 +55,34 @@ const SCRIPT_FILE = "/alphatab/alphaTab.js";
 const PLAYBACK_BAR_SPACE = 64;
 
 /**
- * Tunt skal kring alphaTab: renderar Partituret som A4-Sida, visar markören
- * och markerar Takter som valideringen har pekat ut. Uppspelningen styrs via alphaTab-API:t,
- * som lämnas ut med `onApiChange`.
+ * Tunt skal kring alphaTab: renderar Partituret som A4-Sida, visar markören och markeringen
+ * och markerar Takter som valideringen har pekat ut. Ett klick i notbilden blir en position för
+ * markören via `onPositionClick`. Uppspelningen styrs via alphaTab-API:t, som lämnas ut med
+ * `onApiChange`.
  */
 export function ScoreView({
   score,
   cursor,
+  selection,
   invalidBars,
   onApiChange,
+  onPositionClick,
 }: {
   score: Score;
   cursor: Cursor;
+  selection: Selection | null;
   invalidBars: InvalidBar[];
   onApiChange: (api: AlphaTabApi | null) => void;
+  onPositionClick: (position: Cursor) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<AlphaTabApi | null>(null);
   const renderedRef = useRef<model.Score | null>(null);
   const cursorRef = useRef(cursor);
   const invalidBarsRef = useRef(invalidBars);
+  const selectionRef = useRef(selection);
   const [cursorBox, setCursorBox] = useState<CursorMark | null>(null);
+  const [selectionBoxes, setSelectionBoxes] = useState<Box[]>([]);
   const [barMarks, setBarMarks] = useState<BarMark[]>([]);
 
   useEffect(() => {
@@ -101,6 +108,7 @@ export function ScoreView({
     api.postRenderFinished.on(() => {
       setCursorBox(locateCursor(api, renderedRef.current, cursorRef.current));
       setBarMarks(locateBarMarks(api, invalidBarsRef.current));
+      setSelectionBoxes(locateSelection(api, renderedRef.current, cursorRef.current.track, selectionRef.current));
     });
     apiRef.current = api;
     onApiChange(api);
@@ -128,10 +136,27 @@ export function ScoreView({
     if (api) setCursorBox(locateCursor(api, renderedRef.current, cursor));
   }, [cursor]);
 
+  useEffect(() => {
+    selectionRef.current = selection;
+    const api = apiRef.current;
+    if (api) setSelectionBoxes(locateSelection(api, renderedRef.current, cursorRef.current.track, selection));
+  }, [selection]);
+
+  function onClick(event: MouseEvent<HTMLDivElement>) {
+    const api = apiRef.current;
+    if (!api) return;
+    const origin = event.currentTarget.getBoundingClientRect();
+    const position = locateClick(api, event.clientX - origin.left, event.clientY - origin.top, cursorRef.current);
+    if (position) onPositionClick(position);
+  }
+
   return (
     <div className={styles.page}>
-      <div style={{ position: "relative" }}>
+      <div style={{ position: "relative" }} onClick={onClick}>
         <div ref={containerRef} />
+        {selectionBoxes.map((box, i) => (
+          <div key={i} className={styles.selection} style={box} />
+        ))}
         {barMarks.map(({ problem, ...box }, i) => (
           <div key={i} className={styles.invalidBar} style={box}>
             <span className={styles.invalidBarLabel}>{PROBLEM_LABELS[problem]}</span>
@@ -157,6 +182,51 @@ function locateBarMarks(api: AlphaTabApi, invalidBars: InvalidBar[]): BarMark[] 
     const { x, y, w, h } = bounds.visualBounds;
     return [{ left: x, top: y, width: w, height: h, problem }];
   });
+}
+
+/** En ruta per Takt över de markerade slagen i Spår `track`, över alla stavar. */
+function locateSelection(
+  api: AlphaTabApi,
+  rendered: model.Score | null,
+  track: number,
+  selection: Selection | null,
+): Box[] {
+  const lookup = api.renderer.boundsLookup;
+  if (!lookup || !rendered || !selection) return [];
+  const { start, end } = selectionRange(selection);
+  const boxes: Box[] = [];
+  for (let bar = start.bar; bar <= end.bar; bar++) {
+    const beats = beatAt(rendered, { track, bar, beat: 0, string: 1 })?.voice.beats ?? [];
+    const first = beats[bar === start.bar ? start.beat : 0];
+    const last = beats[bar === end.bar ? end.beat : beats.length - 1];
+    const from = first && lookup.findBeats(first)?.at(-1);
+    const to = last && lookup.findBeats(last)?.at(-1);
+    if (!from || !to) continue;
+    const { y, h } = from.barBounds.masterBarBounds.visualBounds;
+    const left = from.realBounds.x;
+    boxes.push({ left, top: y, width: to.realBounds.x + to.realBounds.w - left, height: h });
+  }
+  return boxes;
+}
+
+/**
+ * Markörens position vid ett klick på (x, y) i notbilden: slaget där, och strängen när klicket
+ * träffar tabben. Annars behålls markörens sträng.
+ */
+function locateClick(api: AlphaTabApi, x: number, y: number, cursor: Cursor): Cursor | null {
+  const lookup = api.renderer.boundsLookup;
+  const beat = lookup?.getBeatAtPos(x, y);
+  if (!lookup || !beat) return null;
+  const bar = beat.voice.bar;
+  const position = { track: bar.staff.track.index, bar: bar.index, beat: beat.index, string: cursor.string };
+  const tab = lookup.findBeats(beat)?.at(-1)?.barBounds.visualBounds;
+  if (!bar.staff.showTablature || !tab) return position;
+  const stringCount = bar.staff.tuning.length;
+  const spacing = tab.h / (stringCount - 1);
+  const string = Math.round((y - tab.y) / spacing) + 1;
+  // Ett klick strax utanför den yttersta strängen räknas till den, längre bort behålls strängen
+  if (string < 0 || string > stringCount + 1) return position;
+  return { ...position, string: Math.min(Math.max(string, 1), stringCount) };
 }
 
 /** Bara rutans mått, så att övriga fält inte hamnar i `style`. */

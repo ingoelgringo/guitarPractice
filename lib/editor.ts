@@ -28,9 +28,28 @@ export interface Cursor {
   string: number;
 }
 
+/** Ett slag i markörens Spår: Takt och slag. */
+export interface BeatPosition {
+  bar: number;
+  beat: number;
+}
+
+/**
+ * En markering av slag i markörens Spår, från `anchor` där den började till `head` där markören
+ * står. Båda slagen ingår, och `head` kan ligga före `anchor`.
+ */
+export interface Selection {
+  anchor: BeatPosition;
+  head: BeatPosition;
+}
+
 export interface EditorState {
   score: Score;
   cursor: Cursor;
+  /** Markeringen, eller `null` utan markering. Den tas bort när Partituret ändras. */
+  selection: Selection | null;
+  /** De senast kopierade slagen, eller `null` om inget har kopierats. Följer med till ett annat Partitur. */
+  clipboard: Beat[] | null;
   /**
    * Den senast skrivna siffran, som nästa siffra kan bilda ett tvåsiffrigt band med.
    * `recorded` säger om siffran blev en egen ändring i historiken.
@@ -63,19 +82,62 @@ export const TWO_DIGIT_WINDOW_MS = 1000;
 
 export type Direction = "up" | "down" | "left" | "right";
 
+/** Riktningarna längs tiden, som en markering kan utökas åt. */
+export type Side = Extract<Direction, "left" | "right">;
+
+/** Hur långt en markering utökas åt gången: ett slag eller en hel Takt. */
+export type SelectionUnit = "beat" | "bar";
+
 export type Command =
   | { type: "enterFret"; fret: number }
   /** En siffra från tangentbordet; `time` (ms) avgör om den bildar ett tvåsiffrigt band med den förra. */
   | { type: "typeDigit"; digit: number; time: number }
+  /** Vänster och höger tar bort markeringen, upp och ner behåller den. */
   | { type: "moveCursor"; direction: Direction }
+  /** Flyttar markören till en position, t.ex. efter ett klick i notbilden. Finns den inte händer ingenting. */
+  | { type: "moveCursorTo"; position: Cursor }
+  /**
+   * Utökar markeringen ett slag eller en hel Takt åt sidan, och markören följer med. Utan
+   * markering börjar den vid markören. Med `unit: "bar"` omfattar markeringen hela Takter: först
+   * markörens, sedan en Takt till eller en färre åt gången.
+   */
+  | { type: "extendSelection"; direction: Side; unit: SelectionUnit }
+  /** Kopierar de markerade slagens toner och Notvärden. Utan markering händer ingenting. */
+  | { type: "copy" }
+  /**
+   * Skriver över slagen från markören, eller från markeringens början, och framåt med de kopierade
+   * slagen, även i följande Takter,
+   * och markören hamnar på det sista. I slutet av Partituret fylls den sista Takten och nya Takter
+   * skapas. Takter som inte längre stämmer flaggas av valideringen men rättas inte.
+   */
+  | { type: "paste" }
+  /**
+   * Tar bort de markerade slagen. Helt markerade Takter tas bort, med samma regler som
+   * `deleteBar`. Utan markering händer ingenting.
+   */
+  | { type: "deleteSelection" }
+  /**
+   * Infogar en tom Takt före eller efter markörens Takt, fylld med pauser i den taktart som gäller
+   * där, och markören går till den. Byten och repriser ligger kvar i sina Takter.
+   */
+  | { type: "insertBarBefore" }
+  | { type: "insertBarAfter" }
+  /**
+   * Tar bort markörens Takt, och markören går till Takten efter. De andra Takterna behåller sin
+   * taktart och sitt tempo, så ett Byte i Takten flyttas till nästa. Den enda Takten blir en paus.
+   */
+  | { type: "deleteBar" }
   | { type: "setDuration"; duration: Duration }
   | { type: "toggleDot" }
   | { type: "toggleTriplet" }
   /** Gör slaget under markören till en paus och går vidare till nästa slag. */
   | { type: "insertRest" }
-  /** Tar bort tonen på markörens sträng i slaget under markören. */
+  /** Tar bort tonen på markörens sträng i slaget under markören. Med en markering tas den bort i stället. */
   | { type: "deleteNote" }
-  /** Tar bort slaget under markören. En Takt behåller alltid minst ett slag. */
+  /**
+   * Tar bort slaget under markören. En Takt behåller alltid minst ett slag. Med en markering tas
+   * den bort i stället.
+   */
   | { type: "deleteBeat" }
   /**
    * Växlar hammer-on/pull-off från tonen på markörens sträng till tonen på samma sträng i nästa
@@ -143,6 +205,8 @@ function editorFor(score: Score): EditorState {
   return {
     score,
     cursor: { track: 0, bar: 0, beat: 0, string: 1 },
+    selection: null,
+    clipboard: null,
     pendingDigit: null,
     history: { undo: [], redo: [] },
   };
@@ -151,7 +215,7 @@ function editorFor(score: Score): EditorState {
 export function apply(state: EditorState, command: Command): EditorState {
   if (command.type === "undo") return undo(state);
   if (command.type === "redo") return redo(state);
-  if (command.type === "openScore") return editorFor(command.score);
+  if (command.type === "openScore") return { ...editorFor(command.score), clipboard: state.clipboard };
   if (command.type === "typeDigit") return typeDigit(state, command.digit, command.time);
   // Alla andra kommandon bryter ett påbörjat tvåsiffrigt band
   const next = applyCommand(state, command);
@@ -166,7 +230,7 @@ export function apply(state: EditorState, command: Command): EditorState {
 function record(before: EditorState, after: EditorState): EditorState {
   if (equal(after.score, before.score)) return { ...after, score: before.score };
   const change = { before: snapshot(before), after: snapshot(after) };
-  return { ...after, history: { undo: [...before.history.undo, change], redo: [] } };
+  return { ...after, selection: null, history: { undo: [...before.history.undo, change], redo: [] } };
 }
 
 function undo(state: EditorState): EditorState {
@@ -174,7 +238,9 @@ function undo(state: EditorState): EditorState {
   const change = undo.at(-1);
   if (!change) return { ...state, pendingDigit: null };
   return {
+    ...state,
     ...change.before,
+    selection: null,
     pendingDigit: null,
     history: { undo: undo.slice(0, -1), redo: [...redo, change] },
   };
@@ -185,7 +251,9 @@ function redo(state: EditorState): EditorState {
   const change = redo.at(-1);
   if (!change) return { ...state, pendingDigit: null };
   return {
+    ...state,
     ...change.after,
+    selection: null,
     pendingDigit: null,
     history: { undo: [...undo, change], redo: redo.slice(0, -1) },
   };
@@ -216,6 +284,14 @@ function applyCommand(
       return enterFret(state, command.fret);
     case "moveCursor":
       return moveCursor(state, command.direction);
+    case "moveCursorTo":
+      return moveCursorTo(state, command.position);
+    case "extendSelection":
+      return extendSelection(state, command.direction, command.unit);
+    case "copy":
+      return copy(state);
+    case "paste":
+      return paste(state);
     case "setDuration":
       return updateBeat(state, (beat) => {
         beat.duration = command.duration;
@@ -245,11 +321,20 @@ function applyCommand(
         { force: true },
       );
     case "deleteNote":
+      if (state.selection) return deleteSelection(state);
       return updateBeat(state, (beat) => {
         beat.notes = withoutNoteOn(beat, state.cursor.string);
       });
     case "deleteBeat":
-      return deleteBeat(state);
+      return state.selection ? deleteSelection(state) : deleteBeat(state);
+    case "deleteSelection":
+      return deleteSelection(state);
+    case "insertBarBefore":
+      return insertBar(state, state.cursor.bar);
+    case "insertBarAfter":
+      return insertBar(state, state.cursor.bar + 1);
+    case "deleteBar":
+      return deleteBar(state);
     case "setMetadata":
       return updateScore(state, (score) => {
         for (const [field, value] of Object.entries(command.metadata)) {
@@ -488,10 +573,83 @@ function moveCursor(state: EditorState, direction: Direction): EditorState {
     case "down":
       return { ...state, cursor: { ...cursor, string: Math.min(stringCount, cursor.string + 1) } };
     case "left":
-      return moveLeft(state);
+      return { ...moveLeft(state), selection: null };
     case "right":
-      return advance(state, { force: false });
+      return { ...advance(state, { force: false }), selection: null };
   }
+}
+
+function moveCursorTo(state: EditorState, cursor: Cursor): EditorState {
+  const track = state.score.tracks[cursor.track];
+  const beats = track?.bars[cursor.bar]?.beats;
+  const exists = beats && isInRange(cursor.beat, 0, beats.length - 1) && isInRange(cursor.string, 1, track.tuning.length);
+  if (!exists) return state;
+  const { track: trackIndex, bar, beat, string } = cursor;
+  return { ...state, cursor: { track: trackIndex, bar, beat, string }, selection: null };
+}
+
+function extendSelection(state: EditorState, direction: Side, unit: SelectionUnit): EditorState {
+  const { cursor, selection } = state;
+  const bars = state.score.tracks[cursor.track].bars;
+  const at = { bar: cursor.bar, beat: cursor.beat };
+  const { anchor, head } = selection ?? { anchor: at, head: at };
+  const selected = unit === "beat" ? extendByBeat(bars, anchor, head, direction) : extendByBar(bars, selection, anchor, head, direction);
+  return { ...state, selection: selected, cursor: { ...cursor, ...selected.head } };
+}
+
+function extendByBeat(bars: readonly Bar[], anchor: BeatPosition, head: BeatPosition, direction: Side): Selection {
+  return { anchor, head: (direction === "left" ? previousBeat(bars, head) : nextBeat(bars, head)) ?? head };
+}
+
+/**
+ * Utökar till hela Takter. En markering som redan omfattar hela Takter får en Takt till eller en
+ * färre, annars blir den de Takter den redan berör, och markeringens början hamnar i den kant
+ * av sin Takt som vetter bort från markören.
+ */
+function extendByBar(
+  bars: readonly Bar[],
+  selection: Selection | null,
+  anchor: BeatPosition,
+  head: BeatPosition,
+  direction: Side,
+): Selection {
+  const step = direction === "right" ? 1 : -1;
+  const headBar = selection && coversWholeBars(bars, selection) ? Math.min(Math.max(head.bar + step, 0), bars.length - 1) : head.bar;
+  const forward = headBar === anchor.bar ? direction === "right" : headBar > anchor.bar;
+  const lastBeat = (bar: number) => bars[bar].beats.length - 1;
+  return forward
+    ? { anchor: { bar: anchor.bar, beat: 0 }, head: { bar: headBar, beat: lastBeat(headBar) } }
+    : { anchor: { bar: anchor.bar, beat: lastBeat(anchor.bar) }, head: { bar: headBar, beat: 0 } };
+}
+
+/** Om markeringen börjar och slutar vid taktstreck. */
+function coversWholeBars(bars: readonly Bar[], selection: Selection): boolean {
+  const { start, end } = selectionRange(selection);
+  return start.beat === 0 && end.beat === bars[end.bar].beats.length - 1;
+}
+
+/** Slaget före `position`, även i föregående Takt, eller `null` vid Partiturets början. */
+function previousBeat(bars: readonly Bar[], { bar, beat }: BeatPosition): BeatPosition | null {
+  if (beat > 0) return { bar, beat: beat - 1 };
+  if (bar === 0) return null;
+  return { bar: bar - 1, beat: bars[bar - 1].beats.length - 1 };
+}
+
+/** Slaget efter `position`, även i nästa Takt, eller `null` vid Partiturets slut. */
+function nextBeat(bars: readonly Bar[], { bar, beat }: BeatPosition): BeatPosition | null {
+  if (beat < bars[bar].beats.length - 1) return { bar, beat: beat + 1 };
+  if (bar === bars.length - 1) return null;
+  return { bar: bar + 1, beat: 0 };
+}
+
+/** Negativt om `a` ligger före `b`, positivt om efter och 0 om det är samma slag. */
+function comparePositions(a: BeatPosition, b: BeatPosition): number {
+  return a.bar - b.bar || a.beat - b.beat;
+}
+
+/** Markeringens första och sista slag. */
+export function selectionRange({ anchor, head }: Selection): { start: BeatPosition; end: BeatPosition } {
+  return comparePositions(anchor, head) <= 0 ? { start: anchor, end: head } : { start: head, end: anchor };
 }
 
 /** Går till föregående slag, vid behov sista slaget i föregående Takt. */
@@ -536,4 +694,122 @@ function advance(state: EditorState, { force }: { force: boolean }): EditorState
     return { ...state, score: next, cursor: { ...cursor, bar: cursor.bar + 1, beat: 0 } };
   }
   return state;
+}
+
+function copy(state: EditorState): EditorState {
+  if (!state.selection) return state;
+  const { start, end } = selectionRange(state.selection);
+  const bars = state.score.tracks[state.cursor.track].bars;
+  const beats: Beat[] = [];
+  for (let position: BeatPosition | null = start; position; position = nextBeat(bars, position)) {
+    beats.push(structuredClone(bars[position.bar].beats[position.beat]));
+    if (comparePositions(position, end) === 0) break;
+  }
+  return { ...state, clipboard: beats };
+}
+
+function paste(state: EditorState): EditorState {
+  const { clipboard, cursor, selection } = state;
+  if (!clipboard?.length) return state;
+  const score = structuredClone(state.score);
+  const bars = score.tracks[cursor.track].bars;
+  let position: BeatPosition = selection ? selectionRange(selection).start : { bar: cursor.bar, beat: cursor.beat };
+  clipboard.forEach((beat, i) => {
+    if (i > 0) position = nextBeat(bars, position) ?? appendBeat(score, cursor.track, beat);
+    bars[position.bar].beats[position.beat] = structuredClone(beat);
+  });
+  return { ...state, score, cursor: { ...cursor, ...position } };
+}
+
+/**
+ * Gör plats för `beat` efter Spårets sista slag: i den sista Takten om det ryms i taktarten,
+ * annars i en ny Takt. Ger platsen, där ett tomt slag med samma Notvärde nu står.
+ */
+function appendBeat(score: Score, track: number, beat: Beat): BeatPosition {
+  const bars = score.tracks[track].bars;
+  const last = bars.length - 1;
+  const room = barCapacity(timeSignatureAt(score, track, last)) - barTicks(bars[last]);
+  if (beatTicks(beat) <= room) {
+    bars[last].beats.push(emptyBeatLike(beat));
+    return { bar: last, beat: bars[last].beats.length - 1 };
+  }
+  bars.push({ beats: [emptyBeatLike(beat)] });
+  return { bar: last + 1, beat: 0 };
+}
+
+function deleteSelection(state: EditorState): EditorState {
+  if (!state.selection) return state;
+  const { start, end } = selectionRange(state.selection);
+  const { cursor } = state;
+  const score = structuredClone(state.score);
+  const bars = score.tracks[cursor.track].bars;
+  const wholeBars = new Set<number>();
+  // Bakifrån, så att de tidigare Takternas index står kvar
+  for (let b = end.bar; b >= start.bar; b--) {
+    const from = b === start.bar ? start.beat : 0;
+    const to = b === end.bar ? end.beat : bars[b].beats.length - 1;
+    if (from === 0 && to === bars[b].beats.length - 1) wholeBars.add(b);
+    else bars[b].beats.splice(from, to - from + 1);
+  }
+  const result = removeBars(score, wholeBars);
+  const remaining = result.tracks[cursor.track].bars;
+  const bar = Math.min(start.bar, remaining.length - 1);
+  const beat = wholeBars.has(start.bar) ? 0 : Math.min(start.beat, remaining[bar].beats.length - 1);
+  return { ...state, score: result, cursor: { ...cursor, bar, beat } };
+}
+
+/**
+ * Partituret utan Takterna `removed` i alla Spår. Takterna som blir kvar behåller den taktart och
+ * det tempo som gällde i dem: ett Byte i en borttagen Takt flyttas till nästa Takt, och tas den
+ * första Takten bort blir det som gällde i den nya första Takten Partiturets start. Tas alla bort
+ * blir det en Takt med en paus.
+ */
+function removeBars(score: Score, removed: ReadonlySet<number>): Score {
+  if (removed.size === 0) return score;
+  const result = structuredClone(score);
+  const kept = score.tracks[0].bars.map((_, i) => i).filter((i) => !removed.has(i));
+  for (const [t, track] of result.tracks.entries()) {
+    track.bars = kept.length ? track.bars.filter((_, i) => !removed.has(i)) : [{ beats: [emptyBeatLike(score.tracks[t].bars[0].beats[0])] }];
+  }
+  if (kept.length === 0) return result;
+  keepInEffect(score, result, kept, "timeSignature", timeSignatureAt);
+  keepInEffect(score, result, kept, "tempo", tempoAt);
+  return result;
+}
+
+/** Sätter Byten i `result` så att varje kvarvarande Takt får det som gällde i den i `original`. */
+function keepInEffect<F extends BarChange>(
+  original: Score,
+  result: Score,
+  kept: readonly number[],
+  field: F,
+  inEffect: (score: Score, track: number, bar: number) => Score[F],
+) {
+  result[field] = inEffect(original, 0, kept[0]);
+  for (const [t, track] of result.tracks.entries()) {
+    delete track.bars[0][field];
+    for (let i = 1; i < track.bars.length; i++) {
+      const wanted = inEffect(original, 0, kept[i]);
+      if (!equal(inEffect(result, t, i), wanted)) track.bars[i][field] = wanted as Bar[F];
+    }
+  }
+}
+
+/** Infogar en Takt med pauser i alla Spår så att den får index `index`. */
+function insertBar(state: EditorState, index: number): EditorState {
+  const { cursor } = state;
+  // Taktarten före en eventuell Byte i Takten som nu ligger på `index`
+  const { beats, beatValue } = index === 0 ? state.score.timeSignature : timeSignatureAt(state.score, cursor.track, index - 1);
+  const score = structuredClone(state.score);
+  for (const track of score.tracks) {
+    track.bars.splice(index, 0, { beats: Array.from({ length: beats }, () => ({ duration: beatValue, notes: [] })) });
+  }
+  return { ...state, score, cursor: { ...cursor, bar: index, beat: 0 } };
+}
+
+function deleteBar(state: EditorState): EditorState {
+  const { cursor } = state;
+  const score = removeBars(state.score, new Set([cursor.bar]));
+  const bar = Math.min(cursor.bar, score.tracks[cursor.track].bars.length - 1);
+  return { ...state, score, cursor: { ...cursor, bar, beat: 0 } };
 }
