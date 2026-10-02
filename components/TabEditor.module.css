@@ -25,3 +25,59 @@
   border-radius: 3px;
   background: rgb(30 111 217 / 0.15);
 }
+
+/* En Takt med fel antal slag. Den rättas aldrig automatiskt, bara markeras. */
+.invalidBar {
+  position: absolute;
+  pointer-events: none;
+  border: 2px solid #d93025;
+  border-radius: 3px;
+  background: rgb(217 48 37 / 0.08);
+}
+
+.invalidBarLabel {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  padding: 1px 4px;
+  border-radius: 3px 3px 0 0;
+  background: #d93025;
+  color: #fff;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+/* Hjälpruta med kortkommandon, alltid nåbar i hörnet */
+.help {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1;
+  max-width: 320px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+  box-shadow: 0 2px 12px rgb(0 0 0 / 0.2);
+  font-size: 13px;
+}
+
+.help summary {
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.help table {
+  margin-top: 8px;
+  border-collapse: collapse;
+}
+
+.help td {
+  padding: 2px 8px 2px 0;
+  vertical-align: top;
+}
+
+.help kbd {
+  font-family: ui-monospace, monospace;
+  white-space: nowrap;
+}

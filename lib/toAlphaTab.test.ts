@@ -41,7 +41,65 @@ describe("toAlphaTab", () => {
     expect(beats.map((b) => b.notes[0].realValue)).toEqual([64, 43, 57]);
     expect(beats.map((b) => b.notes[0].fret)).toEqual([0, 3, 2]);
   });
+
+  it("alla Notvärden från helnot till trettiotvåondel följer med", () => {
+    const durations = [1, 2, 4, 8, 16, 32] as const;
+    const beats = firstBarBeats(scoreWithBeats(durations.map((duration) => ({ duration, notes: [] }))));
+
+    expect(beats.map((b) => b.duration)).toEqual([
+      model.Duration.Whole,
+      model.Duration.Half,
+      model.Duration.Quarter,
+      model.Duration.Eighth,
+      model.Duration.Sixteenth,
+      model.Duration.ThirtySecond,
+    ]);
+  });
+
+  it("punkterade slag får en punkt och varar en och en halv gång så länge", () => {
+    const [dotted, plain] = firstBarBeats(
+      scoreWithBeats([
+        { duration: 4, dotted: true, notes: [{ string: 1, fret: 0 }] },
+        { duration: 4, notes: [{ string: 1, fret: 0 }] },
+      ]),
+    );
+
+    expect(dotted.dots).toBe(1);
+    expect(plain.dots).toBe(0);
+    expect(dotted.playbackDuration).toBe(plain.playbackDuration * 1.5);
+  });
+
+  it("trioler blir 3:2-tupletter som varar två tredjedelar så länge", () => {
+    const beats = firstBarBeats(
+      scoreWithBeats([
+        { duration: 8, triplet: true, notes: [{ string: 1, fret: 0 }] },
+        { duration: 8, triplet: true, notes: [{ string: 1, fret: 2 }] },
+        { duration: 8, triplet: true, notes: [{ string: 1, fret: 3 }] },
+        { duration: 8, notes: [{ string: 1, fret: 5 }] },
+      ]),
+    );
+
+    expect(beats.slice(0, 3).map((b) => [b.tupletNumerator, b.tupletDenominator])).toEqual([
+      [3, 2],
+      [3, 2],
+      [3, 2],
+    ]);
+    expect(beats[3].hasTuplet).toBe(false);
+    expect(beats[0].playbackDuration * 3).toBe(beats[3].playbackDuration * 2);
+  });
+
+  it("slag utan toner blir pauser med sitt Notvärde", () => {
+    const [rest] = firstBarBeats(scoreWithBeats([{ duration: 8, dotted: true, notes: [] }]));
+
+    expect(rest.isRest).toBe(true);
+    expect(rest.duration).toBe(model.Duration.Eighth);
+    expect(rest.dots).toBe(1);
+  });
 });
+
+function firstBarBeats(score: Score): model.Beat[] {
+  return toAlphaTab(score).tracks[0].staves[0].bars[0].voices[0].beats;
+}
 
 function scoreWithBeats(beats: Beat[]): Score {
   const score = createEditor().score;

@@ -12,6 +12,10 @@ export interface Note {
 /** Ett slag: en tidpunkt med ett Notvärde. Utan toner är slaget en paus. */
 export interface Beat {
   duration: Duration;
+  /** Punkterat: varar en och en halv gång Notvärdet. Utelämnas när det inte gäller. */
+  dotted?: boolean;
+  /** I triol: tre slag på två slags tid. Utelämnas när det inte gäller. */
+  triplet?: boolean;
   notes: Note[];
 }
 
@@ -38,3 +42,24 @@ export interface Score {
 }
 
 export const STANDARD_TUNING: readonly number[] = [64, 59, 55, 50, 45, 40];
+
+/** Ticks per helnot. Delbart så att även punkterade trioler av trettiotvåondelar blir heltal. */
+const WHOLE_NOTE_TICKS = 3840;
+
+/** Hur länge ett slag varar, i ticks. */
+export function beatTicks(beat: Pick<Beat, "duration" | "dotted" | "triplet">): number {
+  let ticks = WHOLE_NOTE_TICKS / beat.duration;
+  if (beat.dotted) ticks = (ticks * 3) / 2;
+  if (beat.triplet) ticks = (ticks * 2) / 3;
+  return ticks;
+}
+
+/** Hur många ticks en Takt rymmer i taktarten. */
+export function barCapacity(timeSignature: TimeSignature): number {
+  return (timeSignature.beats * WHOLE_NOTE_TICKS) / timeSignature.beatValue;
+}
+
+/** Hur många ticks slagen i en Takt tar upp tillsammans. */
+export function barTicks(bar: Bar): number {
+  return bar.beats.reduce((sum, beat) => sum + beatTicks(beat), 0);
+}

@@ -56,6 +56,11 @@ function toTrack(track: Track): model.Track {
 function toBeat(beat: Beat, stringCount: number): model.Beat {
   const result = new model.Beat();
   result.duration = DURATIONS[beat.duration];
+  if (beat.dotted) result.dots = 1;
+  if (beat.triplet) {
+    result.tupletNumerator = 3;
+    result.tupletDenominator = 2;
+  }
   result.isEmpty = false;
   for (const note of beat.notes) {
     const alphaTabNote = new model.Note();
