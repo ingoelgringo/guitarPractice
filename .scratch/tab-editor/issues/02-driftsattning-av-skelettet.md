@@ -28,4 +28,4 @@ Avvikelser och val att känna till:
 
 **Verifierad 2026-10-02.** Ingo gick igenom alla steg i runbooken. Domänen blev `ingemar.berghult.com` i stället för `guitar.berghult.com`. Första deployen var grön, `guitar-practice` är online i PM2 (cirka 90 MB) och `pm2 save` är kört. En trivial ändring (inledningstext på landningssidan, `33a35fd`) syntes live ungefär en minut efter push. HTTPS är giltigt till 2026-12-31 och förnyas automatiskt, och `/_next/static` serveras med `immutable`.
 
-Öppen uppföljning: servern tar emot lösenordsinloggning för `deploy`. Ingo vill slå av den nu när driftsättningen är klar.
+Uppföljning klar samma dag: SSH tar nu bara emot nycklar, och root-inloggning är avstängd (se `vps-infra/SERVER.md`, "SSH-härdning").
