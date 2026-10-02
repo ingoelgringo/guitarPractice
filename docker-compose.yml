@@ -1,0 +1,18 @@
+# Postgres för lokal utveckling och tester (`docker compose up -d`). Port 5433, så att den inte
+# krockar med en Postgres som redan kör på 5432. I produktion ligger databasen i containern
+# folkbibeln-postgres, se vps-infra/apps/guitar-practice.md.
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: guitarpractice
+      POSTGRES_PASSWORD: guitarpractice
+      POSTGRES_DB: guitarpractice
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+
+volumes:
+  postgres-data:

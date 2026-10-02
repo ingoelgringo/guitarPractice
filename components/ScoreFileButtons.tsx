@@ -20,6 +20,9 @@ function errorMessage(error: ParseError): string {
   }
 }
 
+/** Hur ett annat Partitur tog det nuvarandes plats: ett nytt tomt eller ett från en fil. */
+export type ReplacedBy = "new" | "file";
+
 /**
  * Tunt skal: laddar ner Partituret som Partiturfil, öppnar en Partiturfil från datorn och
  * startar ett nytt tomt Partitur. Har Partituret ändringar som inte är nedladdade frågar den
@@ -27,15 +30,21 @@ function errorMessage(error: ParseError): string {
  */
 export function ScoreFileButtons({
   score,
-  downloaded,
+  nothingToLose,
   onFileMatched,
+  onReplaced,
   dispatch,
 }: {
   score: Score;
-  /** Om Partituret är detsamma som när det senast laddades ner eller öppnades. */
-  downloaded: boolean;
+  /**
+   * Om Partituret kan ersättas utan att något går förlorat: det är detsamma som när det senast
+   * laddades ner eller öppnades, eller som den senast sparade revisionen i Biblioteket.
+   */
+  nothingToLose: boolean;
   /** Anropas när Partituret i Editorn motsvarar en Partiturfil: efter nedladdning, eller när ett annat tar dess plats. */
   onFileMatched: (score: Score) => void;
+  /** Anropas när ett annat Partitur tar det nuvarandes plats: ett nytt tomt eller ett från en fil. */
+  onReplaced: (score: Score, by: ReplacedBy) => void;
   dispatch: (command: Command) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -53,8 +62,9 @@ export function ScoreFileButtons({
     onFileMatched(score);
   }
 
-  function replaceWith(next: Score) {
+  function replaceWith(next: Score, by: ReplacedBy) {
     onFileMatched(next);
+    onReplaced(next, by);
     dispatch({ type: "openScore", score: next });
   }
 
@@ -65,20 +75,20 @@ export function ScoreFileButtons({
       setError(errorMessage(result.error));
       return;
     }
-    if (!downloaded && !confirm("The current score has changes that haven't been downloaded. Open the file anyway?")) {
+    if (!nothingToLose && !confirm("The current score has changes that haven't been downloaded. Open the file anyway?")) {
       return;
     }
-    replaceWith(result.score);
+    replaceWith(result.score, "file");
   }
 
   function startNew() {
-    replaceWith(createEditor().score);
+    replaceWith(createEditor().score, "new");
   }
 
   return (
     <>
       <div className={styles.buttonGroup} role="group" aria-label="Score file">
-        <button type="button" onClick={() => (downloaded ? startNew() : newDialogRef.current?.showModal())}>
+        <button type="button" onClick={() => (nothingToLose ? startNew() : newDialogRef.current?.showModal())}>
           New
         </button>
         <button type="button" onClick={() => inputRef.current?.click()}>

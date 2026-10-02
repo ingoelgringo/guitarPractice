@@ -23,11 +23,16 @@ export default async function Home() {
       {/* Diskret länk för Ägaren. Det finns ingen registrering. */}
       <footer className={styles.footer}>
         {owner ? (
-          <form action="/api/logout" method="post">
-            <button type="submit" className={styles.authLink}>
-              Log out
-            </button>
-          </form>
+          <>
+            <Link href="/library" className={styles.authLink}>
+              Library
+            </Link>
+            <form action="/api/logout" method="post">
+              <button type="submit" className={styles.authLink}>
+                Log out
+              </button>
+            </form>
+          </>
         ) : (
           <Link href="/login" className={styles.authLink}>
             Log in

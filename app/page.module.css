@@ -84,6 +84,30 @@
   cursor: pointer;
 }
 
+.footer form {
+  display: inline;
+}
+
+.footer > * + * {
+  margin-left: 16px;
+}
+
+.library {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.library th,
+.library td {
+  padding: 8px;
+  text-align: left;
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground) 15%, transparent);
+}
+
+.library a {
+  text-decoration: underline;
+}
+
 .error {
   color: #d33;
 }

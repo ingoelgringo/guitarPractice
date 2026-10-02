@@ -11,17 +11,20 @@
     "typecheck": "next typegen && tsc --noEmit",
     "predev": "node scripts/copy-alphatab-assets.mjs",
     "prebuild": "node scripts/copy-alphatab-assets.mjs",
-    "hash-password": "node scripts/hash-password.mjs"
+    "hash-password": "node scripts/hash-password.mjs",
+    "migrate": "node --env-file-if-exists=.env.local scripts/migrate.mjs"
   },
   "dependencies": {
     "@coderline/alphatab": "^1.8.4",
     "bcryptjs": "^3.0.3",
     "next": "16.3.8",
+    "pg": "^8.23.1",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

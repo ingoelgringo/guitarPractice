@@ -13,6 +13,23 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Bibliotekets API testas mot en riktig Postgres, samma version som i produktion.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: guitarpractice
+          POSTGRES_PASSWORD: guitarpractice
+          POSTGRES_DB: guitarpractice_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U guitarpractice"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      TEST_DATABASE_URL: postgres://guitarpractice:guitarpractice@localhost:5432/guitarpractice_test
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { createEditor } from "./editor";
 import type { Score } from "./score";
-import { loadDraft, saveDraft, type DraftStorage } from "./draft";
+import { loadDraft, replacingLosesWork, saveDraft, type DraftStorage } from "./draft";
 import { serialize } from "./scoreFile";
 
 describe("Utkast: sparning och återställning", () => {
@@ -22,13 +22,13 @@ describe("Utkast: sparning och återställning", () => {
     expect(loadDraft(memoryStorage())).toBeNull();
   });
 
-  it("ett Utkast för ett Partitur i Biblioteket bär id och senast kända revision", () => {
+  it("ett Utkast för ett Partitur i Biblioteket bär id, senast kända revision och om det är sparat", () => {
     const storage = memoryStorage();
     const score = createEditor().score;
 
-    saveDraft(storage, { score, downloaded: true, library: { id: "3f2a", revision: 7 } });
+    saveDraft(storage, { score, downloaded: true, library: { id: "3f2a", revision: 7, saved: false } });
 
-    expect(loadDraft(storage)).toEqual({ score, downloaded: true, library: { id: "3f2a", revision: 7 } });
+    expect(loadDraft(storage)).toEqual({ score, downloaded: true, library: { id: "3f2a", revision: 7, saved: false } });
   });
 });
 
@@ -55,6 +55,7 @@ describe("Utkast: sparat av en tidigare version av editorn", () => {
     ["har en Partiturfil från en senare version", JSON.stringify({ itab: JSON.stringify({ format: "itab", schemaVersion: 999, score: {} }), downloaded: true })],
     ["saknar nedladdningsstatus", JSON.stringify({ itab: serialize(createEditor().score) })],
     ["har en trasig Biblioteks-referens", JSON.stringify({ itab: serialize(createEditor().score), downloaded: true, library: { id: 3 } })],
+    ["har en Biblioteks-referens utan sparstatus", JSON.stringify({ itab: serialize(createEditor().score), downloaded: true, library: { id: "3f2a", revision: 7 } })],
   ])("ett Utkast som %s återställs inte", (_, text) => {
     const storage = memoryStorage();
     storage.setItem(KEY, text);
@@ -80,6 +81,23 @@ describe("Utkast: lagringen fungerar inte", () => {
   ])("när lagringen %s går det att spara utan fel men inget återställs", (_, storage) => {
     expect(() => saveDraft(storage, draft)).not.toThrow();
     expect(loadDraft(storage)).toBeNull();
+  });
+});
+
+describe("Utkast: att öppna ett Partitur från Biblioteket i dess ställe", () => {
+  const score = createEditor().score;
+  const target = { id: "3f2a", revision: 7 };
+
+  it.each([
+    ["det inte finns något Utkast", null, false],
+    ["Utkastet är nedladdat", { score, downloaded: true }, false],
+    ["Utkastet inte är nedladdat", { score, downloaded: false }, true],
+    ["Utkastet är sparat i Biblioteket", { score, downloaded: false, library: { id: "9b1c", revision: 2, saved: true } }, false],
+    ["Utkastet har osparade ändringar i Biblioteket", { score, downloaded: true, library: { id: "9b1c", revision: 2, saved: false } }, true],
+    ["Utkastet är samma revision med osparade ändringar", { score, downloaded: true, library: { ...target, saved: false } }, false],
+    ["Utkastet är en äldre revision med osparade ändringar", { score, downloaded: true, library: { ...target, revision: 6, saved: false } }, true],
+  ])("går arbete förlorat när %s: %s", (_, draft, expected) => {
+    expect(replacingLosesWork(draft, target)).toBe(expected);
   });
 });
 

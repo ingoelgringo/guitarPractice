@@ -9,11 +9,29 @@ export type Draft = {
   score: Score;
   /** Om Partituret är detsamma som när det senast laddades ner eller öppnades från en fil. */
   downloaded: boolean;
-  /** Finns när Partituret ligger i Biblioteket: dess id och den senast kända revisionen. */
+  /** Finns när Partituret ligger i Biblioteket. */
   library?: LibraryRef;
 };
 
-export type LibraryRef = { id: string; revision: number };
+export type LibraryRef = {
+  id: string;
+  /** Den senast kända revisionen i Biblioteket. */
+  revision: number;
+  /** Om Partituret är detsamma som den revisionen. */
+  saved: boolean;
+};
+
+/**
+ * Sant om Utkastet har ändringar som går förlorade när ett Partitur från Biblioteket tar dess
+ * plats: de är varken nedladdade eller sparade. Är Utkastet redan samma revision av samma
+ * Partitur behåller editorn det, och då går inget förlorat.
+ */
+export function replacingLosesWork(draft: Draft | null, target: { id: string; revision: number }): boolean {
+  if (!draft) return false;
+  if (!draft.library) return !draft.downloaded;
+  if (draft.library.saved) return false;
+  return !(draft.library.id === target.id && draft.library.revision === target.revision);
+}
 
 /** Den del av `localStorage` som Utkastet använder. */
 export type DraftStorage = Pick<Storage, "getItem" | "setItem">;
@@ -72,10 +90,17 @@ function readDraft(text: string): Draft | null {
   if (!result.ok) return null;
   if (data.library === undefined) return { score: result.score, downloaded: data.downloaded };
   const library = data.library;
-  if (!isRecord(library) || typeof library.id !== "string" || !Number.isInteger(library.revision)) return null;
+  if (
+    !isRecord(library) ||
+    typeof library.id !== "string" ||
+    !Number.isInteger(library.revision) ||
+    typeof library.saved !== "boolean"
+  ) {
+    return null;
+  }
   return {
     score: result.score,
     downloaded: data.downloaded,
-    library: { id: library.id, revision: library.revision as number },
+    library: { id: library.id, revision: library.revision as number, saved: library.saved },
   };
 }
