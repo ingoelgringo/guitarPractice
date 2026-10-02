@@ -4,16 +4,16 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-human
+**Status:** ready-for-agent
 
-- [ ] Kodrepot har en GitHub-remote (issue tracker förblir lokal markdown).
+- [x] Kodrepot har en GitHub-remote (issue tracker förblir lokal markdown).
 - [x] GitHub Actions har ett test-jobb som kör alla Vitest-tester, och ett deploy-jobb som bara körs när testerna är gröna.
 - [x] Deploy-jobbet bygger `standalone` i CI, skickar resultatet med `rsync` och kör `pm2 restart guitar-practice` på servern. Inget `npm ci` och ingen build sker på servern.
 - [x] PM2-processen `guitar-practice` kör på port 3004 med `max_memory_restart: '250M'` och loggar under `~/logs/`.
 - [x] Nginx proxar till 3004 och serverar `/_next/static` direkt från disk med lång `immutable`-cachning.
-- [ ] Certbot ger HTTPS för `ingemar.berghult.com`, och A-recordet pekar mot servern.
+- [x] Certbot ger HTTPS för `ingemar.berghult.com`, och A-recordet pekar mot servern.
 - [x] I `vps-infra` finns `apps/guitar-practice.md`, och rader är tillagda i tabellerna i `SERVER.md` och `README.md`. Bygget i CI med `rsync` är dokumenterat som avvikelse.
-- [ ] Hela kedjan är verifierad: en trivial ändring på `main` syns live.
+- [x] Hela kedjan är verifierad: en trivial ändring på `main` syns live.
 
 ## Comments
 
@@ -25,3 +25,7 @@ Avvikelser och val att känna till:
 - Test-jobbet kör även `npm run typecheck`.
 - Standalone-bygget är verifierat lokalt: `/`, `/tab-editor`, en chunk och ett alphaTab-typsnitt svarar 200 från `server.js`. Workflowen har inte körts i GitHub Actions än.
 - Soundfont från disk (09), `limit_req` på inloggningen (14) och databas och backup (18) är medvetet utskjutna.
+
+**Verifierad 2026-10-02.** Ingo gick igenom alla steg i runbooken. Domänen blev `ingemar.berghult.com` i stället för `guitar.berghult.com`. Första deployen var grön, `guitar-practice` är online i PM2 (cirka 90 MB) och `pm2 save` är kört. En trivial ändring (inledningstext på landningssidan, `33a35fd`) syntes live ungefär en minut efter push. HTTPS är giltigt till 2026-12-31 och förnyas automatiskt, och `/_next/static` serveras med `immutable`.
+
+Öppen uppföljning: servern tar emot lösenordsinloggning för `deploy`. Ingo vill slå av den nu när driftsättningen är klar.
