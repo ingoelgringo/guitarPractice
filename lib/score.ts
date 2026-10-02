@@ -3,6 +3,9 @@
 /** Notvärde som nämnare: 1 = helnot, 4 = fjärdedel, 32 = trettiotvåondel. */
 export type Duration = 1 | 2 | 4 | 8 | 16 | 32;
 
+/** Notvärdena från längst till kortast. */
+export const DURATIONS: readonly Duration[] = [1, 2, 4, 8, 16, 32];
+
 /** En ton i tabben. Sträng 1 är den ljusaste (ljusa e i standardstämning). */
 export interface Note {
   string: number;
@@ -64,6 +67,28 @@ export interface Score {
 }
 
 export const STANDARD_TUNING: readonly number[] = [64, 59, 55, 50, 45, 40];
+
+// Gränserna för ett giltigt Partitur. Editorn håller sig inom dem, och Partiturfilen avvisar
+// filer utanför dem. De är därför en del av filformatet: en snävare gräns gör gamla filer
+// oläsbara och kräver en ny schemaVersion med en migrering (se scoreFile.ts).
+
+/** Det högsta band som går att skriva eller sätta Capo på. */
+export const MAX_FRET = 24;
+
+/** Det lägsta och högsta starttempot i BPM. */
+export const MIN_TEMPO = 20;
+export const MAX_TEMPO = 400;
+
+/** Det lägsta och högsta antalet slag i en taktart. */
+export const MIN_TIME_SIGNATURE_BEATS = 1;
+export const MAX_TIME_SIGNATURE_BEATS = 32;
+
+/** De Notvärden som en taktarts slag kan ha, t.ex. 8 i 6/8. */
+export const TIME_SIGNATURE_BEAT_VALUES: readonly Duration[] = [2, 4, 8, 16];
+
+/** Den lägsta och högsta MIDI-tonhöjd som en lös sträng kan ha. */
+export const MIN_PITCH = 0;
+export const MAX_PITCH = 127;
 
 /** Ticks per helnot. Delbart så att även punkterade trioler av trettiotvåondelar blir heltal. */
 const WHOLE_NOTE_TICKS = 3840;

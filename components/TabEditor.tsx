@@ -4,6 +4,7 @@ import { useEffect, useMemo, useReducer } from "react";
 import { apply, createEditor } from "@/lib/editor";
 import { keyToCommand, SHORTCUTS } from "@/lib/keyboard";
 import { invalidBars } from "@/lib/validation";
+import { ScoreFileButtons } from "./ScoreFileButtons";
 import { ScoreSettings } from "./ScoreSettings";
 import { ScoreView } from "./ScoreView";
 import styles from "./TabEditor.module.css";
@@ -47,7 +48,10 @@ export function TabEditor() {
           </tbody>
         </table>
       </details>
-      <ViewModePicker viewMode={state.score.viewMode} dispatch={dispatch} />
+      <div className={styles.toolbar}>
+        <ScoreFileButtons score={state.score} dispatch={dispatch} />
+        <ViewModePicker viewMode={state.score.viewMode} dispatch={dispatch} />
+      </div>
       <ScoreView score={state.score} cursor={state.cursor} invalidBars={barProblems} />
     </div>
   );

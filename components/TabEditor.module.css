@@ -161,18 +161,25 @@
   width: 4em;
 }
 
-/* Väljaren för Vy-läge, ovanför Sidan */
-.viewModes {
+/* Verktygsraden ovanför Sidan: Partiturfil och Vy-läge */
+.toolbar {
   display: flex;
-  width: fit-content;
-  margin: 0 auto 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+/* En rad sammanhängande knappar, t.ex. väljaren för Vy-läge */
+.buttonGroup {
+  display: flex;
   border-radius: 6px;
   box-shadow: 0 2px 12px rgb(0 0 0 / 0.2);
   overflow: hidden;
   font-size: 13px;
 }
 
-.viewModes button {
+.buttonGroup button {
   padding: 6px 12px;
   border: 0;
   background: var(--background);
@@ -181,11 +188,37 @@
   cursor: pointer;
 }
 
-.viewModes button + button {
+.buttonGroup button + button {
   border-left: 1px solid color-mix(in srgb, var(--foreground) 20%, transparent);
 }
 
-.viewModes button[aria-pressed="true"] {
+.buttonGroup button[aria-pressed="true"] {
   background: #1e6fd9;
   color: #fff;
+}
+
+/* Ett fel när en Partiturfil inte gick att öppna, på en egen rad sist i verktygsraden */
+.fileError {
+  order: 1;
+  display: flex;
+  flex-basis: 100%;
+  align-items: start;
+  justify-content: center;
+  gap: 8px;
+  max-width: 210mm;
+  margin: 0 auto;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #d93025;
+  color: #fff;
+  font-size: 13px;
+}
+
+.fileError button {
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
 }

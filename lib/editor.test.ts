@@ -780,6 +780,19 @@ describe("Vy-läge", () => {
   );
 });
 
+describe("öppna ett Partitur", () => {
+  it("ersätter Partituret, ställer markören först och börjar om historiken", () => {
+    const opened = apply(createEditor(), { type: "setMetadata", metadata: { title: "Opened" } }).score;
+    const before = run(createEditor(), [...quarters(3), { type: "moveCursor", direction: "down" }]);
+
+    const state = apply(before, { type: "openScore", score: opened });
+
+    expect(state.score).toBe(opened);
+    expect(state.cursor).toEqual({ track: 0, bar: 0, beat: 0, string: 1 });
+    expect(apply(state, { type: "undo" }).score).toBe(opened);
+  });
+});
+
 /** Skriver `count` fjärdedelar på rad och står kvar på den sista. */
 function quarters(count: number): Command[] {
   return Array.from({ length: count }, (_, i) => [

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type InputHTMLAttributes } from "react";
+import type { Command } from "@/lib/editor";
 import {
   MAX_FRET,
   MAX_TEMPO,
@@ -8,9 +9,10 @@ import {
   MIN_TEMPO,
   MIN_TIME_SIGNATURE_BEATS,
   TIME_SIGNATURE_BEAT_VALUES,
-  type Command,
-} from "@/lib/editor";
-import type { Duration, Metadata, Score } from "@/lib/score";
+  type Duration,
+  type Metadata,
+  type Score,
+} from "@/lib/score";
 import { findTuningPreset, noteName, TUNING_PRESETS } from "@/lib/tuning";
 import styles from "./TabEditor.module.css";
 

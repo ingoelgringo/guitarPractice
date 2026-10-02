@@ -1,4 +1,17 @@
-import { barCapacity, barTicks, beatTicks, STANDARD_TUNING, type Bar, type Beat, type Duration, type Metadata, type Note, type Score, type TimeSignature, type Track, VIEW_MODES, type ViewMode } from "./score";
+import {
+  barCapacity,
+  barTicks,
+  beatTicks,
+  DURATIONS,
+  MAX_FRET,
+  MAX_PITCH,
+  MAX_TEMPO,
+  MAX_TIME_SIGNATURE_BEATS,
+  MIN_PITCH,
+  MIN_TEMPO,
+  MIN_TIME_SIGNATURE_BEATS,
+  STANDARD_TUNING,
+  TIME_SIGNATURE_BEAT_VALUES, type Bar, type Beat, type Duration, type Metadata, type Note, type Score, type TimeSignature, type Track, VIEW_MODES, type ViewMode } from "./score";
 
 export interface Cursor {
   track: number;
@@ -41,27 +54,6 @@ interface History {
 /** Hur länge (ms) efter en siffra som nästa siffra slås ihop med den till ett tvåsiffrigt band. */
 export const TWO_DIGIT_WINDOW_MS = 1000;
 
-/** Det högsta band som går att skriva eller sätta Capo på. */
-export const MAX_FRET = 24;
-
-/** Det lägsta och högsta starttempot i BPM. */
-export const MIN_TEMPO = 20;
-export const MAX_TEMPO = 400;
-
-/** Det lägsta och högsta antalet slag i en taktart. */
-export const MIN_TIME_SIGNATURE_BEATS = 1;
-export const MAX_TIME_SIGNATURE_BEATS = 32;
-
-/** De Notvärden som en taktarts slag kan ha, t.ex. 8 i 6/8. */
-export const TIME_SIGNATURE_BEAT_VALUES: readonly Duration[] = [2, 4, 8, 16];
-
-/** Den lägsta och högsta MIDI-tonhöjd som en lös sträng kan ha. */
-export const MIN_PITCH = 0;
-export const MAX_PITCH = 127;
-
-/** Notvärdena från längst till kortast. */
-const DURATIONS: readonly Duration[] = [1, 2, 4, 8, 16, 32];
-
 export type Direction = "up" | "down" | "left" | "right";
 
 export type Command =
@@ -90,24 +82,31 @@ export type Command =
   | { type: "setTimeSignature"; timeSignature: TimeSignature }
   /** Byter Vy-läge. Inmatningen är tab-först i alla lägen. */
   | { type: "setViewMode"; viewMode: ViewMode }
+  /** Byter Partituret i Editorn mot ett annat, t.ex. en öppnad Partiturfil. Historiken börjar om. */
+  | { type: "openScore"; score: Score }
   | { type: "undo" }
   | { type: "redo" };
 
 export function createEditor(): EditorState {
+  return editorFor({
+    metadata: { title: "", subtitle: "", artist: "", tabbedBy: "" },
+    viewMode: "scoreAndTab",
+    tempo: 120,
+    timeSignature: { beats: 4, beatValue: 4 },
+    tracks: [
+      {
+        tuning: [...STANDARD_TUNING],
+        capo: 0,
+        bars: [{ beats: [{ duration: 4, notes: [] }] }],
+      },
+    ],
+  });
+}
+
+/** En Editor för `score` med markören först och tom historik. */
+function editorFor(score: Score): EditorState {
   return {
-    score: {
-      metadata: { title: "", subtitle: "", artist: "", tabbedBy: "" },
-      viewMode: "scoreAndTab",
-      tempo: 120,
-      timeSignature: { beats: 4, beatValue: 4 },
-      tracks: [
-        {
-          tuning: [...STANDARD_TUNING],
-          capo: 0,
-          bars: [{ beats: [{ duration: 4, notes: [] }] }],
-        },
-      ],
-    },
+    score,
     cursor: { track: 0, bar: 0, beat: 0, string: 1 },
     pendingDigit: null,
     history: { undo: [], redo: [] },
@@ -117,6 +116,7 @@ export function createEditor(): EditorState {
 export function apply(state: EditorState, command: Command): EditorState {
   if (command.type === "undo") return undo(state);
   if (command.type === "redo") return redo(state);
+  if (command.type === "openScore") return editorFor(command.score);
   if (command.type === "typeDigit") return typeDigit(state, command.digit, command.time);
   // Alla andra kommandon bryter ett påbörjat tvåsiffrigt band
   return record(state, { ...applyCommand(state, command), pendingDigit: null });
@@ -172,7 +172,7 @@ function snapshot({ score, cursor }: EditorState): Snapshot {
 
 function applyCommand(
   state: EditorState,
-  command: Exclude<Command, { type: "typeDigit" | "undo" | "redo" }>,
+  command: Exclude<Command, { type: "typeDigit" | "undo" | "redo" | "openScore" }>,
 ): EditorState {
   switch (command.type) {
     case "enterFret":

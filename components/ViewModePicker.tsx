@@ -16,7 +16,7 @@ const LABELS: Record<ViewMode, string> = {
  */
 export function ViewModePicker({ viewMode, dispatch }: { viewMode: ViewMode; dispatch: (command: Command) => void }) {
   return (
-    <div className={styles.viewModes} role="group" aria-label="View mode">
+    <div className={styles.buttonGroup} role="group" aria-label="View mode">
       {VIEW_MODES.map((mode) => (
         <button
           key={mode}
