@@ -91,6 +91,8 @@ export function ScoreView({
     settings.core.useWorkers = false;
     settings.core.engine = "svg";
     settings.display.layoutMode = LayoutMode.Page;
+    // Utskriften visar alla Sidor, så alla system ska vara ritade och inte bara de som syns
+    settings.core.enableLazyLoading = false;
     configureStaves(settings);
     settings.core.scriptFile = new URL(SCRIPT_FILE, location.href).href;
     settings.player.playerMode = PlayerMode.EnabledSynthesizer;

@@ -15,6 +15,12 @@ import { ScoreView } from "./ScoreView";
 import styles from "./TabEditor.module.css";
 import { ViewModePicker } from "./ViewModePicker";
 
+/**
+ * Smal skärm eller pekenhet: Partituret går att visa och spela upp men inte redigera. Samma fråga
+ * som i TabEditor.module.css, som döljer redigeringsverktygen.
+ */
+const VIEW_ONLY_MEDIA = "(max-width: 640px), (pointer: coarse)";
+
 export function TabEditor() {
   // Editorn renderas bara i webbläsaren, så Utkastet kan läsas redan när den skapas
   const [restored] = useState(() => loadDraft(browserStorage()));
@@ -67,6 +73,7 @@ export function TabEditor() {
       if (target?.closest("input, textarea, [contenteditable]")) return;
       // En öppen dialog är modal, så Partituret bakom den ändras inte
       if (document.querySelector("dialog[open]")) return;
+      if (matchMedia(VIEW_ONLY_MEDIA).matches) return;
       const command = keyToCommand(event);
       if (!command) return;
       // I en rullgardin styr tangenterna rullgardinen, men ångra och gör om gäller Partituret
@@ -109,8 +116,16 @@ export function TabEditor() {
           onFileMatched={(score) => setFileText(serialize(score))}
           dispatch={dispatch}
         />
-        <ViewModePicker viewMode={state.score.viewMode} dispatch={dispatch} />
-        <BarButtons dispatch={dispatch} />
+        <div className={styles.editTools}>
+          <ViewModePicker viewMode={state.score.viewMode} dispatch={dispatch} />
+          <BarButtons dispatch={dispatch} />
+        </div>
+        <div className={styles.buttonGroup}>
+          {/* Print-CSS:en i TabEditor.module.css lämnar bara Sidorna kvar */}
+          <button type="button" onClick={() => window.print()}>
+            Print…
+          </button>
+        </div>
         <p className={styles.draftNotice} role="note">
           Your work is saved as a draft in this browser only. Download the score to keep a safe copy.
         </p>

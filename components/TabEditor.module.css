@@ -6,13 +6,17 @@
   background: color-mix(in srgb, var(--foreground) 8%, var(--background));
 }
 
-/* En A4-Sida: 210 × 297 mm, alltid vit som papper */
+/*
+ * En A4-Sida: 210 × 297 mm med 15 mm marginal, alltid vit som papper. På en smalare skärm krymper
+ * den med samma proportioner, och alphaTab bryter raderna efter bredden.
+ */
 .page {
   position: relative;
-  width: 210mm;
-  min-height: 297mm;
+  --page-width: min(210mm, 100%);
+  width: var(--page-width);
+  aspect-ratio: 210 / 297;
   margin: 0 auto;
-  padding: 15mm;
+  padding: calc(var(--page-width) * 15 / 210);
   background: #fff;
   color: #000;
   box-shadow: 0 2px 12px rgb(0 0 0 / 0.2);
@@ -55,10 +59,12 @@
   background: rgb(255 140 0 / 0.8);
 }
 
-/* Tonerna som klingar just nu */
-.page :global(.at-highlight *) {
-  fill: #e67700;
-  stroke: #e67700;
+/* Tonerna som klingar just nu. På papper är allt svart, även mitt i en uppspelning. */
+@media screen {
+  .page :global(.at-highlight *) {
+    fill: #e67700;
+    stroke: #e67700;
+  }
 }
 
 /* Markeringen: slagen som kopieras eller tas bort */
@@ -378,4 +384,68 @@
   font-size: 16px;
   line-height: 1;
   cursor: pointer;
+}
+
+/* Verktygen som ändrar Partituret, i verktygsraden. Grupperingen påverkar inte layouten. */
+.editTools {
+  display: contents;
+}
+
+/*
+ * Mobil: på en smal skärm eller pekenhet går det att visa och spela upp ett Partitur men inte
+ * redigera det. Partiturfilen och utskriften finns kvar. Samma fråga som VIEW_ONLY_MEDIA i TabEditor.tsx.
+ */
+@media (max-width: 640px), (pointer: coarse) {
+  .settings,
+  .help,
+  .editTools {
+    display: none;
+  }
+}
+
+/*
+ * Utskrift: bara Sidorna, med alphaTabs system i flödet så att sidbrytningen hamnar mellan dem.
+ * Marginalerna och A4-formatet kommer från @page i globals.css.
+ */
+@media print {
+  .editor {
+    height: auto;
+    padding: 0;
+    overflow: visible;
+    background: none;
+  }
+
+  .editor > :not(.page),
+  .cursor,
+  .selection,
+  .invalidBar {
+    display: none;
+  }
+
+  /* Spelmarkören. alphaTab sätter display som inline-stil. */
+  .page :global(.at-cursors) {
+    display: none !important;
+  }
+
+  .page {
+    width: auto;
+    aspect-ratio: auto;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  /* Som alphaTabs egen utskrift: ytan får sin naturliga höjd och varje system hålls ihop */
+  .page :global(.at-surface) {
+    width: auto !important;
+    height: auto !important;
+  }
+
+  .page :global(.at-surface > div) {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    /* Block i stället för alphaTabs inline-block, så att break-inside gäller i alla webbläsare */
+    display: block !important;
+    break-inside: avoid;
+  }
 }
