@@ -1,4 +1,4 @@
-import { barCapacity, barTicks, beatTicks, STANDARD_TUNING, type Bar, type Beat, type Duration, type Score } from "./score";
+import { barCapacity, barTicks, beatTicks, STANDARD_TUNING, type Bar, type Beat, type Duration, type Note, type Score } from "./score";
 
 export interface Cursor {
   track: number;
@@ -11,8 +11,31 @@ export interface Cursor {
 export interface EditorState {
   score: Score;
   cursor: Cursor;
-  /** Den senast skrivna siffran, som nästa siffra kan bilda ett tvåsiffrigt band med. */
-  pendingDigit: { digit: number; time: number } | null;
+  /**
+   * Den senast skrivna siffran, som nästa siffra kan bilda ett tvåsiffrigt band med.
+   * `recorded` säger om siffran blev en egen ändring i historiken.
+   */
+  pendingDigit: { digit: number; time: number; recorded: boolean } | null;
+  history: History;
+}
+
+/** Ett läge att återvända till med ångra eller gör om. */
+interface Snapshot {
+  score: Score;
+  cursor: Cursor;
+}
+
+/** En ändring av Partituret: lägena före och efter. */
+interface Change {
+  before: Snapshot;
+  after: Snapshot;
+}
+
+interface History {
+  /** Ändringarna som går att ångra, äldst först. */
+  undo: Change[];
+  /** Ändringarna som ångrats, den senast ångrade sist. */
+  redo: Change[];
 }
 
 /** Hur länge (ms) efter en siffra som nästa siffra slås ihop med den till ett tvåsiffrigt band. */
@@ -35,7 +58,13 @@ export type Command =
   | { type: "toggleDot" }
   | { type: "toggleTriplet" }
   /** Gör slaget under markören till en paus och går vidare till nästa slag. */
-  | { type: "insertRest" };
+  | { type: "insertRest" }
+  /** Tar bort tonen på markörens sträng i slaget under markören. */
+  | { type: "deleteNote" }
+  /** Tar bort slaget under markören. En Takt behåller alltid minst ett slag. */
+  | { type: "deleteBeat" }
+  | { type: "undo" }
+  | { type: "redo" };
 
 export function createEditor(): EditorState {
   return {
@@ -50,16 +79,70 @@ export function createEditor(): EditorState {
     },
     cursor: { track: 0, bar: 0, beat: 0, string: 1 },
     pendingDigit: null,
+    history: { undo: [], redo: [] },
   };
 }
 
 export function apply(state: EditorState, command: Command): EditorState {
+  if (command.type === "undo") return undo(state);
+  if (command.type === "redo") return redo(state);
   if (command.type === "typeDigit") return typeDigit(state, command.digit, command.time);
   // Alla andra kommandon bryter ett påbörjat tvåsiffrigt band
-  return { ...applyCommand(state, command), pendingDigit: null };
+  return record(state, { ...applyCommand(state, command), pendingDigit: null });
 }
 
-function applyCommand(state: EditorState, command: Exclude<Command, { type: "typeDigit" }>): EditorState {
+/**
+ * Lägger ett kommando i historiken som en ändring om det ändrade Partituret, och rensar då
+ * det som gick att göra om. Kommandon som lämnar Partituret som det var lämnar historiken orörd.
+ */
+function record(before: EditorState, after: EditorState): EditorState {
+  if (equal(after.score, before.score)) return { ...after, score: before.score };
+  const change = { before: snapshot(before), after: snapshot(after) };
+  return { ...after, history: { undo: [...before.history.undo, change], redo: [] } };
+}
+
+function undo(state: EditorState): EditorState {
+  const { undo, redo } = state.history;
+  const change = undo.at(-1);
+  if (!change) return { ...state, pendingDigit: null };
+  return {
+    ...change.before,
+    pendingDigit: null,
+    history: { undo: undo.slice(0, -1), redo: [...redo, change] },
+  };
+}
+
+function redo(state: EditorState): EditorState {
+  const { undo, redo } = state.history;
+  const change = redo.at(-1);
+  if (!change) return { ...state, pendingDigit: null };
+  return {
+    ...change.after,
+    pendingDigit: null,
+    history: { undo: [...undo, change], redo: redo.slice(0, -1) },
+  };
+}
+
+/** Jämför två JSON-liknande värden, som Partitur, på innehåll. */
+function equal(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false;
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  return (
+    keysA.length === keysB.length &&
+    keysA.every((key) => Object.hasOwn(b, key) && equal(a[key as keyof typeof a], b[key as keyof typeof b]))
+  );
+}
+
+function snapshot({ score, cursor }: EditorState): Snapshot {
+  return { score, cursor };
+}
+
+function applyCommand(
+  state: EditorState,
+  command: Exclude<Command, { type: "typeDigit" | "undo" | "redo" }>,
+): EditorState {
   switch (command.type) {
     case "enterFret":
       return enterFret(state, command.fret);
@@ -80,6 +163,12 @@ function applyCommand(state: EditorState, command: Exclude<Command, { type: "typ
         }),
         { force: true },
       );
+    case "deleteNote":
+      return updateBeat(state, (beat) => {
+        beat.notes = withoutNoteOn(beat, state.cursor.string);
+      });
+    case "deleteBeat":
+      return deleteBeat(state);
   }
 }
 
@@ -124,16 +213,53 @@ function typeDigit(state: EditorState, digit: number, time: number): EditorState
   const pending = state.pendingDigit;
   if (pending && time - pending.time <= TWO_DIGIT_WINDOW_MS) {
     const combined = pending.digit * 10 + digit;
-    if (combined <= MAX_FRET) return { ...enterFret(state, combined), pendingDigit: null };
+    if (combined <= MAX_FRET) {
+      const next = { ...enterFret(state, combined), pendingDigit: null };
+      // Den andra siffran hör till samma ändring som den första och ångras tillsammans med den
+      return pending.recorded ? extendLastChange(next) : record(state, next);
+    }
   }
-  return { ...enterFret(state, digit), pendingDigit: { digit, time } };
+  const next = record(state, { ...enterFret(state, digit), pendingDigit: null });
+  return { ...next, pendingDigit: { digit, time, recorded: next.history !== state.history } };
+}
+
+/**
+ * Låter den senaste ändringen i historiken sluta i `state` i stället. Leder den då tillbaka
+ * till där den började tas den bort.
+ */
+function extendLastChange(state: EditorState): EditorState {
+  const undo = state.history.undo.slice(0, -1);
+  const { before } = state.history.undo[undo.length];
+  if (equal(before.score, state.score)) return { ...state, history: { ...state.history, undo } };
+  return { ...state, history: { ...state.history, undo: [...undo, { before, after: snapshot(state) }] } };
+}
+
+/** Slagets toner utom den på `string`. */
+function withoutNoteOn(beat: Beat, string: number): Note[] {
+  return beat.notes.filter((n) => n.string !== string);
 }
 
 function enterFret(state: EditorState, fret: number): EditorState {
   const { cursor } = state;
   const score = structuredClone(state.score);
-  barAt(score, cursor).beats[cursor.beat].notes = [{ string: cursor.string, fret }];
+  const beat = barAt(score, cursor).beats[cursor.beat];
+  // Toner på andra strängar ligger kvar, så att flera toner i samma slag bygger ett ackord
+  beat.notes = [...withoutNoteOn(beat, cursor.string), { string: cursor.string, fret }].sort(
+    (a, b) => a.string - b.string,
+  );
   return { ...state, score };
+}
+
+function deleteBeat(state: EditorState): EditorState {
+  const { cursor } = state;
+  const score = structuredClone(state.score);
+  const beats = barAt(score, cursor).beats;
+  if (beats.length === 1) {
+    beats[0] = emptyBeatLike(beats[0]);
+    return { ...state, score };
+  }
+  beats.splice(cursor.beat, 1);
+  return { ...state, score, cursor: { ...cursor, beat: Math.min(cursor.beat, beats.length - 1) } };
 }
 
 function moveCursor(state: EditorState, direction: Direction): EditorState {

@@ -95,6 +95,38 @@ describe("toAlphaTab", () => {
     expect(rest.duration).toBe(model.Duration.Eighth);
     expect(rest.dots).toBe(1);
   });
+
+  it("ett ackord blir ett slag med en ton per sträng, med rätt band i tabben och tonhöjd i notsystemet", () => {
+    // C-dur i första läget: x32010
+    const [chord] = firstBarBeats(
+      scoreWithBeats([
+        {
+          duration: 2,
+          notes: [
+            { string: 1, fret: 0 },
+            { string: 2, fret: 1 },
+            { string: 3, fret: 0 },
+            { string: 4, fret: 2 },
+            { string: 5, fret: 3 },
+          ],
+        },
+      ]),
+    );
+
+    expect(chord.isRest).toBe(false);
+    expect(chord.duration).toBe(model.Duration.Half);
+    const notes = [...chord.notes].sort((a, b) => a.realValue - b.realValue);
+    // C3 = 48, E3 = 52, G3 = 55, C4 = 60, E4 = 64
+    expect(notes.map((n) => n.realValue)).toEqual([48, 52, 55, 60, 64]);
+    // alphaTab numrerar strängar från den grövsta: vår sträng 5 är alphaTabs sträng 2
+    expect(notes.map((n) => [n.string, n.fret])).toEqual([
+      [2, 3],
+      [3, 2],
+      [4, 0],
+      [5, 1],
+      [6, 0],
+    ]);
+  });
 });
 
 function firstBarBeats(score: Score): model.Beat[] {

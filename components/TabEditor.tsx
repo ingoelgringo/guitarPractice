@@ -13,9 +13,8 @@ export function TabEditor() {
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (event.ctrlKey || event.metaKey || event.altKey) return;
       if (event.target instanceof HTMLElement && event.target.closest("input, textarea, select, [contenteditable]")) return;
-      const command = keyToCommand(event.key, event.timeStamp);
+      const command = keyToCommand(event);
       if (!command) return;
       event.preventDefault();
       dispatch(command);

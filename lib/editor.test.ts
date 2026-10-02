@@ -264,8 +264,6 @@ describe("tvåsiffriga band", () => {
     const state = run(createEditor(), commands);
     return state.score.tracks[0].bars[0].beats[0].notes[0]?.fret;
   };
-  const digit = (value: number, time: number) => ({ type: "typeDigit", digit: value, time }) as const;
-
   it("en siffra ensam blir ett band", () => {
     expect(fretAfter([digit(7, 0)])).toBe(7);
   });
@@ -315,12 +313,325 @@ describe("tvåsiffriga band", () => {
   });
 });
 
+describe("ackord", () => {
+  it("ett band på en annan sträng i samma slag bygger ett ackord", () => {
+    const state = run(createEditor(), [
+      { type: "enterFret", fret: 0 },
+      { type: "moveCursor", direction: "down" },
+      { type: "enterFret", fret: 1 },
+      { type: "moveCursor", direction: "down" },
+      { type: "enterFret", fret: 0 },
+    ]);
+
+    expect(beatsOf(state)).toEqual([
+      {
+        duration: 4,
+        notes: [
+          { string: 1, fret: 0 },
+          { string: 2, fret: 1 },
+          { string: 3, fret: 0 },
+        ],
+      },
+    ]);
+  });
+
+  it("ett band på en sträng som redan har en ton i slaget ersätter tonen", () => {
+    const state = run(createEditor(), [
+      { type: "enterFret", fret: 3 },
+      { type: "moveCursor", direction: "down" },
+      { type: "enterFret", fret: 2 },
+      { type: "enterFret", fret: 5 },
+    ]);
+
+    expect(beatsOf(state)[0].notes).toEqual([
+      { string: 1, fret: 3 },
+      { string: 2, fret: 5 },
+    ]);
+  });
+
+  it("tonerna i ett ackord ligger i strängordning oavsett i vilken ordning de skrevs", () => {
+    const state = run(createEditor(), [
+      { type: "moveCursor", direction: "down" },
+      { type: "moveCursor", direction: "down" },
+      { type: "enterFret", fret: 2 },
+      { type: "moveCursor", direction: "up" },
+      { type: "moveCursor", direction: "up" },
+      { type: "enterFret", fret: 0 },
+    ]);
+
+    expect(beatsOf(state)[0].notes.map((n) => n.string)).toEqual([1, 3]);
+  });
+
+  it("ett tvåsiffrigt band i ett ackord rör inte de andra strängarna", () => {
+    const state = run(createEditor(), [
+      { type: "enterFret", fret: 0 },
+      { type: "moveCursor", direction: "down" },
+      digit(1, 0),
+      digit(2, 100),
+    ]);
+
+    expect(beatsOf(state)[0].notes).toEqual([
+      { string: 1, fret: 0 },
+      { string: 2, fret: 12 },
+    ]);
+  });
+});
+
+describe("ta bort", () => {
+  it("att ta bort en ton tar bara bort tonen på markörens sträng", () => {
+    const state = run(createEditor(), [
+      { type: "enterFret", fret: 0 },
+      { type: "moveCursor", direction: "down" },
+      { type: "enterFret", fret: 1 },
+      { type: "deleteNote" },
+    ]);
+
+    expect(beatsOf(state)).toEqual([{ duration: 4, notes: [{ string: 1, fret: 0 }] }]);
+    expect(state.cursor).toEqual({ track: 0, bar: 0, beat: 0, string: 2 });
+  });
+
+  it("när sista tonen tas bort blir slaget en paus med samma Notvärde", () => {
+    const state = run(createEditor(), [
+      { type: "setDuration", duration: 8 },
+      { type: "toggleDot" },
+      { type: "enterFret", fret: 5 },
+      { type: "deleteNote" },
+    ]);
+
+    expect(beatsOf(state)).toEqual([{ duration: 8, dotted: true, notes: [] }]);
+  });
+
+  it("att ta bort ett slag flyttar de följande slagen bakåt, och markören hamnar på nästa slag", () => {
+    const state = run(createEditor(), [
+      ...quarters(3),
+      { type: "moveCursor", direction: "left" },
+      { type: "deleteBeat" },
+    ]);
+
+    expect(beatsOf(state).map((b) => b.notes[0].fret)).toEqual([0, 2]);
+    expect(state.cursor.beat).toBe(1);
+  });
+
+  it("att ta bort det sista slaget i en Takt flyttar markören till slaget före", () => {
+    const state = run(createEditor(), [...quarters(3), { type: "deleteBeat" }]);
+
+    expect(beatsOf(state).map((b) => b.notes[0].fret)).toEqual([0, 1]);
+    expect(state.cursor.beat).toBe(1);
+  });
+
+  it("en Takt behåller alltid ett slag: tas det enda bort blir det en paus med samma Notvärde", () => {
+    const state = run(createEditor(), [
+      { type: "setDuration", duration: 2 },
+      { type: "enterFret", fret: 5 },
+      { type: "deleteBeat" },
+    ]);
+
+    expect(beatsOf(state)).toEqual([{ duration: 2, notes: [] }]);
+    expect(state.cursor.beat).toBe(0);
+  });
+
+  it("att ta bort ett slag rör inte andra Takter", () => {
+    const state = run(createEditor(), [
+      ...quarters(5),
+      { type: "deleteBeat" },
+    ]);
+
+    expect(beatsOf(state, 0).map((b) => b.notes[0].fret)).toEqual([0, 1, 2, 3]);
+    expect(beatsOf(state, 1)).toEqual([{ duration: 4, notes: [] }]);
+    expect(state.cursor).toMatchObject({ bar: 1, beat: 0 });
+  });
+});
+
+describe("ångra och gör om", () => {
+  it("ångra återställer Partituret och markören från före ändringen, och gör om återställer ändringen", () => {
+    const written = run(createEditor(), [
+      { type: "enterFret", fret: 5 },
+      { type: "moveCursor", direction: "right" },
+      { type: "moveCursor", direction: "down" },
+      { type: "enterFret", fret: 7 },
+    ]);
+
+    const undone = apply(written, { type: "undo" });
+    expect(beatsOf(undone)).toEqual([
+      { duration: 4, notes: [{ string: 1, fret: 5 }] },
+      { duration: 4, notes: [] },
+    ]);
+    expect(undone.cursor).toEqual({ track: 0, bar: 0, beat: 1, string: 2 });
+
+    const redone = apply(undone, { type: "redo" });
+    expect(redone.score).toEqual(written.score);
+    expect(redone.cursor).toEqual(written.cursor);
+  });
+
+  it("ångra går att upprepa ända tillbaka till det tomma Partituret", () => {
+    const state = run(createEditor(), [
+      ...quarters(3),
+      ...Array.from({ length: 10 }, () => ({ type: "undo" }) as const),
+    ]);
+
+    expect(state.score).toEqual(createEditor().score);
+    expect(state.cursor).toEqual(createEditor().cursor);
+  });
+
+  it("gör om utan något ångrat gör ingenting", () => {
+    const written = apply(createEditor(), { type: "enterFret", fret: 5 });
+
+    expect(apply(written, { type: "redo" }).score).toEqual(written.score);
+  });
+
+  it("en ny ändring efter ångra rensar det som gick att göra om", () => {
+    const state = run(createEditor(), [
+      { type: "enterFret", fret: 5 },
+      { type: "undo" },
+      { type: "enterFret", fret: 7 },
+      { type: "redo" },
+    ]);
+
+    expect(beatsOf(state)[0].notes).toEqual([{ string: 1, fret: 7 }]);
+  });
+
+  it("att bara flytta markören efter ångra rensar inte det som går att göra om", () => {
+    const state = run(createEditor(), [
+      { type: "enterFret", fret: 5 },
+      { type: "undo" },
+      { type: "moveCursor", direction: "down" },
+      { type: "redo" },
+    ]);
+
+    expect(beatsOf(state)[0].notes).toEqual([{ string: 1, fret: 5 }]);
+  });
+
+  it("markörflyttningar som inte ändrar Partituret hamnar inte i historiken", () => {
+    const state = run(createEditor(), [
+      { type: "enterFret", fret: 5 },
+      { type: "moveCursor", direction: "down" },
+      { type: "moveCursor", direction: "down" },
+      { type: "undo" },
+    ]);
+
+    expect(beatsOf(state)[0].notes).toEqual([]);
+  });
+
+  it("ett tvåsiffrigt band ångras som en enhet", () => {
+    const state = run(createEditor(), [
+      { type: "enterFret", fret: 3 },
+      { type: "moveCursor", direction: "down" },
+      digit(1, 0),
+      digit(2, 100),
+      { type: "undo" },
+    ]);
+
+    expect(beatsOf(state)[0].notes).toEqual([{ string: 1, fret: 3 }]);
+  });
+
+  it("en paus som också skapar nästa slag ångras som en enhet", () => {
+    const state = run(createEditor(), [
+      { type: "enterFret", fret: 3 },
+      { type: "insertRest" },
+      { type: "undo" },
+    ]);
+
+    expect(beatsOf(state)).toEqual([{ duration: 4, notes: [{ string: 1, fret: 3 }] }]);
+    expect(state.cursor.beat).toBe(0);
+  });
+
+  it("alla ändrande kommandon går att ångra", () => {
+    const start = run(createEditor(), [
+      { type: "moveCursor", direction: "down" },
+      { type: "enterFret", fret: 3 },
+      { type: "moveCursor", direction: "up" },
+      { type: "enterFret", fret: 1 },
+    ]);
+    const commands: Command[] = [
+      { type: "enterFret", fret: 9 },
+      digit(4, 0),
+      { type: "setDuration", duration: 8 },
+      { type: "toggleDot" },
+      { type: "toggleTriplet" },
+      { type: "insertRest" },
+      { type: "deleteNote" },
+      { type: "deleteBeat" },
+      { type: "moveCursor", direction: "right" },
+    ];
+
+    for (const command of commands) {
+      const changed = apply(start, command);
+      expect(changed.score, command.type).not.toEqual(start.score);
+      expect(apply(changed, { type: "undo" }).score, command.type).toEqual(start.score);
+    }
+  });
+
+  it("kommandon som inte ändrar Partituret blir inga ångra-steg och rensar inte det som går att göra om", () => {
+    const state = run(createEditor(), [
+      { type: "enterFret", fret: 5 },
+      { type: "setDuration", duration: 4 },
+      { type: "moveCursor", direction: "down" },
+      { type: "deleteNote" },
+      { type: "undo" },
+    ]);
+    expect(beatsOf(state)[0].notes).toEqual([]);
+
+    const redone = run(state, [{ type: "deleteNote" }, { type: "redo" }]);
+    expect(beatsOf(redone)[0].notes).toEqual([{ string: 1, fret: 5 }]);
+  });
+
+  it("gör om ställer markören där den stod efter ändringen", () => {
+    const state = run(createEditor(), [
+      { type: "enterFret", fret: 5 },
+      { type: "moveCursor", direction: "down" },
+      { type: "moveCursor", direction: "down" },
+      { type: "undo" },
+      { type: "redo" },
+    ]);
+
+    expect(state.cursor).toEqual({ track: 0, bar: 0, beat: 0, string: 1 });
+  });
+
+  it("ett tvåsiffrigt band går att ångra även när den första siffran inte ändrade något", () => {
+    const state = run(createEditor(), [
+      { type: "enterFret", fret: 1 },
+      { type: "moveCursor", direction: "down" },
+      { type: "moveCursor", direction: "up" },
+      digit(1, 0),
+      digit(2, 100),
+      { type: "undo" },
+    ]);
+
+    expect(beatsOf(state)[0].notes).toEqual([{ string: 1, fret: 1 }]);
+  });
+
+  it("ångra mellan två siffror bryter det tvåsiffriga bandet", () => {
+    const state = run(createEditor(), [digit(1, 0), { type: "undo" }, digit(2, 100)]);
+
+    expect(beatsOf(state)[0].notes).toEqual([{ string: 1, fret: 2 }]);
+  });
+
+  it("ett tvåsiffrigt band som blir samma band som förut lämnar inget tomt ångra-steg", () => {
+    const state = run(createEditor(), [
+      { type: "enterFret", fret: 3 },
+      { type: "moveCursor", direction: "down" },
+      { type: "enterFret", fret: 12 },
+      { type: "moveCursor", direction: "up" },
+      { type: "moveCursor", direction: "down" },
+      digit(1, 0),
+      digit(2, 100),
+      { type: "undo" },
+    ]);
+
+    expect(beatsOf(state)[0].notes).toEqual([{ string: 1, fret: 3 }]);
+  });
+});
+
 /** Skriver `count` fjärdedelar på rad och står kvar på den sista. */
 function quarters(count: number): Command[] {
   return Array.from({ length: count }, (_, i) => [
     ...(i > 0 ? [{ type: "moveCursor", direction: "right" } as const] : []),
     { type: "enterFret", fret: i } as const,
   ]).flat();
+}
+
+function digit(value: number, time: number) {
+  return { type: "typeDigit", digit: value, time } as const;
 }
 
 function beatsOf(state: EditorState, bar = 0) {

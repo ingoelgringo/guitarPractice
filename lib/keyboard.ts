@@ -18,10 +18,22 @@ const DURATION_KEYS: readonly { key: string; duration: Duration; name: string }[
   { key: "t", duration: 32, name: "Thirty-second note" },
 ];
 
-/** Tunt tangentbordsskal: översätter en tangent till ett Editor-kommando. `time` är tangenttryckets tid i ms. */
-export function keyToCommand(key: string, time: number): Command | null {
+/** Det tangentbordsskalet behöver av ett `KeyboardEvent`. */
+export type KeyPress = Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "altKey" | "shiftKey" | "timeStamp">;
+
+/** Tunt tangentbordsskal: översätter ett tangenttryck till ett Editor-kommando. */
+export function keyToCommand(press: KeyPress): Command | null {
+  const { key } = press;
+  if (press.altKey) return null;
+  if (press.ctrlKey || press.metaKey) {
+    const lower = key.toLowerCase();
+    if (lower === "z") return { type: press.shiftKey ? "redo" : "undo" };
+    if (lower === "y") return { type: "redo" };
+    return null;
+  }
+  if (key === "Delete" || key === "Backspace") return { type: press.shiftKey ? "deleteBeat" : "deleteNote" };
   if (Object.hasOwn(ARROW_KEYS, key)) return { type: "moveCursor", direction: ARROW_KEYS[key] };
-  if (/^[0-9]$/.test(key)) return { type: "typeDigit", digit: Number(key), time };
+  if (/^[0-9]$/.test(key)) return { type: "typeDigit", digit: Number(key), time: press.timeStamp };
   if (key === ".") return { type: "toggleDot" };
   if (key === "/") return { type: "toggleTriplet" };
   const lower = key.toLowerCase();
@@ -38,4 +50,8 @@ export const SHORTCUTS: readonly { keys: string; action: string }[] = [
   { keys: ".", action: "Toggle dotted" },
   { keys: "/", action: "Toggle triplet" },
   { keys: "R", action: "Insert rest and move on" },
+  { keys: "Delete", action: "Delete note on the cursor's string" },
+  { keys: "Shift+Delete", action: "Delete beat" },
+  { keys: "Ctrl+Z", action: "Undo" },
+  { keys: "Ctrl+Y / Ctrl+Shift+Z", action: "Redo" },
 ];
