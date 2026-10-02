@@ -1,0 +1,90 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+# En deploy i taget. Köade körningar väntar på den som pågår.
+concurrency:
+  group: deploy-guitar-practice
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TARGET: ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}
+      APP_DIR: /home/deploy/guitar-practice
+      RELEASE: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+      # server.js serverar inte public/ om den inte ligger i standalone.
+      # .next/static/ skickas separat och serveras av Nginx direkt från disk.
+      - name: Packa standalone
+        run: |
+          cp -r public .next/standalone/
+          cp deploy/ecosystem.config.cjs .next/standalone/
+
+      - name: SSH-nyckel
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+
+      # Statiska filer har hash i namnet och läggs till utan --delete, så att HTML från den
+      # gamla processen fortfarande hittar sina chunkar medan den nya startar.
+      - name: rsync till servern
+        run: |
+          rsync -az --mkpath .next/static/ "$TARGET:$APP_DIR/static/"
+          rsync -az --mkpath --link-dest="$APP_DIR/current/" .next/standalone/ "$TARGET:$APP_DIR/releases/$RELEASE/"
+
+      - name: Byt release, starta om och hälsokontroll
+        run: |
+          ssh "$TARGET" APP_DIR="$APP_DIR" RELEASE="$RELEASE" bash -s <<'SCRIPT'
+          set -e
+          cd "$APP_DIR"
+          ln -sfn "releases/$RELEASE" current
+          cd current
+          # startOrRestart startar processen första gången och gör annars pm2 restart guitar-practice.
+          pm2 startOrRestart ecosystem.config.cjs --update-env
+          ok=
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:3004/ > /dev/null; then ok=1; break; fi
+            sleep 1
+          done
+          if [ -z "$ok" ]; then
+            echo "Health check failed"
+            pm2 logs guitar-practice --lines 100 --nostream
+            exit 1
+          fi
+          echo "Health check OK"
+          # Behåll de tre senaste releaserna och statiska filer från de senaste 30 dagarna.
+          ls -1dt "$APP_DIR"/releases/*/ | tail -n +4 | xargs -r rm -rf
+          find "$APP_DIR/static" -type f -mtime +30 -delete
+          SCRIPT
