@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { Command } from "@/lib/editor";
+import { createEditor, type Command } from "@/lib/editor";
 import type { Score } from "@/lib/score";
 import { FILE_EXTENSION, fileName, parse, serialize, type ParseError } from "@/lib/scoreFile";
 import styles from "./TabEditor.module.css";
@@ -21,25 +21,41 @@ function errorMessage(error: ParseError): string {
 }
 
 /**
- * Tunt skal: laddar ner Partituret som Partiturfil och öppnar en Partiturfil från datorn.
- * Har Partituret ändrats sedan det senast laddades ner eller öppnades frågar den först.
+ * Tunt skal: laddar ner Partituret som Partiturfil, öppnar en Partiturfil från datorn och
+ * startar ett nytt tomt Partitur. Har Partituret ändringar som inte är nedladdade frågar den
+ * först, eftersom Utkastet då ersätts.
  */
-export function ScoreFileButtons({ score, dispatch }: { score: Score; dispatch: (command: Command) => void }) {
+export function ScoreFileButtons({
+  score,
+  downloaded,
+  onFileMatched,
+  dispatch,
+}: {
+  score: Score;
+  /** Om Partituret är detsamma som när det senast laddades ner eller öppnades. */
+  downloaded: boolean;
+  /** Anropas när Partituret i Editorn motsvarar en Partiturfil: efter nedladdning, eller när ett annat tar dess plats. */
+  onFileMatched: (score: Score) => void;
+  dispatch: (command: Command) => void;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
-  // Partiturfilen som det aktuella Partituret senast motsvarade. Ett nytt tomt Partitur har inget att förlora.
-  const [savedText, setSavedText] = useState(() => serialize(score));
+  const newDialogRef = useRef<HTMLDialogElement>(null);
   const [error, setError] = useState<string | null>(null);
 
   function download() {
-    const text = serialize(score);
-    const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+    const url = URL.createObjectURL(new Blob([serialize(score)], { type: "application/json" }));
     const link = document.createElement("a");
     link.href = url;
     link.download = fileName(score);
     link.click();
     // Vissa webbläsare avbryter nedladdningen om adressen släpps direkt
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setSavedText(text);
+    onFileMatched(score);
+  }
+
+  function replaceWith(next: Score) {
+    onFileMatched(next);
+    dispatch({ type: "openScore", score: next });
   }
 
   async function open(file: File) {
@@ -49,22 +65,27 @@ export function ScoreFileButtons({ score, dispatch }: { score: Score; dispatch: 
       setError(errorMessage(result.error));
       return;
     }
-    const hasUnsavedChanges = serialize(score) !== savedText;
-    if (hasUnsavedChanges && !confirm("The current score has changes that haven't been downloaded. Open the file anyway?")) {
+    if (!downloaded && !confirm("The current score has changes that haven't been downloaded. Open the file anyway?")) {
       return;
     }
-    setSavedText(serialize(result.score));
-    dispatch({ type: "openScore", score: result.score });
+    replaceWith(result.score);
+  }
+
+  function startNew() {
+    replaceWith(createEditor().score);
   }
 
   return (
     <>
       <div className={styles.buttonGroup} role="group" aria-label="Score file">
-        <button type="button" onClick={download}>
-          Download
+        <button type="button" onClick={() => (downloaded ? startNew() : newDialogRef.current?.showModal())}>
+          New
         </button>
         <button type="button" onClick={() => inputRef.current?.click()}>
           Open…
+        </button>
+        <button type="button" onClick={download}>
+          Download
         </button>
       </div>
       <input
@@ -79,6 +100,32 @@ export function ScoreFileButtons({ score, dispatch }: { score: Score; dispatch: 
           if (file) void open(file);
         }}
       />
+      <dialog
+        ref={newDialogRef}
+        className={styles.dialog}
+        aria-labelledby="new-score-question"
+        onClose={(e) => {
+          // Esc stänger utan svar och räknas som Cancel
+          const choice = e.currentTarget.returnValue;
+          e.currentTarget.returnValue = "";
+          if (choice === "download") download();
+          if (choice === "download" || choice === "discard") startNew();
+        }}
+      >
+        <form method="dialog">
+          <p id="new-score-question">
+            The current score has changes that haven&apos;t been downloaded, and a new score replaces your draft.
+            Download the current score first?
+          </p>
+          <div className={styles.dialogButtons}>
+            <button value="cancel">Cancel</button>
+            <button value="discard">Don&apos;t download</button>
+            <button value="download" autoFocus>
+              Download
+            </button>
+          </div>
+        </form>
+      </dialog>
       {error && (
         <div className={styles.fileError} role="alert">
           <span>{error}</span>

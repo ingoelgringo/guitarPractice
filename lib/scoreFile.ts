@@ -233,6 +233,7 @@ function failure(error: ParseError): ParseResult {
   return { ok: false, error };
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+/** Ett JSON-objekt, inte en lista eller `null`. */
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
