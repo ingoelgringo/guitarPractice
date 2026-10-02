@@ -1,4 +1,4 @@
-import { barCapacity, barTicks, beatTicks, STANDARD_TUNING, type Bar, type Beat, type Duration, type Metadata, type Note, type Score, type TimeSignature, type Track } from "./score";
+import { barCapacity, barTicks, beatTicks, STANDARD_TUNING, type Bar, type Beat, type Duration, type Metadata, type Note, type Score, type TimeSignature, type Track, VIEW_MODES, type ViewMode } from "./score";
 
 export interface Cursor {
   track: number;
@@ -88,6 +88,8 @@ export type Command =
   | { type: "setTempo"; tempo: number }
   /** Sätter starttaktarten. Takter som inte längre stämmer flaggas av valideringen men rättas inte. */
   | { type: "setTimeSignature"; timeSignature: TimeSignature }
+  /** Byter Vy-läge. Inmatningen är tab-först i alla lägen. */
+  | { type: "setViewMode"; viewMode: ViewMode }
   | { type: "undo" }
   | { type: "redo" };
 
@@ -95,6 +97,7 @@ export function createEditor(): EditorState {
   return {
     score: {
       metadata: { title: "", subtitle: "", artist: "", tabbedBy: "" },
+      viewMode: "scoreAndTab",
       tempo: 120,
       timeSignature: { beats: 4, beatValue: 4 },
       tracks: [
@@ -225,6 +228,10 @@ function applyCommand(
           isInRange(beats, MIN_TIME_SIGNATURE_BEATS, MAX_TIME_SIGNATURE_BEATS) &&
           TIME_SIGNATURE_BEAT_VALUES.includes(beatValue);
         if (valid) score.timeSignature = { beats, beatValue };
+      });
+    case "setViewMode":
+      return updateScore(state, (score) => {
+        if ((VIEW_MODES as readonly string[]).includes(command.viewMode)) score.viewMode = command.viewMode;
       });
   }
 }

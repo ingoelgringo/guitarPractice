@@ -5,13 +5,12 @@ import {
   LayoutMode,
   NotationElement,
   Settings,
-  StaveProfile,
   type model,
 } from "@coderline/alphatab";
 import { useEffect, useRef, useState } from "react";
 import type { Cursor } from "@/lib/editor";
 import type { Score } from "@/lib/score";
-import { toAlphaTab } from "@/lib/toAlphaTab";
+import { configureStaves, toAlphaTab } from "@/lib/toAlphaTab";
 import type { InvalidBar } from "@/lib/validation";
 import styles from "./TabEditor.module.css";
 
@@ -22,9 +21,20 @@ interface Box {
   height: number;
 }
 
+interface CursorMark extends Box {
+  /** Strängen, utskriven när det inte finns någon tabulatur att visa den i. */
+  string?: number;
+}
+
 interface BarMark extends Box {
   problem: InvalidBar["problem"];
 }
+
+/** Markörens minsta storlek (px) på en sträng i tabben. */
+const MIN_CURSOR_SIZE = 12;
+
+/** Markörens bredd (px) som kolumn i notsystemet, när tabben saknas. */
+const COLUMN_CURSOR_WIDTH = 16;
 
 const PROBLEM_LABELS: Record<InvalidBar["problem"], string> = {
   tooShort: "Too few beats",
@@ -49,7 +59,7 @@ export function ScoreView({
   const renderedRef = useRef<model.Score | null>(null);
   const cursorRef = useRef(cursor);
   const invalidBarsRef = useRef(invalidBars);
-  const [cursorBox, setCursorBox] = useState<Box | null>(null);
+  const [cursorBox, setCursorBox] = useState<CursorMark | null>(null);
   const [barMarks, setBarMarks] = useState<BarMark[]>([]);
 
   useEffect(() => {
@@ -58,7 +68,7 @@ export function ScoreView({
     settings.core.useWorkers = false;
     settings.core.engine = "svg";
     settings.display.layoutMode = LayoutMode.Page;
-    settings.display.staveProfile = StaveProfile.ScoreTab;
+    configureStaves(settings);
     settings.player.enablePlayer = false;
     // Partiturmodellen har ingen dynamik än, så alphaTabs förvalda "f" ska inte synas
     settings.notation.elements.set(NotationElement.EffectDynamics, false);
@@ -101,7 +111,11 @@ export function ScoreView({
             <span className={styles.invalidBarLabel}>{PROBLEM_LABELS[problem]}</span>
           </div>
         ))}
-        {cursorBox && <div className={styles.cursor} style={cursorBox} />}
+        {cursorBox && (
+          <div className={styles.cursor} style={boxStyle(cursorBox)}>
+            {cursorBox.string !== undefined && <span className={styles.cursorString}>String {cursorBox.string}</span>}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -119,25 +133,45 @@ function locateBarMarks(api: AlphaTabApi, invalidBars: InvalidBar[]): BarMark[] 
   });
 }
 
-/** Räknar ut markörens ruta: slagets kolumn i tabben, på markörens sträng. */
-function locateCursor(api: AlphaTabApi, rendered: model.Score | null, cursor: Cursor): Box | null {
+/** Bara rutans mått, så att övriga fält inte hamnar i `style`. */
+function boxStyle({ left, top, width, height }: Box) {
+  return { left, top, width, height };
+}
+
+/**
+ * Räknar ut markörens ruta: slagets kolumn i tabben, på markörens sträng. Utan tabulatur
+ * (Bara noter) täcker rutan slagets kolumn i notsystemet och skriver ut strängen.
+ */
+function locateCursor(api: AlphaTabApi, rendered: model.Score | null, cursor: Cursor): CursorMark | null {
   const lookup = api.renderer.boundsLookup;
   if (!lookup || !rendered) return null;
   const staff = rendered.tracks[cursor.track]?.staves[0];
   const beat = staff?.bars[cursor.bar]?.voices[0]?.beats[cursor.beat];
   if (!beat) return null;
 
-  // Ett slag har en BeatBounds per stav-renderare; tabben ritas sist.
+  // Ett slag har en BeatBounds per stav-renderare. Den sista hör till tabben när den ritas,
+  // annars till notsystemet.
   const all = lookup.findBeats(beat);
-  const tab = all?.[all.length - 1];
-  if (!tab) return null;
+  const beatBounds = all?.[all.length - 1];
+  if (!beatBounds) return null;
 
-  const bar = tab.barBounds.visualBounds;
+  if (!staff.showTablature) {
+    const { y, h } = beatBounds.barBounds.visualBounds;
+    return {
+      left: beatBounds.onNotesX - COLUMN_CURSOR_WIDTH / 2,
+      top: y,
+      width: COLUMN_CURSOR_WIDTH,
+      height: h,
+      string: cursor.string,
+    };
+  }
+
+  const bar = beatBounds.barBounds.visualBounds;
   const stringCount = staff.tuning.length;
   const spacing = bar.h / (stringCount - 1);
-  const size = Math.max(spacing, 12);
+  const size = Math.max(spacing, MIN_CURSOR_SIZE);
   return {
-    left: tab.onNotesX - size / 2,
+    left: beatBounds.onNotesX - size / 2,
     top: bar.y + (cursor.string - 1) * spacing - size / 2,
     width: size,
     height: size,

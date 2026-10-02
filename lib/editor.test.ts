@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { apply, createEditor, TWO_DIGIT_WINDOW_MS, type Command, type EditorState } from "./editor";
-import type { TimeSignature } from "./score";
+import type { TimeSignature, ViewMode } from "./score";
 import { invalidBars } from "./validation";
 
 describe("Editor", () => {
@@ -740,6 +740,44 @@ describe("partiturinställningar", () => {
     expect(beatsOf(state, 0)).toHaveLength(3);
     expect(state.cursor).toMatchObject({ bar: 1, beat: 0 });
   });
+});
+
+describe("Vy-läge", () => {
+  it("ett nytt Partitur visas som noter + tabulatur", () => {
+    expect(createEditor().score.viewMode).toBe("scoreAndTab");
+  });
+
+  it("Vy-läget byts med ett kommando som kan ångras och göras om", () => {
+    const state = apply(createEditor(), { type: "setViewMode", viewMode: "rhythmTab" });
+
+    expect(state.score.viewMode).toBe("rhythmTab");
+    const undone = apply(state, { type: "undo" });
+    expect(undone.score.viewMode).toBe("scoreAndTab");
+    expect(apply(undone, { type: "redo" }).score.viewMode).toBe("rhythmTab");
+  });
+
+  it("ett okänt Vy-läge avvisas", () => {
+    const start = createEditor();
+
+    const state = apply(start, { type: "setViewMode", viewMode: "lyrics" as ViewMode });
+
+    expect(state.score).toBe(start.score);
+  });
+
+  it.each<ViewMode>(["scoreAndTab", "scoreOnly", "rhythmTab"])(
+    "i Vy-läget %s skriver man fortfarande band på markörens sträng",
+    (viewMode) => {
+      const state = run(createEditor(), [
+        { type: "setViewMode", viewMode },
+        { type: "moveCursor", direction: "down" },
+        { type: "enterFret", fret: 7 },
+        { type: "moveCursor", direction: "right" },
+      ]);
+
+      expect(beatsOf(state)[0].notes).toEqual([{ string: 2, fret: 7 }]);
+      expect(state.cursor).toEqual({ track: 0, bar: 0, beat: 1, string: 2 });
+    },
+  );
 });
 
 /** Skriver `count` fjärdedelar på rad och står kvar på den sista. */

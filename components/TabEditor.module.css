@@ -26,6 +26,20 @@
   background: rgb(30 111 217 / 0.15);
 }
 
+/* I Bara noter finns ingen tabulatur, så markören är en kolumn som visar strängen */
+.cursorString {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  translate: -50% -2px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: #1e6fd9;
+  color: #fff;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
 /* En Takt med fel antal slag. Den rättas aldrig automatiskt, bara markeras. */
 .invalidBar {
   position: absolute;
@@ -147,3 +161,31 @@
   width: 4em;
 }
 
+/* Väljaren för Vy-läge, ovanför Sidan */
+.viewModes {
+  display: flex;
+  width: fit-content;
+  margin: 0 auto 16px;
+  border-radius: 6px;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 0.2);
+  overflow: hidden;
+  font-size: 13px;
+}
+
+.viewModes button {
+  padding: 6px 12px;
+  border: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  cursor: pointer;
+}
+
+.viewModes button + button {
+  border-left: 1px solid color-mix(in srgb, var(--foreground) 20%, transparent);
+}
+
+.viewModes button[aria-pressed="true"] {
+  background: #1e6fd9;
+  color: #fff;
+}

@@ -1,8 +1,18 @@
-import { model, platform, Settings } from "@coderline/alphatab";
-import type { Beat, Duration, Score, Track } from "./score";
+import { model, platform, Settings, StaveProfile, TabRhythmMode } from "@coderline/alphatab";
+import type { Beat, Duration, Score, Track, ViewMode } from "./score";
 import { findTuningPreset, STANDARD_TUNING_NAME } from "./tuning";
 
 // Översätter Partiturmodellen till alphaTabs modell för rendering och uppspelning (ADR 0001).
+
+/**
+ * Vilka stavar varje Vy-läge ritar. När notsystemet saknas ritar alphaTab rytmskaft i
+ * tabulaturen (se `configureStaves`), vilket ger Rytmtab.
+ */
+const STAVES: Record<ViewMode, { standardNotation: boolean; tablature: boolean }> = {
+  scoreAndTab: { standardNotation: true, tablature: true },
+  scoreOnly: { standardNotation: true, tablature: false },
+  rhythmTab: { standardNotation: false, tablature: true },
+};
 
 const DURATIONS: Record<Duration, model.Duration> = {
   1: model.Duration.Whole,
@@ -12,6 +22,15 @@ const DURATIONS: Record<Duration, model.Duration> = {
   16: model.Duration.Sixteenth,
   32: model.Duration.ThirtySecond,
 };
+
+/**
+ * De visningsinställningar som översättarens modell förutsätter: stavarna styrs av varje
+ * stav, alltså av Vy-läget, och tabulaturen får rytmskaft när notsystemet saknas.
+ */
+export function configureStaves(settings: Settings): void {
+  settings.display.staveProfile = StaveProfile.Default;
+  settings.notation.rhythmMode = TabRhythmMode.Automatic;
+}
 
 export function toAlphaTab(score: Score): model.Score {
   const result = new model.Score();
@@ -36,14 +55,14 @@ export function toAlphaTab(score: Score): model.Score {
     result.addMasterBar(masterBar);
   }
   for (const track of score.tracks) {
-    result.addTrack(toTrack(track));
+    result.addTrack(toTrack(track, score.viewMode));
   }
 
   result.finish(new Settings());
   return result;
 }
 
-function toTrack(track: Track): model.Track {
+function toTrack(track: Track, viewMode: ViewMode): model.Track {
   const result = new model.Track();
   const staff = new model.Staff();
   result.addStaff(staff);
@@ -52,8 +71,8 @@ function toTrack(track: Track): model.Track {
   staff.stringTuning = new model.Tuning(name, [...track.tuning], name === STANDARD_TUNING_NAME);
   // alphaTab lägger Capo till tonhöjden och visar banden relativt Capo, precis som modellen
   staff.capo = track.capo;
-  staff.showStandardNotation = true;
-  staff.showTablature = true;
+  staff.showStandardNotation = STAVES[viewMode].standardNotation;
+  staff.showTablature = STAVES[viewMode].tablature;
 
   for (const bar of track.bars) {
     const alphaTabBar = new model.Bar();

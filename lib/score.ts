@@ -45,8 +45,17 @@ export interface Metadata {
   tabbedBy: string;
 }
 
+/**
+ * Hur Partituret visas, på skärmen och i utskriften: noter + tabulatur, bara noter eller
+ * Rytmtab (tabulatur med rytmskaft, utan notsystem).
+ */
+export const VIEW_MODES = ["scoreAndTab", "scoreOnly", "rhythmTab"] as const;
+
+export type ViewMode = (typeof VIEW_MODES)[number];
+
 export interface Score {
   metadata: Metadata;
+  viewMode: ViewMode;
   /** Starttempo i slag (fjärdedelar) per minut. */
   tempo: number;
   /** Starttaktart. Byten mitt i Partituret kommer i ticket 11. */

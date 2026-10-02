@@ -1,8 +1,8 @@
-import { model } from "@coderline/alphatab";
+import { model, Settings, StaveProfile, TabRhythmMode } from "@coderline/alphatab";
 import { describe, expect, it } from "vitest";
 import { createEditor } from "./editor";
-import type { Beat, Score } from "./score";
-import { toAlphaTab } from "./toAlphaTab";
+import type { Beat, Score, ViewMode } from "./score";
+import { configureStaves, toAlphaTab } from "./toAlphaTab";
 
 describe("toAlphaTab", () => {
   it("ett tomt Partitur blir ett Spår med 6 strängar och en Takt med en fjärdedelspaus", () => {
@@ -250,3 +250,41 @@ function scoreWithBeats(beats: Beat[]): Score {
   score.tracks[0].bars[0].beats = beats;
   return score;
 }
+
+describe("Vy-läge i toAlphaTab", () => {
+  /** Vilka stavar alphaTab ritar för Spåret när Partituret har `viewMode`. */
+  function staves(viewMode: ViewMode) {
+    const score = createEditor().score;
+    score.viewMode = viewMode;
+    const staff = toAlphaTab(score).tracks[0].staves[0];
+    return {
+      standardNotation: staff.showStandardNotation,
+      tablature: staff.showTablature,
+      slash: staff.showSlash,
+      numbered: staff.showNumbered,
+    };
+  }
+
+  it("Noter + tabulatur ritar notsystem ovanför tabulatur", () => {
+    expect(staves("scoreAndTab")).toEqual({ standardNotation: true, tablature: true, slash: false, numbered: false });
+  });
+
+  it("Bara noter ritar bara notsystem", () => {
+    expect(staves("scoreOnly")).toEqual({ standardNotation: true, tablature: false, slash: false, numbered: false });
+  });
+
+  it("Rytmtab ritar bara tabulatur, som då får rytmskaft eftersom notsystemet saknas", () => {
+    expect(staves("rhythmTab")).toEqual({ standardNotation: false, tablature: true, slash: false, numbered: false });
+  });
+
+  it("visningsinställningarna låter stavarna styra och ger tabulaturen rytmskaft utan notsystem", () => {
+    const settings = new Settings();
+    settings.display.staveProfile = StaveProfile.ScoreTab;
+    settings.notation.rhythmMode = TabRhythmMode.Hidden;
+
+    configureStaves(settings);
+
+    expect(settings.display.staveProfile).toBe(StaveProfile.Default);
+    expect(settings.notation.rhythmMode).toBe(TabRhythmMode.Automatic);
+  });
+});

@@ -7,6 +7,7 @@ import { invalidBars } from "@/lib/validation";
 import { ScoreSettings } from "./ScoreSettings";
 import { ScoreView } from "./ScoreView";
 import styles from "./TabEditor.module.css";
+import { ViewModePicker } from "./ViewModePicker";
 
 export function TabEditor() {
   const [state, dispatch] = useReducer(apply, undefined, createEditor);
@@ -46,6 +47,7 @@ export function TabEditor() {
           </tbody>
         </table>
       </details>
+      <ViewModePicker viewMode={state.score.viewMode} dispatch={dispatch} />
       <ScoreView score={state.score} cursor={state.cursor} invalidBars={barProblems} />
     </div>
   );
