@@ -1,11 +1,13 @@
 "use client";
 
+import type { AlphaTabApi } from "@coderline/alphatab";
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { browserStorage, loadDraft, saveDraft } from "@/lib/draft";
 import { apply, createEditor } from "@/lib/editor";
 import { keyToCommand, SHORTCUTS } from "@/lib/keyboard";
 import { serialize } from "@/lib/scoreFile";
 import { invalidBars } from "@/lib/validation";
+import { DEFAULT_PLAYBACK_OPTIONS, PlaybackControls, playNoteAt } from "./PlaybackControls";
 import { ScoreFileButtons } from "./ScoreFileButtons";
 import { ScoreSettings } from "./ScoreSettings";
 import { ScoreView } from "./ScoreView";
@@ -45,6 +47,18 @@ export function TabEditor() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [downloaded]);
 
+  const [api, setApi] = useState<AlphaTabApi | null>(null);
+  const [playbackOptions, setPlaybackOptions] = useState(DEFAULT_PLAYBACK_OPTIONS);
+  // Satt när ett band har skrivits in och tonen ska höras när Partituret har renderats
+  const soundPendingRef = useRef(false);
+
+  useEffect(() => {
+    // Notvyn är ett barn, så den har redan renderat det nya Partituret när det här körs
+    if (!soundPendingRef.current) return;
+    soundPendingRef.current = false;
+    if (api && playbackOptions.soundOnInput) playNoteAt(api, state.cursor);
+  }, [state, api, playbackOptions.soundOnInput]);
+
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       const target = event.target instanceof HTMLElement ? event.target : null;
@@ -57,6 +71,7 @@ export function TabEditor() {
       // I en rullgardin styr tangenterna rullgardinen, men ångra och gör om gäller Partituret
       if (target?.closest("select") && command.type !== "undo" && command.type !== "redo") return;
       event.preventDefault();
+      if (command.type === "typeDigit") soundPendingRef.current = true;
       dispatch(command);
     }
     window.addEventListener("keydown", onKeyDown);
@@ -93,7 +108,13 @@ export function TabEditor() {
           Your work is saved as a draft in this browser only. Download the score to keep a safe copy.
         </p>
       </div>
-      <ScoreView score={state.score} cursor={state.cursor} invalidBars={barProblems} />
+      <PlaybackControls
+        api={api}
+        cursor={state.cursor}
+        options={playbackOptions}
+        onOptionsChange={setPlaybackOptions}
+      />
+      <ScoreView score={state.score} cursor={state.cursor} invalidBars={barProblems} onApiChange={setApi} />
     </div>
   );
 }

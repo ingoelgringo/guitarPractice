@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // alphaTabs filer, kopierade från node_modules av scripts/copy-alphatab-assets.mjs
+    "public/alphatab/**",
   ]),
 ]);
 

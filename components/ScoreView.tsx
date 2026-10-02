@@ -4,13 +4,14 @@ import {
   AlphaTabApi,
   LayoutMode,
   NotationElement,
+  PlayerMode,
   Settings,
   type model,
 } from "@coderline/alphatab";
 import { useEffect, useRef, useState } from "react";
 import type { Cursor } from "@/lib/editor";
 import type { Score } from "@/lib/score";
-import { configureStaves, toAlphaTab } from "@/lib/toAlphaTab";
+import { beatAt, configureStaves, toAlphaTab } from "@/lib/toAlphaTab";
 import type { InvalidBar } from "@/lib/validation";
 import styles from "./TabEditor.module.css";
 
@@ -41,18 +42,33 @@ const PROBLEM_LABELS: Record<InvalidBar["problem"], string> = {
   tooLong: "Too many beats",
 };
 
+/** Soundfonten för uppspelningen, kopierad till public/ av scripts/copy-alphatab-assets.mjs. */
+const SOUND_FONT = "/alphatab/soundfont/sonivox.sf2";
+
+/**
+ * alphaTabs eget skript, kopierat till public/. Spelaren startar synthen i en worker och
+ * ljudet i en AudioWorklet från det skriptet, och alphaTab hittar det inte självt i bundlen.
+ */
+const SCRIPT_FILE = "/alphatab/alphaTab.js";
+
+/** Utrymmet (px) överst i editorn som den fästa uppspelningsraden (`.playback`) täcker. */
+const PLAYBACK_BAR_SPACE = 64;
+
 /**
  * Tunt skal kring alphaTab: renderar Partituret som A4-Sida, visar markören
- * och markerar Takter som valideringen har pekat ut.
+ * och markerar Takter som valideringen har pekat ut. Uppspelningen styrs via alphaTab-API:t,
+ * som lämnas ut med `onApiChange`.
  */
 export function ScoreView({
   score,
   cursor,
   invalidBars,
+  onApiChange,
 }: {
   score: Score;
   cursor: Cursor;
   invalidBars: InvalidBar[];
+  onApiChange: (api: AlphaTabApi | null) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<AlphaTabApi | null>(null);
@@ -69,7 +85,15 @@ export function ScoreView({
     settings.core.engine = "svg";
     settings.display.layoutMode = LayoutMode.Page;
     configureStaves(settings);
-    settings.player.enablePlayer = false;
+    settings.core.scriptFile = new URL(SCRIPT_FILE, location.href).href;
+    settings.player.playerMode = PlayerMode.EnabledSynthesizer;
+    settings.player.soundFont = SOUND_FONT;
+    // Editorn är sin egen scrollyta, så det är den som ska rulla med uppspelningen
+    settings.player.scrollElement = containerRef.current!.closest<HTMLElement>(`.${styles.editor}`) ?? "html,body";
+    // Lämna plats för uppspelningsraden, som ligger fäst överst när editorn rullar
+    settings.player.scrollOffsetY = -PLAYBACK_BAR_SPACE;
+    // Uppspelningen börjar vid Markören, så ett klick i notvyn ska inte flytta den
+    settings.player.enableUserInteraction = false;
     // Partiturmodellen har ingen dynamik än, så alphaTabs förvalda "f" ska inte synas
     settings.notation.elements.set(NotationElement.EffectDynamics, false);
 
@@ -79,11 +103,13 @@ export function ScoreView({
       setBarMarks(locateBarMarks(api, invalidBarsRef.current));
     });
     apiRef.current = api;
+    onApiChange(api);
     return () => {
+      onApiChange(null);
       api.destroy();
       apiRef.current = null;
     };
-  }, []);
+  }, [onApiChange]);
 
   useEffect(() => {
     // Valideringen härleds ur samma Partitur och ritas när renderingen är klar
@@ -145,9 +171,9 @@ function boxStyle({ left, top, width, height }: Box) {
 function locateCursor(api: AlphaTabApi, rendered: model.Score | null, cursor: Cursor): CursorMark | null {
   const lookup = api.renderer.boundsLookup;
   if (!lookup || !rendered) return null;
-  const staff = rendered.tracks[cursor.track]?.staves[0];
-  const beat = staff?.bars[cursor.bar]?.voices[0]?.beats[cursor.beat];
+  const beat = beatAt(rendered, cursor);
   if (!beat) return null;
+  const staff = beat.voice.bar.staff;
 
   // Ett slag har en BeatBounds per stav-renderare. Den sista hör till tabben när den ritas,
   // annars till notsystemet.

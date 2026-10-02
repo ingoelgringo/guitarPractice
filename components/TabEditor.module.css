@@ -16,6 +16,8 @@
   background: #fff;
   color: #000;
   box-shadow: 0 2px 12px rgb(0 0 0 / 0.2);
+  /* alphaTabs spelmarkör har z-index 1000. Den ska stanna under editorns fästa paneler. */
+  isolation: isolate;
 }
 
 .cursor {
@@ -38,6 +40,25 @@
   color: #fff;
   font-size: 10px;
   white-space: nowrap;
+}
+
+/*
+ * alphaTabs spelmarkör: Takten som spelas och en linje vid slaget. alphaTab skapar elementen
+ * men levererar ingen stil. Färgerna skiljer sig från editorns blå Markör.
+ */
+.page :global(.at-cursor-bar) {
+  background: rgb(255 200 0 / 0.2);
+}
+
+.page :global(.at-cursor-beat) {
+  width: 3px;
+  background: rgb(255 140 0 / 0.8);
+}
+
+/* Tonerna som klingar just nu */
+.page :global(.at-highlight *) {
+  fill: #e67700;
+  stroke: #e67700;
 }
 
 /* En Takt med fel antal slag. Den rättas aldrig automatiskt, bara markeras. */
@@ -195,6 +216,60 @@
 .buttonGroup button[aria-pressed="true"] {
   background: #1e6fd9;
   color: #fff;
+}
+
+/*
+ * Uppspelningen: en egen rad under verktygsraden, fäst överst när editorn rullar.
+ * Ändras höjden ska PLAYBACK_BAR_SPACE i ScoreView.tsx följa med.
+ */
+.playback {
+  position: sticky;
+  top: -32px;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 16px;
+  width: fit-content;
+  margin: 0 auto 16px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+  box-shadow: 0 2px 12px rgb(0 0 0 / 0.2);
+  font-size: 13px;
+}
+
+.playback label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+/* Bredden räcker för både "Play" och "Pause", så att raden inte hoppar */
+.playButton {
+  min-width: 5em;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 4px;
+  background: #1e6fd9;
+  color: #fff;
+  font: inherit;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.playButton:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+/* Tempot i procent ändras inte med siffrorna, så att reglaget står still */
+.playback label span {
+  min-width: 6.5em;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Upplysningen om Utkastet, diskret på en egen rad under knapparna */

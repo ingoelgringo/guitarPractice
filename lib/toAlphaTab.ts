@@ -1,4 +1,5 @@
 import { model, platform, Settings, StaveProfile, TabRhythmMode } from "@coderline/alphatab";
+import type { Cursor } from "./editor";
 import type { Beat, Duration, Score, Track, ViewMode } from "./score";
 import { findTuningPreset, STANDARD_TUNING_NAME } from "./tuning";
 
@@ -22,6 +23,17 @@ const DURATIONS: Record<Duration, model.Duration> = {
   16: model.Duration.Sixteenth,
   32: model.Duration.ThirtySecond,
 };
+
+/** General MIDI-programmet (nollräknat) för stålsträngad akustisk gitarr. */
+const GUITAR_PROGRAM = 25;
+
+/** MIDI-kanal 10 (index 9) är reserverad för trummor och hoppas över. */
+const DRUM_CHANNEL = 9;
+
+/** Den n:te MIDI-kanalen som inte är trumkanalen. */
+function channel(n: number): number {
+  return n < DRUM_CHANNEL ? n : n + 1;
+}
 
 /**
  * De visningsinställningar som översättarens modell förutsätter: stavarna styrs av varje
@@ -54,16 +66,38 @@ export function toAlphaTab(score: Score): model.Score {
     if (i === 0) masterBar.tempoAutomations.push(model.Automation.buildTempoAutomation(false, 0, score.tempo, 2));
     result.addMasterBar(masterBar);
   }
-  for (const track of score.tracks) {
-    result.addTrack(toTrack(track, score.viewMode));
-  }
+  score.tracks.forEach((track, index) => result.addTrack(toTrack(track, index, score.viewMode)));
 
   result.finish(new Settings());
   return result;
 }
 
-function toTrack(track: Track, viewMode: ViewMode): model.Track {
+/** Slaget i alphaTabs modell vid Markörens position, eller `null` om det inte finns. */
+export function beatAt(rendered: model.Score, cursor: Cursor): model.Beat | null {
+  const staff = rendered.tracks[cursor.track]?.staves[0];
+  return staff?.bars[cursor.bar]?.voices[0]?.beats[cursor.beat] ?? null;
+}
+
+/** Tonen i alphaTabs modell på Markörens sträng, eller `null` om strängen är tom där. */
+export function noteAt(rendered: model.Score, cursor: Cursor): model.Note | null {
+  const beat = beatAt(rendered, cursor);
+  if (!beat) return null;
+  const string = alphaTabString(cursor.string, beat.voice.bar.staff.tuning.length);
+  return beat.notes.find((n) => n.string === string) ?? null;
+}
+
+/** alphaTab numrerar strängar från den grövsta, vi från den ljusaste. */
+function alphaTabString(string: number, stringCount: number): number {
+  return stringCount - string + 1;
+}
+
+function toTrack(track: Track, index: number, viewMode: ViewMode): model.Track {
   const result = new model.Track();
+  result.playbackInfo.program = GUITAR_PROGRAM;
+  // Två kanaler per Spår: alphaTab spelar vissa effekter på den andra
+  const [primary, secondary] = [2 * index, 2 * index + 1].map(channel);
+  result.playbackInfo.primaryChannel = primary;
+  result.playbackInfo.secondaryChannel = secondary;
   const staff = new model.Staff();
   result.addStaff(staff);
   // Stämningen ritas i huvudet: med namn för förvalen och med strängarna utom för standardstämningen
@@ -100,8 +134,7 @@ function toBeat(beat: Beat, stringCount: number): model.Beat {
   result.isEmpty = false;
   for (const note of beat.notes) {
     const alphaTabNote = new model.Note();
-    // alphaTab numrerar strängar från den grövsta, vi från den ljusaste
-    alphaTabNote.string = stringCount - note.string + 1;
+    alphaTabNote.string = alphaTabString(note.string, stringCount);
     alphaTabNote.fret = note.fret;
     result.addNote(alphaTabNote);
   }

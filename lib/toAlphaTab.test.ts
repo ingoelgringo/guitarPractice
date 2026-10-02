@@ -2,7 +2,7 @@ import { model, Settings, StaveProfile, TabRhythmMode } from "@coderline/alphata
 import { describe, expect, it } from "vitest";
 import { createEditor } from "./editor";
 import type { Beat, Score, ViewMode } from "./score";
-import { configureStaves, toAlphaTab } from "./toAlphaTab";
+import { beatAt, configureStaves, noteAt, toAlphaTab } from "./toAlphaTab";
 
 describe("toAlphaTab", () => {
   it("ett tomt Partitur blir ett Spår med 6 strängar och en Takt med en fjärdedelspaus", () => {
@@ -286,5 +286,54 @@ describe("Vy-läge i toAlphaTab", () => {
 
     expect(settings.display.staveProfile).toBe(StaveProfile.Default);
     expect(settings.notation.rhythmMode).toBe(TabRhythmMode.Automatic);
+  });
+});
+
+describe("uppspelning i toAlphaTab", () => {
+  it("Spåret spelas med stålsträngad akustisk gitarr (General MIDI-program 25, nollräknat)", () => {
+    const track = toAlphaTab(createEditor().score).tracks[0];
+
+    expect(track.playbackInfo.program).toBe(25);
+  });
+
+  it("varje Spår har egna MIDI-kanaler, så att Spåren inte stör varandra", () => {
+    const score = createEditor().score;
+    score.tracks.push(structuredClone(score.tracks[0]));
+
+    const channels = toAlphaTab(score).tracks.map((t) => [t.playbackInfo.primaryChannel, t.playbackInfo.secondaryChannel]);
+
+    expect(new Set(channels.flat()).size).toBe(4);
+  });
+});
+
+describe("Markörens position i alphaTabs modell", () => {
+  const score = createEditor().score;
+  score.tracks[0].bars = [
+    { beats: [{ duration: 2, notes: [] }, { duration: 2, notes: [{ string: 1, fret: 5 }, { string: 6, fret: 3 }] }] },
+    { beats: [{ duration: 1, notes: [{ string: 3, fret: 2 }] }] },
+  ];
+  const rendered = toAlphaTab(score);
+
+  it("slaget vid Markören är samma slag i alphaTab, där uppspelningen kan börja", () => {
+    const beat = beatAt(rendered, { track: 0, bar: 1, beat: 0, string: 1 });
+
+    expect(beat?.duration).toBe(model.Duration.Whole);
+    expect(beat?.notes.map((n) => n.realValue)).toEqual([57]);
+  });
+
+  it("tonen vid Markören är tonen på Markörens sträng", () => {
+    // Sträng 6, band 3 i standardstämning är G2 = 43
+    expect(noteAt(rendered, { track: 0, bar: 0, beat: 1, string: 6 })?.realValue).toBe(43);
+    expect(noteAt(rendered, { track: 0, bar: 0, beat: 1, string: 1 })?.realValue).toBe(69);
+  });
+
+  it("utan ton på Markörens sträng finns ingen ton att spela", () => {
+    expect(noteAt(rendered, { track: 0, bar: 0, beat: 1, string: 2 })).toBeNull();
+    expect(noteAt(rendered, { track: 0, bar: 0, beat: 0, string: 1 })).toBeNull();
+  });
+
+  it("en position utanför Partituret har inget slag", () => {
+    expect(beatAt(rendered, { track: 0, bar: 2, beat: 0, string: 1 })).toBeNull();
+    expect(beatAt(rendered, { track: 1, bar: 0, beat: 0, string: 1 })).toBeNull();
   });
 });
