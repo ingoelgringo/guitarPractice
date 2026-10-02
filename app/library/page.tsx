@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { LibraryActions } from "@/components/LibraryActions";
 import { LibraryScoreLink } from "@/components/LibraryScoreLink";
 import { isOwnerInPage } from "@/lib/auth";
-import { listScores } from "@/lib/library";
+import { listScores, type LibraryEntry } from "@/lib/library";
 import styles from "../page.module.css";
 
 export const metadata: Metadata = {
@@ -16,6 +17,10 @@ const updatedFormat = new Intl.DateTimeFormat("en-GB", {
   timeStyle: "short",
   timeZone: "Europe/Stockholm",
 });
+
+function titleOf(score: LibraryEntry): string {
+  return score.title || "Untitled";
+}
 
 /** Ägarens Bibliotek. För en Gäst finns sidan inte. */
 export default async function LibraryPage() {
@@ -37,6 +42,9 @@ export default async function LibraryPage() {
               <th>Title</th>
               <th>Artist</th>
               <th>Last changed</th>
+              <th>
+                <span className={styles.visuallyHidden}>Actions</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -44,12 +52,15 @@ export default async function LibraryPage() {
               <tr key={score.id}>
                 <td>
                   <LibraryScoreLink id={score.id} revision={score.revision}>
-                    {score.title || "Untitled"}
+                    {titleOf(score)}
                   </LibraryScoreLink>
                 </td>
                 <td>{score.artist}</td>
                 <td>
                   <time dateTime={score.updatedAt}>{updatedFormat.format(new Date(score.updatedAt))}</time>
+                </td>
+                <td>
+                  <LibraryActions id={score.id} title={titleOf(score)} />
                 </td>
               </tr>
             ))}

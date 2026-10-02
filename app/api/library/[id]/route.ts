@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isOwner } from "../../../../lib/auth";
-import { getScore, readDocument, saveScore, type ExpectedRevision } from "../../../../lib/library";
+import { deleteScore, getScore, readDocument, saveScore, type ExpectedRevision } from "../../../../lib/library";
 import { isRecord } from "../../../../lib/scoreFile";
 import { notFound, readJson, unauthorized } from "../responses";
 
@@ -34,6 +34,13 @@ export async function PUT(request: Request, ctx: RouteContext<"/api/library/[id]
     { error: "The score has been changed somewhere else.", revision: result.revision },
     { status: 409 },
   );
+}
+
+/** Tar bort Partituret ur Biblioteket. */
+export async function DELETE(request: Request, ctx: RouteContext<"/api/library/[id]">) {
+  if (!isOwner(request)) return unauthorized();
+  if (!(await deleteScore((await ctx.params).id))) return notFound();
+  return new Response(null, { status: 204 });
 }
 
 /** Revisionen i anropet, "overwrite" för Skriv över, eller null när ingen giltig revision finns. */

@@ -1,7 +1,9 @@
 import pg from "pg";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET as list, POST as create } from "./library/route";
-import { GET as get, PUT as save } from "./library/[id]/route";
+import { DELETE as remove, GET as get, PUT as save } from "./library/[id]/route";
+import { POST as duplicate } from "./library/[id]/duplicate/route";
+import { GET as download } from "./library/[id]/file/route";
 import { createSessionToken, SESSION_COOKIE } from "../../lib/auth";
 import { closeDb } from "../../lib/db";
 import { apply, createEditor } from "../../lib/editor";
@@ -54,6 +56,9 @@ function request(path: string, who: Who, init: { method?: string; body?: unknown
   });
 }
 
+/** Ett giltigt id som inget Partitur har. */
+const unknown = "00000000-0000-4000-8000-000000000000";
+
 function context(id: string) {
   return { params: Promise.resolve({ id }) };
 }
@@ -89,20 +94,25 @@ describe("Biblioteket utan inloggning", () => {
       create(request("/api/library", "guest", { method: "POST", body: documentOf(scoreWith("Gästens")) })),
       get(request(`/api/library/${id}`, "guest"), context(id)),
       saveRequest(id, scoreWith("Ändrad av gäst"), 1, "guest"),
+      duplicate(request(`/api/library/${id}/duplicate`, "guest", { method: "POST" }), context(id)),
+      remove(request(`/api/library/${id}`, "guest", { method: "DELETE" }), context(id)),
+      download(request(`/api/library/${id}/file`, "guest"), context(id)),
     ]);
 
-    expect(responses.map((r) => r.status)).toEqual([401, 401, 401, 401]);
+    expect(responses.map((r) => r.status)).toEqual([401, 401, 401, 401, 401, 401, 401]);
   });
 
-  it("en gäst kan varken skapa eller ändra något", async () => {
+  it("en gäst kan varken skapa, ändra, duplicera eller ta bort något", async () => {
     const { id } = await createScore(scoreWith("Orörd"));
     await create(request("/api/library", "guest", { method: "POST", body: documentOf(scoreWith("Gästens")) }));
     await saveRequest(id, scoreWith("Ändrad av gäst"), 1, "guest");
+    await duplicate(request(`/api/library/${id}/duplicate`, "guest", { method: "POST" }), context(id));
+    await remove(request(`/api/library/${id}`, "guest", { method: "DELETE" }), context(id));
 
     const titles = (await (await list(request("/api/library", "owner"))).json()).scores.map(
       (s: { title: string }) => s.title,
     );
-    expect(titles).toContain("Orörd");
+    expect(titles.filter((title: string) => title.startsWith("Orörd"))).toEqual(["Orörd"]);
     expect(titles).not.toContain("Gästens");
     expect(titles).not.toContain("Ändrad av gäst");
   });
@@ -129,7 +139,6 @@ describe("Skapa och hämta", () => {
   });
 
   it("ett okänt id ger 404", async () => {
-    const unknown = "00000000-0000-4000-8000-000000000000";
 
     expect((await get(request(`/api/library/${unknown}`, "owner"), context(unknown))).status).toBe(404);
     expect((await get(request("/api/library/inte-ett-id", "owner"), context("inte-ett-id"))).status).toBe(404);
@@ -205,7 +214,6 @@ describe("Spara", () => {
   });
 
   it("sparning av ett okänt Partitur ger 404", async () => {
-    const unknown = "00000000-0000-4000-8000-000000000000";
 
     expect((await saveRequest(unknown, scoreWith("Finns inte"), 1)).status).toBe(404);
   });
@@ -229,7 +237,6 @@ describe("Spara", () => {
 
   it("Skriv över kräver inloggning och ett Partitur som finns", async () => {
     const { id } = await createScore(scoreWith("Skyddad"));
-    const unknown = "00000000-0000-4000-8000-000000000000";
     const overwrite = (target: string, who: Who) =>
       save(
         request(`/api/library/${target}`, who, {
@@ -265,5 +272,106 @@ describe("Spara", () => {
 
     expect((await put({ document: documentOf(scoreWith("Utan revision")) })).status).toBe(400);
     expect((await put({ document: { format: "itab" }, revision: 1 })).status).toBe(400);
+  });
+});
+
+describe("Duplicera", () => {
+  it("en dubblett är ett nytt Partitur med samma innehåll och titeln märkt som kopia", async () => {
+    const original = scoreWith("Blackbird", "The Beatles");
+    const { id } = await createScore(original);
+    await saveRequest(id, original, 1);
+
+    const response = await duplicate(request(`/api/library/${id}/duplicate`, "owner", { method: "POST" }), context(id));
+
+    expect(response.status).toBe(201);
+    const copy = await response.json();
+    expect(copy).toEqual({ id: expect.any(String), revision: 1 });
+    expect(copy.id).not.toBe(id);
+    const body = await (await get(request(`/api/library/${copy.id}`, "owner"), context(copy.id))).json();
+    const expected = { ...original, metadata: { ...original.metadata, title: "Blackbird (copy)" } };
+    expect(parse(JSON.stringify(body.document))).toEqual({ ok: true, score: expected });
+    const unchanged = await (await get(request(`/api/library/${id}`, "owner"), context(id))).json();
+    expect(parse(JSON.stringify(unchanged.document))).toEqual({ ok: true, score: original });
+  });
+
+  it("en dubblett av ett Partitur utan titel heter Untitled (copy)", async () => {
+    const { id } = await createScore(scoreWith(""));
+
+    const copy = await (
+      await duplicate(request(`/api/library/${id}/duplicate`, "owner", { method: "POST" }), context(id))
+    ).json();
+
+    const { scores } = await (await list(request("/api/library", "owner"))).json();
+    expect(scores.find((s: { id: string }) => s.id === copy.id).title).toBe("Untitled (copy)");
+  });
+
+  it("ett okänt Partitur går inte att duplicera", async () => {
+
+    const response = await duplicate(
+      request(`/api/library/${unknown}/duplicate`, "owner", { method: "POST" }),
+      context(unknown),
+    );
+
+    expect(response.status).toBe(404);
+  });
+});
+
+describe("Ta bort", () => {
+  it("ett borttaget Partitur finns inte längre i listan och går inte att hämta eller spara", async () => {
+    const { id } = await createScore(scoreWith("Bort"));
+
+    const response = await remove(request(`/api/library/${id}`, "owner", { method: "DELETE" }), context(id));
+
+    expect(response.status).toBe(204);
+    const { scores } = await (await list(request("/api/library", "owner"))).json();
+    expect(scores.map((s: { id: string }) => s.id)).not.toContain(id);
+    expect((await get(request(`/api/library/${id}`, "owner"), context(id))).status).toBe(404);
+    expect((await saveRequest(id, scoreWith("Efteråt"), 1)).status).toBe(404);
+  });
+
+  it("ett okänt Partitur ger 404", async () => {
+    const del = (target: string) =>
+      remove(request(`/api/library/${target}`, "owner", { method: "DELETE" }), context(target));
+
+    expect((await del(unknown)).status).toBe(404);
+    expect((await del("inte-ett-id")).status).toBe(404);
+  });
+});
+
+describe("Ladda ner", () => {
+  it("Partiturfilen laddas ner med Partiturets namn och går att öppna", async () => {
+    const score = scoreWith("Blackbird", "The Beatles");
+    const { id } = await createScore(score);
+
+    const response = await download(request(`/api/library/${id}/file`, "owner"), context(id));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-disposition")).toContain('filename="Blackbird.itab"');
+    expect(parse(await response.text())).toEqual({ ok: true, score });
+  });
+
+  it("ett namn med tecken utanför ASCII får ett ASCII-namn och det riktiga namnet kodat", async () => {
+    const { id } = await createScore(scoreWith("Smörgås (copy)"));
+
+    const response = await download(request(`/api/library/${id}/file`, "owner"), context(id));
+
+    expect(response.headers.get("content-disposition")).toBe(
+      `attachment; filename="Sm_rg_s (copy).itab"; filename*=UTF-8''Sm%C3%B6rg%C3%A5s%20%28copy%29.itab`,
+    );
+  });
+
+  it("filen innehåller ingen databasidentitet, så en återöppnad fil blir ett nytt Partitur", async () => {
+    const { id } = await createScore(scoreWith("Identitetslös"));
+    await saveRequest(id, scoreWith("Identitetslös"), 1);
+
+    const text = await (await download(request(`/api/library/${id}/file`, "owner"), context(id))).text();
+
+    expect(text).not.toContain(id);
+    expect(text).toBe(serialize(scoreWith("Identitetslös")));
+  });
+
+  it("ett okänt Partitur ger 404", async () => {
+
+    expect((await download(request(`/api/library/${unknown}/file`, "owner"), context(unknown))).status).toBe(404);
   });
 });

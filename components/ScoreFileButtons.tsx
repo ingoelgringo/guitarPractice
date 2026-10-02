@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { downloadText } from "@/lib/download";
 import { createEditor, type Command } from "@/lib/editor";
 import type { Score } from "@/lib/score";
 import { FILE_EXTENSION, fileName, parse, serialize, type ParseError } from "@/lib/scoreFile";
@@ -52,13 +53,7 @@ export function ScoreFileButtons({
   const [error, setError] = useState<string | null>(null);
 
   function download() {
-    const url = URL.createObjectURL(new Blob([serialize(score)], { type: "application/json" }));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName(score);
-    link.click();
-    // Vissa webbläsare avbryter nedladdningen om adressen släpps direkt
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    downloadText(serialize(score), fileName(score));
     onFileMatched(score);
   }
 

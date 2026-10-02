@@ -73,6 +73,13 @@ export async function getScore(id: string): Promise<LibraryScore | null> {
   return { id: row.id, revision: row.revision, updatedAt: row.updated_at.toISOString(), document: row.document };
 }
 
+/** Ett Partitur i Biblioteket som Partitur, eller null när det inte finns eller inte går att läsa. */
+export async function loadScore(id: string): Promise<{ stored: LibraryScore; score: Score } | null> {
+  const stored = await getScore(id);
+  const score = stored && readDocument(stored.document);
+  return stored && score ? { stored, score } : null;
+}
+
 /**
  * Sparar Partituret om revisionen i databasen fortfarande är `expectedRevision`. Med "overwrite"
  * sparas det oavsett revision: Ägaren har valt att skriva över en version som sparats någon annanstans.
@@ -105,4 +112,24 @@ export async function saveScore(
   // flik som stängdes. Det är ingen konflikt, och klienten får revisionen som det har.
   if (current.rows[0].same) return { ok: true, revision: current.rows[0].revision };
   return { ok: false, reason: "conflict", revision: current.rows[0].revision };
+}
+
+/** Tar bort ett Partitur ur Biblioteket. Ger false när det inte fanns. */
+export async function deleteScore(id: string): Promise<boolean> {
+  if (!isLibraryId(id)) return false;
+  const { rowCount } = await db().query("DELETE FROM scores WHERE id = $1", [id]);
+  return rowCount === 1;
+}
+
+/**
+ * Lägger en kopia av ett Partitur i Biblioteket, med titeln märkt som kopia så att de går att
+ * skilja åt i listan. Ger null när originalet inte finns.
+ */
+export async function duplicateScore(id: string): Promise<{ id: string; revision: number } | null> {
+  const loaded = await loadScore(id);
+  if (!loaded) return null;
+  const { score } = loaded;
+  // Listan visar ett Partitur utan titel som Untitled
+  const title = `${score.metadata.title || "Untitled"} (copy)`;
+  return createScore({ ...score, metadata: { ...score.metadata, title } });
 }

@@ -46,6 +46,36 @@ export async function loadFromLibrary(id: string): Promise<LibraryResult<{ revis
   return { ok: true, revision: result.revision, score: parsed.score };
 }
 
+/** Lägger en kopia av ett Partitur i Biblioteket. */
+export function duplicateInLibrary(id: string): Promise<LibraryResult<{ id: string; revision: number }>> {
+  return send(`/api/library/${encodeURIComponent(id)}/duplicate`, "POST");
+}
+
+/** Tar bort ett Partitur ur Biblioteket. */
+export function deleteFromLibrary(id: string): Promise<LibraryResult<object>> {
+  return send(`/api/library/${encodeURIComponent(id)}`, "DELETE");
+}
+
+/**
+ * Hämtar Partiturfilen för ett Partitur i Biblioteket, så som den laddas ner: utan id och
+ * revision, så att en återöppnad fil blir ett nytt Partitur.
+ */
+export async function scoreFileFromLibrary(id: string): Promise<LibraryResult<{ text: string; score: Score }>> {
+  let response: Response;
+  let text: string;
+  try {
+    response = await fetch(`/api/library/${encodeURIComponent(id)}/file`);
+    text = await response.text();
+  } catch {
+    return { ok: false, reason: "failed" };
+  }
+  if (response.status === 401) return { ok: false, reason: "unauthorized" };
+  if (response.status === 404) return { ok: false, reason: "notFound" };
+  const parsed = response.ok ? parse(text) : null;
+  if (!parsed?.ok) return { ok: false, reason: "failed" };
+  return { ok: true, text, score: parsed.score };
+}
+
 /**
  * Webbläsare skickar ett anrop med `keepalive` även när fliken stängs, men bara upp till 64 kB.
  * Ett större Partitur skickas utan och kan då avbrytas. Det ligger ändå kvar i Utkastet.
@@ -58,7 +88,8 @@ async function send<T>(url: string, method: string, body?: string): Promise<Libr
   try {
     const keepalive = body !== undefined && new Blob([body]).size < KEEPALIVE_LIMIT_BYTES;
     response = await fetch(url, { method, body, keepalive, headers: { "content-type": "application/json" } });
-    data = await response.json();
+    // 204 har ingen kropp
+    data = response.status === 204 ? {} : await response.json();
   } catch {
     return { ok: false, reason: "failed" };
   }

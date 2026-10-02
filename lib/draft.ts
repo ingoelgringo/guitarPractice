@@ -33,6 +33,16 @@ export function replacingLosesWork(draft: Draft | null, target: { id: string; re
   return !(draft.library.id === target.id && draft.library.revision === target.revision);
 }
 
+/**
+ * Utkastet efter att Partituret med `id` har tagits bort ur Biblioteket. Var Utkastet det
+ * Partituret ligger det nu utanför Biblioteket, och eftersom det inte är nedladdat varnar editorn
+ * innan det ersätts. Andra Utkast lämnas orörda.
+ */
+export function detachFromLibrary(draft: Draft | null, id: string): Draft | null {
+  if (draft?.library?.id !== id) return draft;
+  return { score: draft.score, downloaded: false };
+}
+
 /** Den del av `localStorage` som Utkastet använder. */
 export type DraftStorage = Pick<Storage, "getItem" | "setItem">;
 

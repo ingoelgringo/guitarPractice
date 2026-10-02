@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { createEditor } from "./editor";
 import type { Score } from "./score";
-import { loadDraft, replacingLosesWork, saveDraft, type DraftStorage } from "./draft";
+import { detachFromLibrary, loadDraft, replacingLosesWork, saveDraft, type DraftStorage } from "./draft";
 import { serialize } from "./scoreFile";
 
 describe("Utkast: sparning och återställning", () => {
@@ -98,6 +98,24 @@ describe("Utkast: att öppna ett Partitur från Biblioteket i dess ställe", () 
     ["Utkastet är en äldre revision med osparade ändringar", { score, downloaded: true, library: { ...target, revision: 6, saved: false } }, true],
   ])("går arbete förlorat när %s: %s", (_, draft, expected) => {
     expect(replacingLosesWork(draft, target)).toBe(expected);
+  });
+});
+
+describe("Utkast: Partituret tas bort ur Biblioteket", () => {
+  const score = createEditor().score;
+
+  it("ett Utkast av det borttagna Partituret blir ett Partitur utanför Biblioteket som inte är nedladdat", () => {
+    const draft = { score, downloaded: true, library: { id: "3f2a", revision: 4, saved: true } };
+
+    expect(detachFromLibrary(draft, "3f2a")).toEqual({ score, downloaded: false });
+  });
+
+  it.each([
+    ["det inte finns något Utkast", null],
+    ["Utkastet är ett annat Partitur i Biblioteket", { score, downloaded: false, library: { id: "9b1c", revision: 2, saved: true } }],
+    ["Utkastet inte ligger i Biblioteket", { score, downloaded: true }],
+  ])("Utkastet lämnas orört när %s", (_, draft) => {
+    expect(detachFromLibrary(draft, "3f2a")).toBe(draft);
   });
 });
 
