@@ -1,4 +1,6 @@
 .main {
+  flex: 1;
+  width: 100%;
   max-width: 960px;
   margin: 0 auto;
   padding: 48px 16px;
@@ -29,4 +31,59 @@
 .card h2 {
   font-size: 1.25rem;
   margin-bottom: 8px;
+}
+
+.narrow {
+  max-width: 360px;
+}
+
+.footer {
+  margin-top: auto;
+  font-size: 0.875rem;
+}
+
+/* Diskret: syns knappt förrän man hovrar över den */
+.authLink {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0.5;
+}
+
+.authLink:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.loginForm {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.loginForm label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.loginForm input,
+.loginForm button {
+  font: inherit;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--foreground) 30%, transparent);
+  border-radius: 4px;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.loginForm button {
+  cursor: pointer;
+}
+
+.error {
+  color: #d33;
 }

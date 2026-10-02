@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { isOwnerInPage } from "@/lib/auth";
 import { TOOLS } from "@/lib/tools";
 import styles from "./page.module.css";
 
-export default function Home() {
+export default async function Home() {
+  const owner = await isOwnerInPage();
+
   return (
     <main className={styles.main}>
       <h1>Guitar Practice</h1>
@@ -17,6 +20,20 @@ export default function Home() {
           </li>
         ))}
       </ul>
+      {/* Diskret länk för Ägaren. Det finns ingen registrering. */}
+      <footer className={styles.footer}>
+        {owner ? (
+          <form action="/api/logout" method="post">
+            <button type="submit" className={styles.authLink}>
+              Log out
+            </button>
+          </form>
+        ) : (
+          <Link href="/login" className={styles.authLink}>
+            Log in
+          </Link>
+        )}
+      </footer>
     </main>
   );
 }

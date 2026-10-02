@@ -1,5 +1,16 @@
 // PM2-konfiguration för produktion på VPS:en, se vps-infra/apps/guitar-practice.md.
 // CI kopierar filen in i standalone-bygget, så den ligger bredvid server.js i varje release.
+// PM2 läser ecosystem-filen som CommonJS.
+/* eslint-disable @typescript-eslint/no-require-imports */
+const { existsSync, readFileSync } = require("node:fs");
+const { parseEnv } = require("node:util");
+
+// Hemligheterna (OWNER_USERNAME, OWNER_PASSWORD_HASH, SESSION_SECRET) ligger i en fil utanför
+// releaserna, se .env.production.example. parseEnv expanderar inte $, så bcrypt-hashen kan stå
+// som den är. Saknas filen startar appen ändå, men ingen kan logga in.
+const SECRETS_FILE = "/home/deploy/guitar-practice/.env";
+const secrets = existsSync(SECRETS_FILE) ? parseEnv(readFileSync(SECRETS_FILE, "utf8")) : {};
+
 module.exports = {
   apps: [
     {
@@ -8,7 +19,7 @@ module.exports = {
       script: "/home/deploy/guitar-practice/current/server.js",
       cwd: "/home/deploy/guitar-practice/current",
       // HOSTNAME sätts uttryckligen, annars kan maskinens värdnamn ärvas från skalet.
-      env: { NODE_ENV: "production", PORT: "3004", HOSTNAME: "127.0.0.1" },
+      env: { ...secrets, NODE_ENV: "production", PORT: "3004", HOSTNAME: "127.0.0.1" },
       instances: 1,
       autorestart: true,
       watch: false,
