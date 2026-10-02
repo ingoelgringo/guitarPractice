@@ -142,7 +142,7 @@ En webbplats med en enkel landningssida som hubb för **Verktyg**. Det första V
 
 ### Drift och integritet
 
-86. Som Ägare vill jag att sajten nås via `guitar.berghult.com` med HTTPS, så att den är säker och lätt att hitta.
+86. Som Ägare vill jag att sajten nås via `ingemar.berghult.com` med HTTPS, så att den är säker och lätt att hitta.
 87. Som Ägare vill jag att sajten belastar min VPS så lite som möjligt, så att mina andra appar inte påverkas.
 88. Som Ägare vill jag att push till `main` deployar automatiskt efter gröna tester, så att det är enkelt att släppa nya versioner.
 89. Som Ägare vill jag att Biblioteket säkerhetskopieras dagligen, så att jag kan återställa om något går fel.
@@ -209,7 +209,7 @@ En webbplats med en enkel landningssida som hubb för **Verktyg**. Det första V
 ### Drift (följer mönstret i `vps-infra`, med avvikelser)
 - PM2-processen `guitar-practice` kör Next.js `standalone` på port **3004** med `max_memory_restart: '250M'`.
 - **Bygget görs i GitHub Actions, inte på servern.** CI kör tester, bygger `standalone` och skickar resultatet med `rsync`. Servern kör bara SQL-migreringar och `pm2 restart`. Det här avviker från K9 och Folkbibeln och ska dokumenteras.
-- Nginx proxar till 3004. `/_next/static` och soundfonten serveras direkt från disk med lång `immutable`-cachning. `limit_req` gäller inloggningen. Certbot sköter SSL för `guitar.berghult.com`, som får ett A-record hos Oderland.
+- Nginx proxar till 3004. `/_next/static` och soundfonten serveras direkt från disk med lång `immutable`-cachning. `limit_req` gäller inloggningen. Certbot sköter SSL för `ingemar.berghult.com`, som får ett A-record hos Oderland.
 - Backup-cron kör `pg_dump` av `guitarpractice` dagligen kl. 03:00 och sparar dumparna i 30 dagar.
 - I `vps-infra` skapas `apps/guitar-practice.md` och rader läggs till i tabellerna i `SERVER.md` och `README.md`. I `apps/folkbibeln.md` noteras att containern nu även hyser `guitarpractice`.
 - Kodrepot behöver en GitHub-remote för Actions-deployen. Issue tracker förblir lokal markdown.

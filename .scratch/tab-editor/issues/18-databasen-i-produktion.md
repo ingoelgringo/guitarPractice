@@ -1,6 +1,6 @@
 # 18: Databasen i produktion
 
-**What to build:** Biblioteket fungerar live på `guitar.berghult.com`. Databasen `guitarpractice` med egen användare skapas i den befintliga containern `folkbibeln-postgres` (postgres:18, localhost:5435), utan ny container och utan delning med Folkbibelns databas. Migreringarna körs i deploy-flödet, och Biblioteket säkerhetskopieras dagligen. Steg som kräver sudo eller servertillgång ges som checklista åt Ägaren.
+**What to build:** Biblioteket fungerar live på `ingemar.berghult.com`. Databasen `guitarpractice` med egen användare skapas i den befintliga containern `folkbibeln-postgres` (postgres:18, localhost:5435), utan ny container och utan delning med Folkbibelns databas. Migreringarna körs i deploy-flödet, och Biblioteket säkerhetskopieras dagligen. Steg som kräver sudo eller servertillgång ges som checklista åt Ägaren.
 
 **Blocked by:** 02, 15
 
