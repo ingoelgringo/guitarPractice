@@ -265,6 +265,15 @@
   stroke-opacity: 0.5;
 }
 
+/* Ackordets namn ovanför halsen, över Boxen */
+.chordLabel {
+  fill: var(--foreground);
+  font-size: 18px;
+  font-weight: bold;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
 .mutedString {
   fill: var(--foreground);
   font-size: 18px;

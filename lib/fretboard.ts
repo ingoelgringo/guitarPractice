@@ -540,6 +540,8 @@ export interface FretboardView {
   /** Urvalet med de val som inte gäller för Skalan borttagna. */
   selection: FretboardSelection;
   dots: Dot[];
+  /** Ackordets namn över varje kopia av Boxen, med kopians band. Tom utan Ackord eller utan Box. */
+  chordLabels: { name: string; low: number; high: number }[];
   /** Strängar som CAGED-greppet dämpar, sträng 1 först. Tom utan grepp. */
   mutedStrings: number[];
   /** Det som går att välja, med namn för gränssnittet. */
@@ -680,9 +682,12 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
   const roots = ROOT_MENU.map((spellings) =>
     spellings.map(([letter, accidental]) => noteName(letter, accidental, noteNames)).join("/"),
   );
+  const chordName = cagedTable.find((row) => row.degree === chord)?.name;
+  const chordLabels = chordName === undefined ? [] : instances.map((instance) => ({ name: chordName, ...fretSpan(instance) }));
   return {
     selection: { ...selection, chord, box, caged, tab, strings },
     dots,
+    chordLabels,
     mutedStrings: grip?.mutedStrings ?? [],
     options: { roots, boxes, cagedTable, pentaTable, triadTable, stringSets: STRING_SETS },
   };

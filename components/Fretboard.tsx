@@ -6,6 +6,7 @@ import { flushSync } from "react-dom";
 import { browserStorage } from "@/lib/draft";
 import { type CagedShape, DEFAULT_NOTE_NAME_MODE, FRET_COUNT, type FretboardTab, fretboardView, INLAY_FRETS, type Inversion, type LabelMode, type NoteNameMode, type RootRole, SCALES, type ScaleId, type StringSet } from "@/lib/fretboard";
 import { choiceToParams, type FretboardChoice } from "@/lib/fretboardParams";
+import { stepAround } from "@/lib/tableNavigation";
 import { STANDARD_TUNING } from "@/lib/score";
 import styles from "./Fretboard.module.css";
 
@@ -51,7 +52,9 @@ const OPEN_WIDTH = 44;
 const NUT_X = MUTE_WIDTH + OPEN_WIDTH;
 const FRET_WIDTH = 64;
 const STRING_GAP = 32;
-const TOP = 24;
+/** Utrymmet ovanför halsen, där Ackordets namn står över Boxen. */
+const TOP = 48;
+const CHORD_LABEL_Y = 18;
 const BOTTOM = 32;
 const DOT_RADIUS = 13;
 const INLAY_RADIUS = 6;
@@ -121,7 +124,7 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
   const { selection, options } = fretboardView({ ...choice, noteNames, tuning: STANDARD_TUNING });
   /** Halsen visar det hovrade urvalet, och annars det valda. */
   const preview = fretboardView({ ...choice, ...hovered, noteNames, tuning: STANDARD_TUNING });
-  const { dots, mutedStrings } = preview;
+  const { dots, mutedStrings, chordLabels } = preview;
   const { chord, box, caged, tab = "caged", strings } = selection;
   const tableRows: TableRow[] =
     tab === "triads"
@@ -214,7 +217,7 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
 
   /**
    * Piltangenterna flyttar valet i Flikens tabell: upp och ner byter Ackord, vänster och höger byter Box,
-   * och valet stannar vid kanten. Utan valt Ackord (eller Box) väljer de det första. Escape avmarkerar.
+   * och valet går runt till andra kanten. Utan valt Ackord (eller Box) väljer de det första. Escape avmarkerar.
    */
   function handleTableKey(event: KeyboardEvent<HTMLTableElement>) {
     if (event.key === "Escape") {
@@ -225,14 +228,12 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
     const rows = tableRows;
     const row = rows.findIndex((r) => r.degree === chord);
     const column = box === undefined ? -1 : options.boxes.indexOf(box);
-    /** Nästa index längs en axel, stopp vid kanten. Utan valt index (-1) blir det det första. */
-    const step = (index: number, delta: number, count: number) => (index < 0 ? 0 : Math.min(Math.max(index + delta, 0), count - 1));
     let nextRow = row;
     let nextColumn = column;
     if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-      nextRow = step(row, event.key === "ArrowUp" ? -1 : 1, rows.length);
+      nextRow = stepAround(row, event.key === "ArrowUp" ? -1 : 1, rows.length);
     } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-      nextColumn = step(column, event.key === "ArrowLeft" ? -1 : 1, options.boxes.length);
+      nextColumn = stepAround(column, event.key === "ArrowLeft" ? -1 : 1, options.boxes.length);
     } else {
       return;
     }
@@ -289,6 +290,11 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
             {Array.from({ length: FRET_COUNT }, (_, i) => (
               <text key={i} className={styles.fretNumber} x={fretCenter(i + 1)} y={HEIGHT - 8}>
                 {i + 1}
+              </text>
+            ))}
+            {chordLabels.map(({ name, low, high }) => (
+              <text key={low} className={styles.chordLabel} x={(fretCenter(low) + fretCenter(high)) / 2} y={CHORD_LABEL_Y}>
+                {name}
               </text>
             ))}
             {mutedStrings.map((string) => (

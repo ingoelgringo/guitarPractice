@@ -645,6 +645,30 @@ describe("Greppbräda", () => {
     });
   });
 
+  describe("Ackordets namn över Boxen", () => {
+    const cMajor: FretboardSelection = { root: C, scale: "major", tuning: STANDARD_TUNING };
+
+    it("ii – Dm i Box 2 av C-dur står över Boxens band 9–13", () => {
+      expect(fretboardView({ ...cMajor, chord: 2, box: 2 }).chordLabels).toEqual([{ name: "Dm", low: 9, high: 13 }]);
+    });
+
+    it("står över varje kopia av Boxen: I i Box 3 vid band 0–3 och 12–15", () => {
+      expect(fretboardView({ ...cMajor, chord: 1, box: 3 }).chordLabels).toEqual([
+        { name: "C", low: 0, high: 3 },
+        { name: "C", low: 12, high: 15 },
+      ]);
+    });
+
+    it("förminskade Ackord har namn, i alla Flikar: vii° i C-dur heter H° i svenskt Notnamnsläge", () => {
+      expect(fretboardView({ ...cMajor, chord: 7, box: 1, tab: "penta" }).chordLabels.map(({ name }) => name)).toEqual(["H°"]);
+    });
+
+    it("utan Box eller utan Ackord står inget namn", () => {
+      expect(fretboardView({ ...cMajor, chord: 2 }).chordLabels).toEqual([]);
+      expect(fretboardView({ ...cMajor, box: 2 }).chordLabels).toEqual([]);
+    });
+  });
+
   describe("grundtoner", () => {
     /** Banden per grundtonsroll på en sträng. */
     function rootFrets(selection: FretboardSelection, string: number) {
