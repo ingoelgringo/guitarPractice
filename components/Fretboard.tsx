@@ -68,12 +68,14 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
   const noteNames = useSyncExternalStore(subscribeNoteNameMode, readNoteNameMode, () => DEFAULT_NOTE_NAME_MODE);
   const { root, scale, labels } = choice;
   const { selection, dots, options } = fretboardView({ ...choice, noteNames, tuning: STANDARD_TUNING });
-  const { chord } = selection;
+  const { chord, box } = selection;
 
   /** Byter val och skriver det i adressen, utan en ny post i historiken per val. Val som inte gäller släpps. */
   function choose(change: Partial<FretboardChoice>) {
     const next = { ...choice, ...change };
-    next.chord = fretboardView({ ...next, tuning: STANDARD_TUNING }).selection.chord;
+    const normalized = fretboardView({ ...next, tuning: STANDARD_TUNING }).selection;
+    next.chord = normalized.chord;
+    next.box = normalized.box;
     setChoice(next);
     window.history.replaceState(null, "", `?${choiceToParams(next)}`);
   }
@@ -115,6 +117,20 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
             {options.chords.map(({ degree, numeral, name }) => (
               <option key={degree} value={degree}>
                 {numeral} – {name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Box{" "}
+          <select
+            value={box ?? ""}
+            onChange={(event) => choose({ box: event.target.value === "" ? undefined : Number(event.target.value) })}
+          >
+            <option value="">None</option>
+            {options.boxes.map((number) => (
+              <option key={number} value={number}>
+                Box {number}
               </option>
             ))}
           </select>

@@ -180,6 +180,103 @@ describe("Greppbräda", () => {
     });
   });
 
+  describe("Boxar", () => {
+    /** De framhävda banden per sträng, sträng 1 först. */
+    function highlightedFrets(selection: FretboardSelection): number[][] {
+      return [1, 2, 3, 4, 5, 6].map((string) =>
+        dotsOn(selection, string)
+          .filter((dot) => dot.emphasis === "highlighted")
+          .map((dot) => dot.fret),
+      );
+    }
+
+    it("Box 1 i A mollpentatonik framhäver band 5–8 på alla strängar och tonar ner resten", () => {
+      const selection: FretboardSelection = { root: A, scale: "minorPentatonic", box: 1, tuning: STANDARD_TUNING };
+
+      expect(highlightedFrets(selection)).toEqual([[5, 8], [5, 8], [5, 7], [5, 7], [5, 7], [5, 8]]);
+      expect(dotsOn(selection, 6).find((dot) => dot.fret === 3)?.emphasis).toBe("muted");
+    });
+
+    it("dur är durpentatonikens läge med två extra toner: Box 1 i C-dur från band 8 på sträng 6", () => {
+      const frets = highlightedFrets({ root: C, scale: "major", box: 1, tuning: STANDARD_TUNING });
+
+      expect(frets).toEqual([[7, 8, 10], [8, 10], [7, 9, 10], [7, 9, 10], [7, 8, 10], [8, 10]]);
+    });
+
+    it("naturlig moll är mollpentatonikens läge med två extra toner: Box 1 i A naturlig moll", () => {
+      const frets = highlightedFrets({ root: A, scale: "naturalMinor", box: 1, tuning: STANDARD_TUNING });
+
+      expect(frets).toEqual([[5, 7, 8], [5, 6, 8], [4, 5, 7], [5, 7], [5, 7, 8], [5, 7, 8]]);
+    });
+
+    it("blues är mollpentatonikens läge med den blå tonen: Box 1 i A-blues", () => {
+      const frets = highlightedFrets({ root: A, scale: "blues", box: 1, tuning: STANDARD_TUNING });
+
+      expect(frets).toEqual([[5, 8], [5, 8], [5, 7, 8], [5, 7], [5, 6, 7], [5, 8]]);
+    });
+
+    it("Box och Ackord tillsammans: ackordtoner i Boxen framhävs, Boxens och Ackordets övriga toner blir skaltoner", () => {
+      // A mollpentatonik, i – Am (A, C, E) och Box 1 (band 5–8)
+      const selection: FretboardSelection = { root: A, scale: "minorPentatonic", chord: 1, box: 1, tuning: STANDARD_TUNING };
+      const emphasisAt = (fret: number, string = 6) => dotsOn(selection, string).find((dot) => dot.fret === fret)?.emphasis;
+
+      expect(emphasisAt(5)).toBe("highlighted"); // A, i Boxen
+      expect(emphasisAt(8)).toBe("highlighted"); // C, i Boxen
+      expect(emphasisAt(12)).toBe("scale"); // E, ackordton utanför Boxen
+      expect(emphasisAt(5, 5)).toBe("scale"); // D, i Boxen men inte i Ackordet
+      expect(emphasisAt(10)).toBe("muted"); // D, varken eller
+    });
+
+    it("urvalet normaliseras: en Box utanför 1–5 släpps och visar bara skalan", () => {
+      const view = (box: number) => fretboardView({ root: A, scale: "minorPentatonic", box, tuning: STANDARD_TUNING });
+
+      expect(view(0).selection.box).toBeUndefined();
+      expect(view(6).selection.box).toBeUndefined();
+      expect(view(1.5).selection.box).toBeUndefined();
+      expect(view(5).selection.box).toBe(5);
+      expect(new Set(view(6).dots.map((dot) => dot.emphasis))).toEqual(new Set(["scale"]));
+    });
+
+    it("alla Skalor har fem Boxar", () => {
+      for (const scale of ["major", "naturalMinor", "majorPentatonic", "minorPentatonic", "blues"] as const) {
+        expect(fretboardView({ root: E, scale, tuning: STANDARD_TUNING }).options.boxes).toEqual([1, 2, 3, 4, 5]);
+      }
+    });
+
+    it("en Box framhävs på alla ställen inom band 0–15: Box 4 i A mollpentatonik vid band 0–3 och 12–15", () => {
+      expect(highlightedFrets({ root: A, scale: "minorPentatonic", box: 4, tuning: STANDARD_TUNING })).toEqual([
+        [0, 3, 12, 15],
+        [1, 3, 13, 15],
+        [0, 2, 12, 14],
+        [0, 2, 12, 14],
+        [0, 3, 12, 15],
+        [0, 3, 12, 15],
+      ]);
+    });
+
+    it("en Box som inte får plats inom band 15 visas bara en oktav ner", () => {
+      // Box 1 i F mollpentatonik ligger vid band 1–4. En oktav upp skulle den nå band 16.
+      expect(highlightedFrets({ root: F, scale: "minorPentatonic", box: 1, tuning: STANDARD_TUNING })).toEqual([
+        [1, 4],
+        [1, 4],
+        [1, 3],
+        [1, 3],
+        [1, 3],
+        [1, 4],
+      ]);
+    });
+
+    it("Ackordets toner utanför skalan framhävs inne i Boxen: ii° i A mollpentatonik med Box 1", () => {
+      // H° = H, D, F. Box 1 ligger vid band 5–8.
+      const selection: FretboardSelection = { root: A, scale: "minorPentatonic", chord: 2, box: 1, tuning: STANDARD_TUNING };
+      const emphasisAt = (string: number, fret: number) => dotsOn(selection, string).find((dot) => dot.fret === fret)?.emphasis;
+
+      expect(emphasisAt(1, 7)).toBe("highlighted"); // H
+      expect(emphasisAt(2, 6)).toBe("highlighted"); // F
+      expect(emphasisAt(1, 1)).toBe("scale"); // F utanför Boxen
+    });
+  });
+
   it("varje sträng har Prickar inom band 0–15 och halsen följer Stämningen", () => {
     const dropD = TUNING_PRESETS.find((preset) => preset.name === "Drop D")!.tuning;
     const { dots } = fretboardView({ root: D, scale: "majorPentatonic", tuning: dropD });

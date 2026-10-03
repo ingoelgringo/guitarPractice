@@ -66,6 +66,11 @@ const ROOT_MENU: readonly (readonly [number, number][])[] = [
   [[6, 0]],
 ];
 
+/** Tonklassen 0–11 för ett antal halvtoner, även negativa. */
+function pitchClassOf(semitones: number): number {
+  return ((semitones % 12) + 12) % 12;
+}
+
 /** Förtecknet i halvtoner (-2…2) mellan en bokstav och en tonklass. */
 function accidentalOf(letter: number, pitchClass: number): number {
   return ((((pitchClass - NATURAL_PITCH[letter]) % 12) + 18) % 12) - 6;
@@ -144,6 +149,80 @@ function chordOption(parent: readonly Step[], degree: number, nameOf: (step: Ste
   return { degree, numeral: diminished ? `${numeral}°` : numeral, name: `${nameOf(chordRoot)}${suffix}` };
 }
 
+/** Den pentatoniska skala vars lägen ger Skalans Boxar. Dur och moll är pentatonikens lägen med två extra toner. */
+const BOX_PENTATONIC: Record<ScaleId, ScaleId> = {
+  major: "majorPentatonic",
+  naturalMinor: "minorPentatonic",
+  majorPentatonic: "majorPentatonic",
+  minorPentatonic: "minorPentatonic",
+  blues: "minorPentatonic",
+};
+
+const BOX_COUNT = 5;
+
+/** En plats på halsen (sträng och band), med eller utan Prick. */
+type Place = Pick<Dot, "string" | "fret">;
+
+/**
+ * Boxens platser där den börjar på sträng 6. Pentatonikens toner läggs två per sträng i stigande
+ * ordning, från dess ton nummer `box` (Box 1 börjar på Grundtonen). Skalans övriga toner läggs på
+ * en av grannarnas strängar, den som håller tonen närmast den pentatoniska boxens band.
+ */
+function boxShape(selection: FretboardSelection, box: number): Place[] {
+  const { root, tuning } = selection;
+  const pentatonic = SCALE_STEPS[BOX_PENTATONIC[selection.scale]].steps;
+  const lowest = tuning.length - 1;
+  const start = pentatonic[box - 1].semitones;
+  const firstPitch = tuning[lowest] + pitchClassOf(root + start - tuning[lowest]);
+
+  // Tonhöjd och sträng (index i Stämningen) för pentatonikens toner
+  const notes = Array.from({ length: tuning.length * 2 }, (_, i) => {
+    const index = box - 1 + i;
+    const semitones = pentatonic[index % pentatonic.length].semitones + Math.floor(index / pentatonic.length) * 12;
+    return { pitch: firstPitch + semitones - start, string: lowest - Math.floor(i / 2) };
+  });
+  const placeOf = ({ pitch, string }: { pitch: number; string: number }): Place => ({
+    string: string + 1,
+    fret: pitch - tuning[string],
+  });
+  const shape = notes.map(placeOf);
+
+  const { low, high } = fretSpan(shape);
+  const distance = (fret: number) => Math.max(low - fret, fret - high, 0);
+  const extraSemitones = SCALE_STEPS[selection.scale].steps
+    .map((step) => step.semitones)
+    .filter((semitones) => !pentatonic.some((step) => step.semitones === semitones));
+  notes.slice(1).forEach((upper, i) => {
+    const lower = notes[i];
+    for (let pitch = lower.pitch + 1; pitch < upper.pitch; pitch++) {
+      if (!extraSemitones.includes(pitchClassOf(pitch - root))) continue;
+      const below = placeOf({ pitch, string: lower.string });
+      const above = placeOf({ pitch, string: upper.string });
+      // Vid lika avstånd vinner den ljusare strängen
+      shape.push(distance(below.fret) < distance(above.fret) ? below : above);
+    }
+  });
+  return shape;
+}
+
+function fretSpan(places: readonly Place[]): { low: number; high: number } {
+  const frets = places.map(({ fret }) => fret);
+  return { low: Math.min(...frets), high: Math.max(...frets) };
+}
+
+/**
+ * Boxen på varje ställe där den får plats inom band 0–15, en oktav ner eller upp. Får den inte plats
+ * någonstans visas de delar som ligger inom banden.
+ */
+function boxInstances(shape: readonly Place[]): Place[][] {
+  const instances = [-12, 0, 12].map((shift) => shape.map(({ string, fret }) => ({ string, fret: fret + shift })));
+  const onNeck = ({ fret }: Place) => fret >= 0 && fret <= FRET_COUNT;
+  const whole = instances.filter((instance) => instance.every(onNeck));
+  return whole.length > 0 ? whole : instances.map((instance) => instance.filter(onNeck)).filter((instance) => instance.length > 0);
+}
+
+const placeKey = ({ string, fret }: Place) => `${string}-${fret}`;
+
 export interface FretboardSelection {
   /** Grundtonens tonklass, C = 0 … H/B = 11. */
   root: number;
@@ -156,6 +235,8 @@ export interface FretboardSelection {
   noteNames?: NoteNameMode;
   /** Det valda Ackordets steg i Föräldraskalan, 1–7. Inget Ackord om det saknas. */
   chord?: number;
+  /** Den valda Boxen, 1–5. Ingen Box om den saknas. */
+  box?: number;
 }
 
 /** Hur starkt en Prick visas: nedtonad, som en vanlig skalton eller framhävd. */
@@ -180,6 +261,8 @@ export interface FretboardView {
     roots: string[];
     /** Skalans Ackord, hämtade från Föräldraskalan, steg 1 först. */
     chords: ChordOption[];
+    /** Skalans Boxar, 1–5. */
+    boxes: number[];
   };
 }
 
@@ -195,25 +278,46 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
   const inScale = new Set(steps.map((step) => step.semitones));
   const inChord = new Set(chordTones.map((step) => step.semitones));
   const shown = [...steps, ...chordTones.filter((step) => !inScale.has(step.semitones))];
-  const emphasisOf = (step: Step): Emphasis => {
-    if (chord === undefined) return "scale";
-    return inChord.has(step.semitones) ? "highlighted" : "muted";
+  const requestedBox = selection.box ?? 0;
+  const box = Number.isInteger(requestedBox) && requestedBox >= 1 && requestedBox <= BOX_COUNT ? requestedBox : undefined;
+  const instances = box === undefined ? [] : boxInstances(boxShape(selection, box));
+  const inBox = new Set(instances.flat().map(placeKey));
+  // En ackordton utanför skalan hör till Boxen när den ligger inom Boxens band
+  const insideBox = (step: Step, place: Place) =>
+    inScale.has(step.semitones)
+      ? inBox.has(placeKey(place))
+      : instances.some((instance) => {
+          const { low, high } = fretSpan(instance);
+          return place.fret >= low && place.fret <= high;
+        });
+
+  // Varje valt lager (Ackord, Box) är ett filter. En Prick som klarar alla framhävs, en som klarar något visas som skalton.
+  const emphasisOf = (step: Step, place: Place): Emphasis => {
+    const filters = [
+      ...(chord === undefined ? [] : [inChord.has(step.semitones)]),
+      ...(box === undefined ? [] : [insideBox(step, place)]),
+    ];
+    if (filters.length === 0) return "scale";
+    if (filters.every(Boolean)) return "highlighted";
+    return filters.some(Boolean) ? "scale" : "muted";
   };
 
   const dots: Dot[] = [];
   selection.tuning.forEach((openPitch, index) => {
     for (let fret = 0; fret <= FRET_COUNT; fret++) {
-      const semitones = (((openPitch + fret - root) % 12) + 12) % 12;
+      const semitones = pitchClassOf(openPitch + fret - root);
       const step = shown.find((candidate) => candidate.semitones === semitones);
       if (!step) continue;
-      dots.push({ string: index + 1, fret, label: labelOf(step), isRoot: semitones === 0, emphasis: emphasisOf(step) });
+      const place = { string: index + 1, fret };
+      dots.push({ ...place, label: labelOf(step), isRoot: semitones === 0, emphasis: emphasisOf(step, place) });
     }
   });
+  const boxes = Array.from({ length: BOX_COUNT }, (_, i) => i + 1);
   const roots = ROOT_MENU.map((spellings) =>
     spellings.map(([letter, accidental]) => noteName(letter, accidental, noteNames)).join("/"),
   );
   const chords = parent.map((step) => chordOption(parent, step.degree, (chordRoot) => stepName(letter, root, chordRoot, noteNames)));
-  return { selection: { ...selection, chord }, dots, options: { roots, chords } };
+  return { selection: { ...selection, chord, box }, dots, options: { roots, chords, boxes } };
 }
 
 /** Skalorna i den ordning de erbjuds, med namn för gränssnittet. */
