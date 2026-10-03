@@ -105,7 +105,7 @@
   padding: 4px 6px;
 }
 
-/* Flikarna CAGED, Penta och Triads, och Flikens tabell med Skalans Ackord som rader och Boxarna som kolumner */
+/* Flikarna CAGED, Penta och Treklanger, och Flikens tabell med Skalans Ackord som rader och Boxarna som kolumner */
 .tabs {
   flex-basis: 100%;
   display: flex;

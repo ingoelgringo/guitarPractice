@@ -401,11 +401,11 @@ interface Triad {
  */
 function triadsOn(tuning: readonly number[], chordTones: readonly number[], strings: StringSet): Triad[] {
   const [low, middle, high] = [...strings].map(Number);
-  const spread = low - middle === 2;
+  const skipsString = low - middle === 2;
   const onNeck = ({ fret }: Place) => fret >= 0 && fret <= FRET_COUNT;
   return INVERSIONS.flatMap((inversion, index) => {
     const order = [0, 1, 2].map((offset) => chordTones[(index + offset) % 3]);
-    const [bass, ...upper] = spread ? [order[0], order[2], order[1]] : order;
+    const [bass, ...upper] = skipsString ? [order[0], order[2], order[1]] : order;
     const found: Triad[] = [];
     for (let fret = 0; fret <= FRET_COUNT; fret++) {
       let pitch = tuning[low - 1] + fret;
@@ -423,21 +423,30 @@ function triadsOn(tuning: readonly number[], chordTones: readonly number[], stri
 }
 
 /**
- * Hur nära ett Treklangsgrepp ligger en kopia av en Box, som ett tal där lägre är närmare: först flest
- * toner inom kopians band, sedan minst avstånd i band utanför och sist det lägsta bandet.
+ * Hur långt ett Treklangsgrepp ligger från en kopia av en Box, jämfört i ordning: toner utanför kopians
+ * band, sammanlagt antal band utanför och greppets lägsta band. Lägre är närmare.
  */
-function triadDistance({ places }: Triad, instance: readonly Place[]): number {
+function triadDistance({ places }: Triad, instance: readonly Place[]): number[] {
   const { low, high } = fretSpan(instance);
   const outside = places.map(({ fret }) => Math.max(low - fret, fret - high, 0));
-  const inside = outside.filter((distance) => distance === 0).length;
-  const lowest = Math.min(...places.map(({ fret }) => fret));
-  return (places.length - inside) * 10_000 + outside.reduce((sum, distance) => sum + distance, 0) * 100 + lowest;
+  return [
+    outside.filter((distance) => distance > 0).length,
+    outside.reduce((sum, distance) => sum + distance, 0),
+    Math.min(...places.map(({ fret }) => fret)),
+  ];
+}
+
+/** Om ett avstånd från `triadDistance` är mindre än ett annat. */
+function isCloser(distance: readonly number[], other: readonly number[]): boolean {
+  const index = distance.findIndex((value, i) => value !== other[i]);
+  return index !== -1 && distance[index] < other[index];
 }
 
 /** Det Treklangsgrepp som ligger närmast någon kopia av Boxen. */
 function closestTriad(triads: readonly Triad[], instances: readonly Place[][]): Triad {
-  const distance = (triad: Triad) => Math.min(...instances.map((instance) => triadDistance(triad, instance)));
-  return triads.reduce((found, triad) => (distance(triad) < distance(found) ? triad : found));
+  const distance = (triad: Triad) =>
+    instances.map((instance) => triadDistance(triad, instance)).reduce((best, next) => (isCloser(next, best) ? next : best));
+  return triads.reduce((closest, triad) => (isCloser(distance(triad), distance(closest)) ? triad : closest));
 }
 
 /**
@@ -456,6 +465,9 @@ function triadPlaces(triads: readonly Triad[], instances: readonly Place[][]): P
 
 /** Fliken i Greppbrädans panel. */
 export type FretboardTab = "caged" | "penta" | "triads";
+
+/** Flikarna i den ordning de visas. */
+export const FRETBOARD_TABS: readonly FretboardTab[] = ["caged", "penta", "triads"];
 
 /**
  * Ett Strängset: de tre strängar ett Treklangsgrepp spelas på, lägsta först. Antingen tre intilliggande
@@ -552,7 +564,7 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
   const { steps, parent } = SCALE_STEPS[selection.scale];
   const letter = rootLetter(root, parent);
   const chord = parent.some((step) => step.degree === selection.chord) ? selection.chord : undefined;
-  const tab: FretboardTab = selection.tab === "penta" || selection.tab === "triads" ? selection.tab : "caged";
+  const tab = FRETBOARD_TABS.find((candidate) => candidate === selection.tab) ?? "caged";
   const strings = STRING_SETS.find((candidate) => candidate === selection.strings) ?? DEFAULT_STRING_SET;
   const labelOf = (step: Step) => (labels === "interval" ? intervalLabel(step) : stepName(letter, root, step, noteNames));
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fretboardView, type Dot, type FretboardSelection, type NoteNameMode, type RootRole } from "./fretboard";
+import { fretboardView, STRING_SETS, type Dot, type FretboardSelection, type NoteNameMode, type RootRole } from "./fretboard";
 import { STANDARD_TUNING } from "./score";
 import { TUNING_PRESETS } from "./tuning";
 
@@ -550,7 +550,7 @@ describe("Greppbräda", () => {
     it("varje cell har en Omvändning, för alla Skalor, tonarter och Strängset, även förminskade Ackord", () => {
       for (const scale of ["major", "naturalMinor", "majorPentatonic", "minorPentatonic", "blues"] as const) {
         for (let root = 0; root < 12; root++) {
-          for (const strings of ["654", "543", "432", "321", "643", "532", "421"] as const) {
+          for (const strings of STRING_SETS) {
             const { triadTable } = fretboardView({ root, scale, strings, tuning: STANDARD_TUNING }).options;
             expect(triadTable).toHaveLength(7);
             for (const { cells } of triadTable) {
@@ -586,8 +586,13 @@ describe("Greppbräda", () => {
       const box = layerFrets({ ...cMajor, box: 1 }, "box");
       const onlyBox = layerFrets({ root: C, scale: "major", tab: "triads", box: 1, tuning: STANDARD_TUNING }, "box");
 
-      expect(box[0]).toEqual(onlyBox[0].filter((fret) => fret !== 8));
-      expect(box[5]).toEqual(onlyBox[5]);
+      // Greppet ligger på band 8, 8 och 9 på sträng 1–3, och resten av Boxen är oförändrad
+      expect(box).toEqual([
+        onlyBox[0].filter((fret) => fret !== 8),
+        onlyBox[1].filter((fret) => fret !== 8),
+        onlyBox[2].filter((fret) => fret !== 9),
+        ...onlyBox.slice(3),
+      ]);
     });
 
     it("cell: Treklangsgreppet ritas i varje kopia av Boxen: andra omvändningen i Box 3 vid band 0-1-0 och 12-13-12", () => {
