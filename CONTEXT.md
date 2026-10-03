@@ -118,6 +118,14 @@ _Avoid_: Position, mönster
 En av fem greppformer (C, A, G, E, D) för ett dur- eller mollackord, flyttad längs halsen till Ackordets Grundton. Den visar exakt ett grepp. Ett förminskat Ackord har ingen CAGED-form.
 _Avoid_: Grepp, shape
 
+**Flik** (`Tab`):
+Ett sätt att välja i Greppbrädans panel. Den första fliken är *CAGED*, och senare kan flikar för treklanger och fyrklanger komma.
+_Avoid_: Vy, läge, visningssätt
+
+**CAGED-tabellen**:
+Flikens tabell med Skalans Ackord som rader och Boxarna som kolumner. Varje cell är den CAGED-form för radens Ackord som ligger i kolumnens Box.
+_Avoid_: Matris, rutnät
+
 **Notnamnsläge** (`NoteNameMode`):
 Hur tonnamn skrivs: *svenskt* (H, och B för det som på engelska heter B♭) eller *engelskt*. I övrigt följer stavningen tonarten, så F-dur skrivs med B♭ och E-dur med D♯.
 
