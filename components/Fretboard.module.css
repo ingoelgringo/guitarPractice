@@ -83,7 +83,7 @@
   dominant-baseline: central;
 }
 
-/* Betoning: ett valt Ackord framhävs och skalans övriga toner tonas ner. */
+/* Betoning: ett valt Ackord eller en Box framhävs och skalans övriga toner tonas ner. CAGED-greppet är starkast. */
 .muted {
   opacity: 0.3;
 }
@@ -91,4 +91,21 @@
 .highlighted circle {
   stroke: var(--foreground);
   stroke-width: 2.5;
+}
+
+.strongest circle {
+  stroke: var(--foreground);
+  stroke-width: 4;
+}
+
+.strongest text {
+  font-size: 14px;
+}
+
+.mutedString {
+  fill: var(--foreground);
+  font-size: 18px;
+  font-weight: bold;
+  text-anchor: middle;
+  dominant-baseline: central;
 }

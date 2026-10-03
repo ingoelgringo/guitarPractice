@@ -40,6 +40,14 @@ describe("Greppbrädans val i adressen", () => {
     expect(choiceToParams({ root: 0, scale: "major", labels: "interval" }).has("box")).toBe(false);
   });
 
+  it("CAGED-formen ligger i adressen, och saknas när ingen form är vald", () => {
+    expect(choiceFromParams(new URLSearchParams("caged=G")).caged).toBe("G");
+    expect(choiceFromParams(new URLSearchParams("caged=g")).caged).toBe("G");
+    expect(choiceFromParams(new URLSearchParams("caged=X")).caged).toBeUndefined();
+    expect(choiceToParams({ root: 0, scale: "major", labels: "interval", chord: 1, caged: "E" }).get("caged")).toBe("E");
+    expect(choiceToParams({ root: 0, scale: "major", labels: "interval" }).has("caged")).toBe(false);
+  });
+
   it("skriver valet som läsbara parametrar", () => {
     expect(choiceToParams({ root: 10, scale: "naturalMinor", labels: "interval" }).toString()).toBe(
       "root=Bb&scale=natural-minor&labels=intervals",
@@ -47,7 +55,7 @@ describe("Greppbrädans val i adressen", () => {
   });
 
   it("ett val överlever en tur via adressen", () => {
-    const choice = { root: 6, scale: "majorPentatonic", labels: "noteName", chord: 4, box: 5 } as const;
+    const choice = { root: 6, scale: "majorPentatonic", labels: "noteName", chord: 4, box: 5, caged: "A" } as const;
 
     expect(choiceFromParams(choiceToParams(choice))).toEqual(choice);
   });

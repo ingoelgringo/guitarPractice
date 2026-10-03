@@ -277,6 +277,118 @@ describe("Greppbräda", () => {
     });
   });
 
+  describe("CAGED-former", () => {
+    /** Greppet som [sträng, band] för de starkaste Prickarna, sträng 1 först. */
+    function grip(selection: FretboardSelection): [number, number][] {
+      return fretboardView(selection)
+        .dots.filter((dot) => dot.emphasis === "strongest")
+        .map((dot): [number, number] => [dot.string, dot.fret])
+        .sort((a, b) => a[0] - b[0]);
+    }
+
+    it("E-formen för A-dur har sin grundton på band 5 på sträng 6, en Prick per sträng", () => {
+      const selection: FretboardSelection = { root: A, scale: "major", chord: 1, caged: "E", tuning: STANDARD_TUNING };
+
+      expect(grip(selection)).toEqual([
+        [1, 5],
+        [2, 5],
+        [3, 6],
+        [4, 7],
+        [5, 7],
+        [6, 5],
+      ]);
+      expect(fretboardView(selection).mutedStrings).toEqual([]);
+    });
+
+    it("C-formen för C-dur i öppet läge dämpar sträng 6", () => {
+      const selection: FretboardSelection = { root: C, scale: "major", chord: 1, caged: "C", tuning: STANDARD_TUNING };
+
+      expect(grip(selection)).toEqual([
+        [1, 0],
+        [2, 1],
+        [3, 0],
+        [4, 2],
+        [5, 3],
+      ]);
+      expect(fretboardView(selection).mutedStrings).toEqual([6]);
+    });
+
+    it("mollackord har egna former: A-formen för Am", () => {
+      const selection: FretboardSelection = { root: A, scale: "minorPentatonic", chord: 1, caged: "A", tuning: STANDARD_TUNING };
+
+      expect(grip(selection)).toEqual([
+        [1, 0],
+        [2, 1],
+        [3, 2],
+        [4, 2],
+        [5, 0],
+      ]);
+    });
+
+    it("formen flyttas med Ackordet: D-formen för G (V i C-dur) med grundton på D-strängen band 5", () => {
+      const selection: FretboardSelection = { root: C, scale: "major", chord: 5, caged: "D", tuning: STANDARD_TUNING };
+
+      expect(grip(selection)).toEqual([
+        [1, 7],
+        [2, 8],
+        [3, 7],
+        [4, 5],
+      ]);
+      expect(fretboardView(selection).mutedStrings).toEqual([5, 6]);
+    });
+
+    it("dur- och mollackord erbjuder alla fem former, i ordningen C, A, G, E, D", () => {
+      const { options } = fretboardView({ root: C, scale: "major", chord: 2, tuning: STANDARD_TUNING });
+
+      expect(options.cagedShapes).toEqual(
+        ["C", "A", "G", "E", "D"].map((shape) => ({ shape, disabled: false })),
+      );
+    });
+
+    it("valet är gråat för B° i C-dur och utan Ackord, och formen släpps då", () => {
+      const diminished = fretboardView({ root: C, scale: "major", chord: 7, caged: "E", tuning: STANDARD_TUNING });
+      const noChord = fretboardView({ root: C, scale: "major", caged: "E", tuning: STANDARD_TUNING });
+
+      for (const view of [diminished, noChord]) {
+        expect(view.options.cagedShapes.every((option) => option.disabled)).toBe(true);
+        expect(view.selection.caged).toBeUndefined();
+        expect(view.dots.some((dot) => dot.emphasis === "strongest")).toBe(false);
+        expect(view.mutedStrings).toEqual([]);
+      }
+    });
+
+    it("skalbyte släpper formen när Ackordet blir förminskat: ii i C-dur blir ii° i C naturlig moll", () => {
+      const view = fretboardView({ root: C, scale: "naturalMinor", chord: 2, caged: "A", tuning: STANDARD_TUNING });
+
+      expect(view.selection.chord).toBe(2);
+      expect(view.selection.caged).toBeUndefined();
+    });
+
+    it("en okänd form släpps", () => {
+      const view = fretboardView({ root: C, scale: "major", chord: 1, caged: "X" as never, tuning: STANDARD_TUNING });
+
+      expect(view.selection.caged).toBeUndefined();
+    });
+
+    it("CAGED-formen och en Box visas samtidigt: E-formen för Am i Box 1 av A mollpentatonik", () => {
+      const selection: FretboardSelection = { root: A, scale: "minorPentatonic", chord: 1, box: 1, caged: "E", tuning: STANDARD_TUNING };
+      const dots = fretboardView(selection).dots;
+      const emphasisAt = (string: number, fret: number) => dots.find((dot) => dot.string === string && dot.fret === fret)?.emphasis;
+
+      expect(grip(selection)).toEqual([
+        [1, 5],
+        [2, 5],
+        [3, 5],
+        [4, 7],
+        [5, 7],
+        [6, 5],
+      ]);
+      expect(emphasisAt(2, 8)).toBe("scale"); // G i Boxen men inte i Ackordet
+      expect(emphasisAt(1, 8)).toBe("highlighted"); // C, ackordton i Boxen men utanför greppet
+      expect(emphasisAt(6, 12)).toBe("scale"); // E, ackordton utanför Boxen
+    });
+  });
+
   it("varje sträng har Prickar inom band 0–15 och halsen följer Stämningen", () => {
     const dropD = TUNING_PRESETS.find((preset) => preset.name === "Drop D")!.tuning;
     const { dots } = fretboardView({ root: D, scale: "majorPentatonic", tuning: dropD });

@@ -1,5 +1,7 @@
 /** Greppbrädan: vilka Prickar halsen visar för ett urval. Ren modul utan React. */
 
+import { STANDARD_TUNING } from "./score";
+
 /** Antal band som visas utöver lös sträng. */
 export const FRET_COUNT = 15;
 
@@ -139,15 +141,56 @@ function interval(from: Step, to: Step): number {
   return (to.semitones - from.semitones + 12) % 12;
 }
 
+/** Treklangens typ: dur, moll eller förminskad. */
+type ChordQuality = "major" | "minor" | "diminished";
+
+/** De ackordtyper som har CAGED-former. */
+type CagedQuality = Exclude<ChordQuality, "diminished">;
+
+function chordQuality(parent: readonly Step[], degree: number): ChordQuality {
+  const [chordRoot, third, fifth] = chordSteps(parent, degree);
+  if (interval(chordRoot, third) === 4) return "major";
+  return interval(chordRoot, fifth) === 6 ? "diminished" : "minor";
+}
+
 /** Treklangens steg och namn, med Ackordets grundton stavad efter tonarten. */
 function chordOption(parent: readonly Step[], degree: number, nameOf: (step: Step) => string): ChordOption {
-  const [chordRoot, third, fifth] = chordSteps(parent, degree);
-  const minor = interval(chordRoot, third) === 3;
-  const diminished = minor && interval(chordRoot, fifth) === 6;
-  const numeral = minor ? NUMERALS[degree - 1].toLowerCase() : NUMERALS[degree - 1];
-  const suffix = diminished ? "°" : minor ? "m" : "";
-  return { degree, numeral: diminished ? `${numeral}°` : numeral, name: `${nameOf(chordRoot)}${suffix}` };
+  const quality = chordQuality(parent, degree);
+  const [chordRoot] = chordSteps(parent, degree);
+  const numeral = quality === "major" ? NUMERALS[degree - 1] : NUMERALS[degree - 1].toLowerCase();
+  const suffix = { major: "", minor: "m", diminished: "°" }[quality];
+  return {
+    degree,
+    numeral: quality === "diminished" ? `${numeral}°` : numeral,
+    name: `${nameOf(chordRoot)}${suffix}`,
+  };
 }
+
+/** En CAGED-form, uppkallad efter det öppna ackord den bygger på. */
+export type CagedShape = "C" | "A" | "G" | "E" | "D";
+
+export const CAGED_SHAPES: readonly CagedShape[] = ["C", "A", "G", "E", "D"];
+
+/**
+ * Det öppna greppet i standardstämning för varje form: det öppna ackordets grundton (tonklass) och
+ * band per sträng, sträng 1 först. `null` är en dämpad sträng.
+ */
+const CAGED_GRIPS: Record<CagedQuality, Record<CagedShape, { root: number; frets: readonly (number | null)[] }>> = {
+  major: {
+    C: { root: 0, frets: [0, 1, 0, 2, 3, null] },
+    A: { root: 9, frets: [0, 2, 2, 2, 0, null] },
+    G: { root: 7, frets: [3, 0, 0, 0, 2, 3] },
+    E: { root: 4, frets: [0, 0, 1, 2, 2, 0] },
+    D: { root: 2, frets: [2, 3, 2, 0, null, null] },
+  },
+  minor: {
+    C: { root: 0, frets: [null, 1, 0, 1, 3, null] },
+    A: { root: 9, frets: [0, 1, 2, 2, 0, null] },
+    G: { root: 7, frets: [3, 3, 0, 0, 1, 3] },
+    E: { root: 4, frets: [0, 0, 0, 2, 2, 0] },
+    D: { root: 2, frets: [1, 3, 2, 0, null, null] },
+  },
+};
 
 /** Den pentatoniska skala vars lägen ger Skalans Boxar. Dur och moll är pentatonikens lägen med två extra toner. */
 const BOX_PENTATONIC: Record<ScaleId, ScaleId> = {
@@ -223,6 +266,28 @@ function boxInstances(shape: readonly Place[]): Place[][] {
 
 const placeKey = ({ string, fret }: Place) => `${string}-${fret}`;
 
+/**
+ * CAGED-greppet för ett dur- eller mollackord: formens öppna grepp flyttat till Ackordets grundton,
+ * i det lägsta läget där hela greppet ryms inom band 0–15. Greppet läggs som tonhöjder, så att det
+ * följer Stämningen. Ger platserna och de dämpade strängarna.
+ */
+function cagedGrip(
+  tuning: readonly number[],
+  quality: CagedQuality,
+  shape: CagedShape,
+  chordRoot: number,
+): { places: Place[]; mutedStrings: number[] } {
+  const { root, frets } = CAGED_GRIPS[quality][shape];
+  const shift = pitchClassOf(chordRoot - root);
+  const pitches = frets.map((fret, index) => (fret === null ? null : STANDARD_TUNING[index] + fret + shift));
+  const placesAt = (octave: number): Place[] =>
+    pitches.flatMap((pitch, index) => (pitch === null ? [] : [{ string: index + 1, fret: pitch + octave - tuning[index] }]));
+  const onNeck = ({ fret }: Place) => fret >= 0 && fret <= FRET_COUNT;
+  const places = [-12, 0, 12].map(placesAt).find((candidate) => candidate.every(onNeck)) ?? placesAt(0).filter(onNeck);
+  const mutedStrings = frets.flatMap((fret, index) => (fret === null ? [index + 1] : []));
+  return { places, mutedStrings };
+}
+
 export interface FretboardSelection {
   /** Grundtonens tonklass, C = 0 … H/B = 11. */
   root: number;
@@ -237,10 +302,12 @@ export interface FretboardSelection {
   chord?: number;
   /** Den valda Boxen, 1–5. Ingen Box om den saknas. */
   box?: number;
+  /** Den valda CAGED-formen för Ackordet. Gäller bara dur- och mollackord. */
+  caged?: CagedShape;
 }
 
-/** Hur starkt en Prick visas: nedtonad, som en vanlig skalton eller framhävd. */
-export type Emphasis = "muted" | "scale" | "highlighted";
+/** Hur starkt en Prick visas: nedtonad, som en vanlig skalton, framhävd eller starkast (CAGED-greppet). */
+export type Emphasis = "muted" | "scale" | "highlighted" | "strongest";
 
 /** En Prick: en markerad position på halsen. Sträng 1 är den ljusaste. */
 export interface Dot {
@@ -255,6 +322,8 @@ export interface FretboardView {
   /** Urvalet med de val som inte gäller för Skalan borttagna. */
   selection: FretboardSelection;
   dots: Dot[];
+  /** Strängar som CAGED-greppet dämpar, sträng 1 först. Tom utan grepp. */
+  mutedStrings: number[];
   /** Det som går att välja, med namn för gränssnittet. */
   options: {
     /** Grundtonsmenyns namn per tonklass, C först. */
@@ -263,6 +332,8 @@ export interface FretboardView {
     chords: ChordOption[];
     /** Skalans Boxar, 1–5. */
     boxes: number[];
+    /** CAGED-formerna, gråade när inget dur- eller mollackord är valt. */
+    cagedShapes: { shape: CagedShape; disabled: boolean }[];
   };
 }
 
@@ -281,6 +352,16 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
   const requestedBox = selection.box ?? 0;
   const box = Number.isInteger(requestedBox) && requestedBox >= 1 && requestedBox <= BOX_COUNT ? requestedBox : undefined;
   const instances = box === undefined ? [] : boxInstances(boxShape(selection, box));
+  // CAGED-former finns bara för dur- och mollackord
+  const quality = chord === undefined ? undefined : chordQuality(parent, chord);
+  const gripQuality: CagedQuality | undefined = quality === "diminished" ? undefined : quality;
+  const requestedShape = CAGED_SHAPES.find((shape) => shape === selection.caged);
+  const caged = gripQuality === undefined ? undefined : requestedShape;
+  const grip =
+    caged === undefined || gripQuality === undefined
+      ? { places: [], mutedStrings: [] }
+      : cagedGrip(selection.tuning, gripQuality, caged, root + chordTones[0].semitones);
+  const inGrip = new Set(grip.places.map(placeKey));
   const inBox = new Set(instances.flat().map(placeKey));
   // En ackordton utanför skalan hör till Boxen när den ligger inom Boxens band
   const insideBox = (step: Step, place: Place) =>
@@ -293,6 +374,7 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
 
   // Varje valt lager (Ackord, Box) är ett filter. En Prick som klarar alla framhävs, en som klarar något visas som skalton.
   const emphasisOf = (step: Step, place: Place): Emphasis => {
+    if (inGrip.has(placeKey(place))) return "strongest";
     const filters = [
       ...(chord === undefined ? [] : [inChord.has(step.semitones)]),
       ...(box === undefined ? [] : [insideBox(step, place)]),
@@ -317,7 +399,13 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
     spellings.map(([letter, accidental]) => noteName(letter, accidental, noteNames)).join("/"),
   );
   const chords = parent.map((step) => chordOption(parent, step.degree, (chordRoot) => stepName(letter, root, chordRoot, noteNames)));
-  return { selection: { ...selection, chord, box }, dots, options: { roots, chords, boxes } };
+  const cagedShapes = CAGED_SHAPES.map((shape) => ({ shape, disabled: gripQuality === undefined }));
+  return {
+    selection: { ...selection, chord, box, caged },
+    dots,
+    mutedStrings: grip.mutedStrings,
+    options: { roots, chords, boxes, cagedShapes },
+  };
 }
 
 /** Skalorna i den ordning de erbjuds, med namn för gränssnittet. */
