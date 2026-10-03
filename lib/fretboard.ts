@@ -634,7 +634,7 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
     const pentaBoxes = pentaBoxInstances(selection.tuning, gripQuality, root + chordTones[0].semitones);
     return fitInBox(pentaBoxes[pentaBox - 1], instances).positions.flat();
   })();
-  /** Platserna i Ackordets lager när de är ett mönster (greppet eller Penta-boxen) och inte bara tonerna. */
+  /** Platserna i Ackordets lager när de är ett mönster (greppet, Penta-boxen eller Treklangsgreppen) och inte bara tonerna. */
   const patternPlaces = grip === undefined ? (pentaBoxPlaces ?? chordTriadPlaces) : gripPlaces(grip, instances);
   const inPattern = new Set((patternPlaces ?? []).map(placeKey));
   // Tonerna i Ackordets lager (Ackordets penta eller toner) visas även när de ligger utanför skalan,

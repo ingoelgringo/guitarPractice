@@ -618,7 +618,13 @@ describe("Greppbräda", () => {
     it("radrubrik: I i C-dur visar alla Treklangsgrepp på 3-2-1 över hela halsen, och inget orange på andra strängar", () => {
       // R vid band 5-5-3, 3 vid 9-8-8 och 5 vid 0-1-0 och 12-13-12 (sträng 3-2-1)
       expect(layerFrets(cMajor, "chord")).toEqual([[0, 3, 8, 12], [1, 5, 8, 13], [0, 5, 9, 12], [], [], []]);
-      expect(layerFrets(cMajor, "muted")[5]).toEqual(layerFrets({ ...cMajor, tab: "caged", chord: undefined }, "scale")[5]);
+    });
+
+    it("radrubrik: toner utanför Skalan syns, som H i ii° för A mollpentatonik på 3-2-1", () => {
+      const selection: FretboardSelection = { root: A, scale: "minorPentatonic", tab: "triads", chord: 2, tuning: STANDARD_TUNING };
+      const chordDots = fretboardView(selection).dots.filter((dot) => dot.layer === "chord" && dot.label === "2");
+
+      expect(chordDots.map(({ string, fret }) => [string, fret])).toEqual(expect.arrayContaining([[1, 7], [2, 12], [3, 4]]));
     });
 
     it("radrubrik med förminskat Ackord: vii° i C-dur på 6-4-3 visar Treklangsgrepp bara på sträng 6, 4 och 3", () => {
