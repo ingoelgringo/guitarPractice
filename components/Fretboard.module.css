@@ -2,9 +2,14 @@
   --neck-line: color-mix(in srgb, var(--foreground) 45%, transparent);
   --neck-inlay: color-mix(in srgb, var(--foreground) 12%, transparent);
   --panel-divider: color-mix(in srgb, var(--foreground) 15%, transparent);
-  --dot: #2f5d8a;
+  /* Lagren: Ackordets (orange), Boxens och skalans (blått) och nedtonat. Grundtonerna får en mörk kantlinje. */
+  --dot-chord: #d9690f;
+  --dot-box: #2f5d8a;
   --dot-text: #ffffff;
-  --root-dot: #c2410c;
+  --dot-muted: color-mix(in srgb, var(--foreground) 22%, var(--background));
+  --dot-muted-text: color-mix(in srgb, var(--foreground) 55%, var(--background));
+  --root-scale: #0b2440;
+  --root-chord: #6b2405;
 
   flex: 1;
   width: 100%;
@@ -18,9 +23,10 @@
 
 @media (prefers-color-scheme: dark) {
   .page {
-    --dot: #5b8fc4;
+    --dot-chord: #f59e42;
+    --dot-box: #5b8fc4;
     --dot-text: #0a0a0a;
-    --root-dot: #f97316;
+    --root-scale: #0a2a52;
   }
 }
 
@@ -110,16 +116,7 @@
   text-anchor: middle;
 }
 
-.dot circle {
-  fill: var(--dot);
-}
-
-.rootDot circle {
-  fill: var(--root-dot);
-}
-
-.dot text,
-.rootDot text {
+.dot text {
   fill: var(--dot-text);
   font-size: 12px;
   font-weight: bold;
@@ -127,23 +124,40 @@
   dominant-baseline: central;
 }
 
-/* Betoning: ett valt Ackord eller en Box framhävs och skalans övriga toner tonas ner. CAGED-greppet är starkast. */
-.muted {
-  opacity: 0.3;
+.chord circle {
+  fill: var(--dot-chord);
 }
 
-.highlighted circle {
-  stroke: var(--foreground);
-  stroke-width: 2.5;
+.box circle,
+.scale circle {
+  fill: var(--dot-box);
 }
 
-.strongest circle {
-  stroke: var(--foreground);
-  stroke-width: 4;
+.muted circle {
+  fill: var(--dot-muted);
 }
 
-.strongest text {
-  font-size: 14px;
+.muted text {
+  fill: var(--dot-muted-text);
+}
+
+/* Grundtonerna: mörkblå för Skalans, mörkorange för Ackordets */
+.scaleRoot circle,
+.chordRoot circle {
+  stroke-width: 3.5;
+}
+
+.scaleRoot circle {
+  stroke: var(--root-scale);
+}
+
+.chordRoot circle {
+  stroke: var(--root-chord);
+}
+
+.muted.scaleRoot circle,
+.muted.chordRoot circle {
+  stroke-opacity: 0.5;
 }
 
 .mutedString {

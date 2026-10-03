@@ -115,8 +115,12 @@ Ett av en Skalas fem lägen: ett område på några band där skalans toner spel
 _Avoid_: Position, mönster
 
 **CAGED-form** (`CagedShape`):
-En av fem greppformer (C, A, G, E, D) för ett dur- eller mollackord, flyttad längs halsen till Ackordets Grundton. Den visar exakt ett grepp. Ett förminskat Ackord har ingen CAGED-form.
+En av fem greppformer (C, A, G, E, D) för ett dur- eller mollackord, flyttad längs halsen till Ackordets Grundton. Den visar ett grepp, i varje kopia av den valda Boxen när Boxen syns på flera ställen. Ett förminskat Ackord har ingen CAGED-form.
 _Avoid_: Grepp, shape
+
+**Lager** (`Layer`):
+Hur en Prick visas på Greppbrädan: i Ackordets lager (orange: greppet, eller Ackordets toner när inget grepp finns), i Boxens lager (blått: Boxens övriga toner), i skalans lager (blått: alla skaltoner när inget är valt) eller nedtonad.
+_Avoid_: Betoning, färg, nivå
 
 **Flik** (`Tab`):
 Ett sätt att välja i Greppbrädans panel. Den första fliken är *CAGED*, och senare kan flikar för treklanger och fyrklanger komma.

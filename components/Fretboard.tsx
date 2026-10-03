@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import { browserStorage } from "@/lib/draft";
-import { type CagedShape, DEFAULT_NOTE_NAME_MODE, FRET_COUNT, fretboardView, INLAY_FRETS, type LabelMode, type NoteNameMode, SCALES, type ScaleId } from "@/lib/fretboard";
+import { type CagedShape, DEFAULT_NOTE_NAME_MODE, FRET_COUNT, fretboardView, INLAY_FRETS, type LabelMode, type NoteNameMode, type RootRole, SCALES, type ScaleId } from "@/lib/fretboard";
 import { choiceToParams, type FretboardChoice } from "@/lib/fretboardParams";
 import { STANDARD_TUNING } from "@/lib/score";
 import styles from "./Fretboard.module.css";
@@ -57,6 +57,13 @@ function subscribeNoteNameMode(listener: () => void) {
     window.removeEventListener("storage", listener);
   };
 }
+
+/** Kantlinjen för en Prick efter vilken grundton den är. */
+const ROOT_CLASSES: Record<RootRole, string | undefined> = {
+  scale: styles.scaleRoot,
+  chord: styles.chordRoot,
+  none: undefined,
+};
 
 /** x-mitten för ett band: lös sträng till vänster om sadeln, övriga mitt mellan bandstavarna. */
 function fretCenter(fret: number): number {
@@ -138,7 +145,7 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
             {dots.map((dot) => (
               <g
                 key={`${dot.string}-${dot.fret}`}
-                className={[dot.isRoot ? styles.rootDot : styles.dot, styles[dot.emphasis]].filter(Boolean).join(" ")}
+                className={[styles.dot, styles[dot.layer], ROOT_CLASSES[dot.rootRole]].filter(Boolean).join(" ")}
               >
                 <circle cx={fretCenter(dot.fret)} cy={stringY(dot.string)} r={DOT_RADIUS} />
                 <text x={fretCenter(dot.fret)} y={stringY(dot.string)}>

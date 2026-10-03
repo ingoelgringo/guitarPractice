@@ -253,6 +253,12 @@ function fretSpan(places: readonly Place[]): { low: number; high: number } {
   return { low: Math.min(...frets), high: Math.max(...frets) };
 }
 
+/** Om en plats ligger inom bandspannet för en uppsättning platser, t.ex. en kopia av en Box. */
+function withinSpan(places: readonly Place[], { fret }: Place): boolean {
+  const { low, high } = fretSpan(places);
+  return fret >= low && fret <= high;
+}
+
 /**
  * Boxen på varje ställe där den får plats inom band 0–15, en oktav ner eller upp. Får den inte plats
  * någonstans visas de delar som ligger inom banden.
@@ -267,15 +273,18 @@ function boxInstances(shape: readonly Place[]): Place[][] {
 const placeKey = ({ string, fret }: Place) => `${string}-${fret}`;
 
 /**
- * CAGED-greppet för ett dur- eller mollackord: formens öppna grepp flyttat till Ackordets grundton,
- * i det lägsta läget där hela greppet ryms inom band 0–15. Greppet läggs som tonhöjder, så att det
- * följer Stämningen. Ger platserna och de dämpade strängarna.
+ * CAGED-greppet för ett dur- eller mollackord: formens öppna grepp flyttat till Ackordets grundton.
+ * Med en vald Box ritas det i varje kopia av Boxen, i det oktavläge som har flest toner inom kopians
+ * band och där hela greppet ryms inom band 0–15. Annars, eller om inget läge passar, ritas det i det
+ * lägsta läget där det ryms. Greppet läggs som tonhöjder, så att det följer Stämningen. Ger platserna
+ * och de dämpade strängarna.
  */
 function cagedGrip(
   tuning: readonly number[],
   quality: CagedQuality,
   shape: CagedShape,
   chordRoot: number,
+  boxes: readonly Place[][],
 ): { places: Place[]; mutedStrings: number[] } {
   const { root, frets } = CAGED_GRIPS[quality][shape];
   const shift = pitchClassOf(chordRoot - root);
@@ -283,7 +292,16 @@ function cagedGrip(
   const placesAt = (octave: number): Place[] =>
     pitches.flatMap((pitch, index) => (pitch === null ? [] : [{ string: index + 1, fret: pitch + octave - tuning[index] }]));
   const onNeck = ({ fret }: Place) => fret >= 0 && fret <= FRET_COUNT;
-  const places = [-12, 0, 12].map(placesAt).find((candidate) => candidate.every(onNeck)) ?? placesAt(0).filter(onNeck);
+  const candidates = [-12, 0, 12].map(placesAt).filter((candidate) => candidate.every(onNeck));
+  const inBoxes = boxes.flatMap((box) => {
+    const overlap = (candidate: Place[]) => candidate.filter((place) => withinSpan(box, place)).length;
+    const best = candidates.reduce<Place[] | undefined>(
+      (found, candidate) => (overlap(candidate) > (found === undefined ? 0 : overlap(found)) ? candidate : found),
+      undefined,
+    );
+    return best === undefined ? [] : [best];
+  });
+  const places = inBoxes.length > 0 ? [...new Set(inBoxes)].flat() : (candidates[0] ?? placesAt(0).filter(onNeck));
   const mutedStrings = frets.flatMap((fret, index) => (fret === null ? [index + 1] : []));
   return { places, mutedStrings };
 }
@@ -306,16 +324,23 @@ export interface FretboardSelection {
   caged?: CagedShape;
 }
 
-/** Hur starkt en Prick visas: nedtonad, som en vanlig skalton, framhävd eller starkast (CAGED-greppet). */
-export type Emphasis = "muted" | "scale" | "highlighted" | "strongest";
+/**
+ * Prickens lager. Ackordets lager är greppet, eller Ackordets toner när inget grepp finns (i Boxen om
+ * en Box är vald). Boxens lager är Boxens övriga toner. Skalans lager gäller när varken Ackord eller
+ * Box är valt. Resten tonas ner.
+ */
+export type Layer = "chord" | "box" | "scale" | "muted";
+
+/** Vilken grundton en Prick är: Skalans Grundton, Ackordets grundton eller ingen. Ackordets vinner när båda är samma ton. */
+export type RootRole = "scale" | "chord" | "none";
 
 /** En Prick: en markerad position på halsen. Sträng 1 är den ljusaste. */
 export interface Dot {
   string: number;
   fret: number;
   label: string;
-  isRoot: boolean;
-  emphasis: Emphasis;
+  rootRole: RootRole;
+  layer: Layer;
 }
 
 export interface FretboardView {
@@ -360,28 +385,30 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
   const grip =
     caged === undefined || gripQuality === undefined
       ? { places: [], mutedStrings: [] }
-      : cagedGrip(selection.tuning, gripQuality, caged, root + chordTones[0].semitones);
+      : cagedGrip(selection.tuning, gripQuality, caged, root + chordTones[0].semitones, instances);
   const inGrip = new Set(grip.places.map(placeKey));
   const inBox = new Set(instances.flat().map(placeKey));
   // En ackordton utanför skalan hör till Boxen när den ligger inom Boxens band
   const insideBox = (step: Step, place: Place) =>
     inScale.has(step.semitones)
       ? inBox.has(placeKey(place))
-      : instances.some((instance) => {
-          const { low, high } = fretSpan(instance);
-          return place.fret >= low && place.fret <= high;
-        });
+      : instances.some((instance) => withinSpan(instance, place));
 
-  // Varje valt lager (Ackord, Box) är ett filter. En Prick som klarar alla framhävs, en som klarar något visas som skalton.
-  const emphasisOf = (step: Step, place: Place): Emphasis => {
-    if (inGrip.has(placeKey(place))) return "strongest";
-    const filters = [
-      ...(chord === undefined ? [] : [inChord.has(step.semitones)]),
-      ...(box === undefined ? [] : [insideBox(step, place)]),
-    ];
-    if (filters.length === 0) return "scale";
-    if (filters.every(Boolean)) return "highlighted";
-    return filters.some(Boolean) ? "scale" : "muted";
+  const layerOf = (step: Step, place: Place): Layer => {
+    if (chord === undefined && box === undefined) return "scale";
+    // Utan Box gäller Ackordets toner över hela halsen
+    const inSelectedBox = box !== undefined && insideBox(step, place);
+    const shownAsChord =
+      caged === undefined
+        ? inChord.has(step.semitones) && (box === undefined || inSelectedBox)
+        : inGrip.has(placeKey(place));
+    if (shownAsChord) return "chord";
+    return inSelectedBox && inScale.has(step.semitones) ? "box" : "muted";
+  };
+
+  const rootRoleOf = (semitones: number): RootRole => {
+    if (chordTones.length > 0 && semitones === chordTones[0].semitones) return "chord";
+    return semitones === 0 ? "scale" : "none";
   };
 
   const dots: Dot[] = [];
@@ -391,7 +418,7 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
       const step = shown.find((candidate) => candidate.semitones === semitones);
       if (!step) continue;
       const place = { string: index + 1, fret };
-      dots.push({ ...place, label: labelOf(step), isRoot: semitones === 0, emphasis: emphasisOf(step, place) });
+      dots.push({ ...place, label: labelOf(step), rootRole: rootRoleOf(semitones), layer: layerOf(step, place) });
     }
   });
   const boxes = Array.from({ length: BOX_COUNT }, (_, i) => i + 1);
