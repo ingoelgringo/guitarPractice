@@ -51,7 +51,7 @@ Ett nytt Verktyg, **Greppbrädan**, som nås från landningssidan. Det visar en 
   - Gränssnittet ger ett normaliserat urval, så att val som blivit ogiltiga efter skalbyte släpps.
 - Teorin (skalmönster, Föräldraskala, diatoniska treklanger, boxar, CAGED-former, enharmonisk stavning) ligger bakom gränssnittet och kan delas upp internt efter behov.
 - **Stämning**: halsen tar Stämningen som MIDI-tonhöjd per lös sträng, sträng 1 först (samma representation som Partiturets Spår, och standardstämningen återanvänds). I v1 finns bara standardstämning i gränssnittet.
-- **Route och kort**: ett nytt Verktyg läggs i verktygslistan som landningssidan renderar. Sidan är en klientkomponent som läser och skriver urvalet i query-parametrar och renderar halsen som SVG från `view`.
+- **Route och kort**: ett nytt Verktyg läggs i verktygslistan som landningssidan renderar. Sidan läser valet ur query-parametrarna på servern. Klientkomponenten skriver tillbaka det med `history.replaceState` och renderar halsen som SVG från `view`.
 - **Notnamnsläget** sparas i webbläsarens localStorage (läsning och skrivning i try/catch). Svenskt är standard. Det ligger inte i adressen.
 - Ingen databas och ingen inloggning krävs.
 

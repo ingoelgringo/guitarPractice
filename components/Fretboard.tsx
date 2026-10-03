@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { FRET_COUNT, fretboardView, INLAY_FRETS, ROOT_NAMES, SCALES, type ScaleId } from "@/lib/fretboard";
+import { useState, useSyncExternalStore } from "react";
+import { browserStorage } from "@/lib/draft";
+import { DEFAULT_NOTE_NAME_MODE, FRET_COUNT, fretboardView, INLAY_FRETS, type LabelMode, type NoteNameMode, SCALES, type ScaleId } from "@/lib/fretboard";
+import { choiceToParams, type FretboardChoice } from "@/lib/fretboardParams";
 import { STANDARD_TUNING } from "@/lib/score";
 import styles from "./Fretboard.module.css";
 
@@ -16,13 +18,40 @@ const DOT_RADIUS = 13;
 const INLAY_RADIUS = 6;
 const END_MARGIN = 8;
 
-// Startvalet: A mollpentatonik, den vanligaste skalan att börja med
-const START_ROOT = 9;
-
 const STRING_COUNT = STANDARD_TUNING.length;
 const NECK_HEIGHT = (STRING_COUNT - 1) * STRING_GAP;
 const WIDTH = OPEN_WIDTH + FRET_COUNT * FRET_WIDTH + END_MARGIN;
 const HEIGHT = TOP + NECK_HEIGHT + BOTTOM;
+
+// Notnamnsläget sparas per webbläsare, med svenskt som standard. Det ligger inte i adressen.
+const NOTE_NAME_KEY = "guitarPractice.fretboard.noteNames";
+const noteNameListeners = new Set<() => void>();
+
+function readNoteNameMode(): NoteNameMode {
+  try {
+    return browserStorage()?.getItem(NOTE_NAME_KEY) === "english" ? "english" : DEFAULT_NOTE_NAME_MODE;
+  } catch {
+    return DEFAULT_NOTE_NAME_MODE;
+  }
+}
+
+function saveNoteNameMode(mode: NoteNameMode) {
+  try {
+    browserStorage()?.setItem(NOTE_NAME_KEY, mode);
+  } catch {
+    // Utan lagring gäller valet bara tills sidan laddas om
+  }
+  noteNameListeners.forEach((listener) => listener());
+}
+
+function subscribeNoteNameMode(listener: () => void) {
+  noteNameListeners.add(listener);
+  window.addEventListener("storage", listener);
+  return () => {
+    noteNameListeners.delete(listener);
+    window.removeEventListener("storage", listener);
+  };
+}
 
 /** x-mitten för ett band: lös sträng till vänster om sadeln, övriga mitt mellan bandstavarna. */
 function fretCenter(fret: number): number {
@@ -34,10 +63,18 @@ function stringY(string: number): number {
   return TOP + (string - 1) * STRING_GAP;
 }
 
-export function Fretboard() {
-  const [root, setRoot] = useState(START_ROOT);
-  const [scale, setScale] = useState<ScaleId>("minorPentatonic");
-  const { dots } = fretboardView({ root, scale, tuning: STANDARD_TUNING });
+export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice }) {
+  const [choice, setChoice] = useState(initialChoice);
+  const { root, scale, labels } = choice;
+  const noteNames = useSyncExternalStore(subscribeNoteNameMode, readNoteNameMode, () => DEFAULT_NOTE_NAME_MODE);
+  const { dots, options } = fretboardView({ root, scale, labels, noteNames, tuning: STANDARD_TUNING });
+
+  /** Byter val och skriver det i adressen, utan en ny post i historiken per val. */
+  function choose(change: Partial<FretboardChoice>) {
+    const next = { ...choice, ...change };
+    setChoice(next);
+    window.history.replaceState(null, "", `?${choiceToParams(next)}`);
+  }
 
   return (
     <main className={styles.page}>
@@ -48,8 +85,8 @@ export function Fretboard() {
       <div className={styles.controls}>
         <label>
           Root{" "}
-          <select value={root} onChange={(event) => setRoot(Number(event.target.value))}>
-            {ROOT_NAMES.map((name, pitchClass) => (
+          <select value={root} onChange={(event) => choose({ root: Number(event.target.value) })}>
+            {options.roots.map((name, pitchClass) => (
               <option key={pitchClass} value={pitchClass}>
                 {name}
               </option>
@@ -58,12 +95,26 @@ export function Fretboard() {
         </label>
         <label>
           Scale{" "}
-          <select value={scale} onChange={(event) => setScale(event.target.value as ScaleId)}>
+          <select value={scale} onChange={(event) => choose({ scale: event.target.value as ScaleId })}>
             {SCALES.map(({ id, name }) => (
               <option key={id} value={id}>
                 {name}
               </option>
             ))}
+          </select>
+        </label>
+        <label>
+          Labels{" "}
+          <select value={labels} onChange={(event) => choose({ labels: event.target.value as LabelMode })}>
+            <option value="interval">Intervals</option>
+            <option value="noteName">Note names</option>
+          </select>
+        </label>
+        <label>
+          Note names{" "}
+          <select value={noteNames} onChange={(event) => saveNoteNameMode(event.target.value as NoteNameMode)}>
+            <option value="swedish">Swedish (H, B)</option>
+            <option value="english">English (B, B♭)</option>
           </select>
         </label>
       </div>
@@ -74,7 +125,7 @@ export function Fretboard() {
           width={WIDTH}
           height={HEIGHT}
           role="img"
-          aria-label={`${ROOT_NAMES[root]} ${SCALES.find((s) => s.id === scale)?.name} on the fretboard`}
+          aria-label={`${options.roots[root]} ${SCALES.find((s) => s.id === scale)?.name} on the fretboard`}
         >
           {INLAY_FRETS.map((fret) =>
             fret === 12 ? (
