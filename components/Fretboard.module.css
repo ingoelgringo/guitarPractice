@@ -2,14 +2,14 @@
   --neck-line: color-mix(in srgb, var(--foreground) 45%, transparent);
   --neck-inlay: color-mix(in srgb, var(--foreground) 12%, transparent);
   --panel-divider: color-mix(in srgb, var(--foreground) 15%, transparent);
-  /* Lagren: Ackordets (orange), Boxens och skalans (blått) och nedtonat. Grundtonerna får en mörk kantlinje. */
+  /* Lagren: Ackordets (orange), Boxens och skalans (blått) och nedtonat. Grundtonerna får en ljus kantlinje. */
   --dot-chord: #d9690f;
   --dot-box: #2f5d8a;
   --dot-text: #ffffff;
   --dot-muted: color-mix(in srgb, var(--foreground) 22%, var(--background));
   --dot-muted-text: color-mix(in srgb, var(--foreground) 55%, var(--background));
-  --root-scale: #0b2440;
-  --root-chord: #6b2405;
+  --root-scale: #9cc6ee;
+  --root-chord: #ffc58a;
 
   flex: 1;
   width: 100%;
@@ -26,7 +26,8 @@
     --dot-chord: #f59e42;
     --dot-box: #5b8fc4;
     --dot-text: #0a0a0a;
-    --root-scale: #0a2a52;
+    --root-scale: #cfe3f7;
+    --root-chord: #ffe0bf;
   }
 }
 
@@ -201,7 +202,7 @@
   fill: var(--dot-muted-text);
 }
 
-/* Grundtonerna: mörkblå för Skalans, mörkorange för Ackordets */
+/* Grundtonerna: ljusblå för Skalans, ljusorange för Ackordets */
 .scaleRoot circle,
 .chordRoot circle {
   stroke-width: 3.5;
