@@ -104,10 +104,10 @@ describe("Greppbräda", () => {
   });
 
   describe("Ackord", () => {
-    it("C-dur erbjuder de diatoniska treklangerna I–vii°", () => {
-      const { chords } = fretboardView({ root: C, scale: "major", tuning: STANDARD_TUNING, noteNames: "english" }).options;
+    it("C-dur erbjuder de diatoniska treklangerna I–vii° som CAGED-tabellens rader", () => {
+      const { cagedTable } = fretboardView({ root: C, scale: "major", tuning: STANDARD_TUNING, noteNames: "english" }).options;
 
-      expect(chords.map((chord) => `${chord.numeral} – ${chord.name}`)).toEqual([
+      expect(cagedTable.map((chord) => `${chord.numeral} – ${chord.name}`)).toEqual([
         "I – C",
         "ii – Dm",
         "iii – Em",
@@ -118,10 +118,10 @@ describe("Greppbräda", () => {
       ]);
     });
 
-    it("A mollpentatonik erbjuder ackorden i A naturlig moll, med svenska namn", () => {
-      const { chords } = fretboardView({ root: A, scale: "minorPentatonic", tuning: STANDARD_TUNING }).options;
+    it("tabellen följer Skalan: A mollpentatonik har raderna i–VII från A naturlig moll, med svenska namn", () => {
+      const { cagedTable } = fretboardView({ root: A, scale: "minorPentatonic", tuning: STANDARD_TUNING }).options;
 
-      expect(chords.map((chord) => `${chord.numeral} – ${chord.name}`)).toEqual([
+      expect(cagedTable.map((chord) => `${chord.numeral} – ${chord.name}`)).toEqual([
         "i – Am",
         "ii° – H°",
         "III – C",
@@ -152,7 +152,7 @@ describe("Greppbräda", () => {
       const view = fretboardView({ root: C, scale: "minorPentatonic", chord: 5, tuning: STANDARD_TUNING, noteNames: "english" });
 
       expect(view.selection.chord).toBe(5);
-      expect(view.options.chords[4].name).toBe("Gm");
+      expect(view.options.cagedTable[4].name).toBe("Gm");
     });
 
     it("utan val ligger alla Prickar i skalans lager", () => {
@@ -340,21 +340,12 @@ describe("Greppbräda", () => {
       expect(fretboardView(selection).mutedStrings).toEqual([5, 6]);
     });
 
-    it("dur- och mollackord erbjuder alla fem former, i ordningen C, A, G, E, D", () => {
-      const { options } = fretboardView({ root: C, scale: "major", chord: 2, tuning: STANDARD_TUNING });
-
-      expect(options.cagedShapes).toEqual(
-        ["C", "A", "G", "E", "D"].map((shape) => ({ shape, disabled: false })),
-      );
-    });
-
-    it("valet är gråat för B° i C-dur och utan Ackord, och formen släpps då", () => {
+    it("formen släpps för B° i C-dur och utan Ackord", () => {
       const diminished: FretboardSelection = { root: C, scale: "major", chord: 7, tuning: STANDARD_TUNING };
       const noChord: FretboardSelection = { root: C, scale: "major", tuning: STANDARD_TUNING };
 
       for (const selection of [diminished, noChord]) {
         const view = fretboardView({ ...selection, caged: "E" });
-        expect(view.options.cagedShapes.every((option) => option.disabled)).toBe(true);
         expect(view.selection.caged).toBeUndefined();
         expect(view.dots).toEqual(fretboardView(selection).dots);
         expect(view.mutedStrings).toEqual([]);
@@ -415,6 +406,37 @@ describe("Greppbräda", () => {
         [5, 10],
         [6, 8],
       ]);
+    });
+  });
+
+  describe("CAGED-tabellen", () => {
+    /** Formerna i radens celler för Box 1–5, "–" där ingen form finns. */
+    function row(selection: FretboardSelection, degree: number): string[] {
+      const found = fretboardView(selection).options.cagedTable.find((candidate) => candidate.degree === degree)!;
+      return found.cells.map(({ shape }) => shape ?? "–");
+    }
+
+    it("raden för I i C-dur är E, D, C, A, G för Box 1–5", () => {
+      expect(row({ root: C, scale: "major", tuning: STANDARD_TUNING }, 1)).toEqual(["E", "D", "C", "A", "G"]);
+    });
+
+    it("raderna följer CAGED-ordningen uppåt längs halsen: ii i C-dur är G, E, D, C, A", () => {
+      expect(row({ root: C, scale: "major", tuning: STANDARD_TUNING }, 2)).toEqual(["G", "E", "D", "C", "A"]);
+    });
+
+    it("varje rad för dur- och mollackord har varje form exakt en gång, i alla Skalor och tonarter", () => {
+      for (const scale of ["major", "naturalMinor", "majorPentatonic", "minorPentatonic", "blues"] as const) {
+        for (let root = 0; root < 12; root++) {
+          for (const { numeral, cells } of fretboardView({ root, scale, tuning: STANDARD_TUNING }).options.cagedTable) {
+            if (numeral.endsWith("°")) continue;
+            expect(cells.map(({ shape }) => shape).sort()).toEqual(["A", "C", "D", "E", "G"]);
+          }
+        }
+      }
+    });
+
+    it("raden för vii° i C-dur har inga former", () => {
+      expect(row({ root: C, scale: "major", tuning: STANDARD_TUNING }, 7)).toEqual(["–", "–", "–", "–", "–"]);
     });
   });
 

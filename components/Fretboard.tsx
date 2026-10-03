@@ -3,10 +3,16 @@
 import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import { browserStorage } from "@/lib/draft";
-import { type CagedShape, DEFAULT_NOTE_NAME_MODE, FRET_COUNT, fretboardView, INLAY_FRETS, type LabelMode, type NoteNameMode, type RootRole, SCALES, type ScaleId } from "@/lib/fretboard";
+import { DEFAULT_NOTE_NAME_MODE, FRET_COUNT, fretboardView, INLAY_FRETS, type LabelMode, type NoteNameMode, type RootRole, SCALES, type ScaleId } from "@/lib/fretboard";
 import { choiceToParams, type FretboardChoice } from "@/lib/fretboardParams";
 import { STANDARD_TUNING } from "@/lib/score";
 import styles from "./Fretboard.module.css";
+
+/** Det man väljer i CAGED-tabellen: en cell, ett Ackord eller en Box. */
+type TableChoice = Pick<FretboardChoice, "chord" | "box" | "caged">;
+
+/** Inget Ackord, ingen Box och ingen CAGED-form: bara Skalan. */
+const CLEARED: TableChoice = { chord: undefined, box: undefined, caged: undefined };
 
 // Halsens mått i SVG-enheter
 /** Kolumnen längst till vänster med × för strängar som CAGED-greppet dämpar. */
@@ -81,7 +87,8 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
   const { root, scale, labels } = choice;
   const { selection, dots, mutedStrings, options } = fretboardView({ ...choice, noteNames, tuning: STANDARD_TUNING });
   const { chord, box, caged } = selection;
-  const cagedDisabled = options.cagedShapes.every((option) => option.disabled);
+  /** Om ett urval i CAGED-tabellen (en cell, ett Ackord eller en Box) är det valda. */
+  const isSelected = (target: TableChoice) => chord === target.chord && box === target.box && caged === target.caged;
 
   /** Byter val och skriver det i adressen, utan en ny post i historiken per val. Val som inte gäller släpps. */
   function choose(change: Partial<FretboardChoice>) {
@@ -92,6 +99,11 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
     next.caged = normalized.caged;
     setChoice(next);
     window.history.replaceState(null, "", `?${choiceToParams(next)}`);
+  }
+
+  /** Väljer ett urval i CAGED-tabellen, eller avmarkerar det om det redan är valt. */
+  function toggle(target: TableChoice) {
+    choose(isSelected(target) ? CLEARED : { ...CLEARED, ...target });
   }
 
   return (
@@ -179,50 +191,63 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
             </label>
           </div>
           <div className={styles.panelGroup}>
-            <label>
-              Chord{" "}
-              <select
-                value={chord ?? ""}
-                onChange={(event) => choose({ chord: event.target.value === "" ? undefined : Number(event.target.value) })}
-              >
-                <option value="">None</option>
-                {options.chords.map(({ degree, numeral, name }) => (
-                  <option key={degree} value={degree}>
-                    {numeral} – {name}
-                  </option>
+            <h2 className={styles.tabHeading}>CAGED</h2>
+            <table className={styles.cagedTable}>
+              <thead>
+                <tr>
+                  <td />
+                  <th scope="colgroup" colSpan={options.boxes.length}>
+                    Box
+                  </th>
+                </tr>
+                <tr>
+                  <td />
+                  {options.boxes.map((boxNumber) => (
+                    <th key={boxNumber} scope="col">
+                      <button
+                        type="button"
+                        aria-label={`Box ${boxNumber}`}
+                        aria-pressed={isSelected({ box: boxNumber })}
+                        onClick={() => toggle({ box: boxNumber })}
+                      >
+                        {boxNumber}
+                      </button>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {options.cagedTable.map(({ degree, numeral, name, cells }) => (
+                  <tr key={degree}>
+                    <th scope="row">
+                      <button
+                        type="button"
+                        aria-pressed={isSelected({ chord: degree })}
+                        onClick={() => toggle({ chord: degree })}
+                      >
+                        {numeral} – {name}
+                      </button>
+                    </th>
+                    {cells.map(({ box: boxNumber, shape }) => {
+                      // Ett förminskat Ackord har ingen CAGED-form, så dess cell väljer bara Ackordet och Boxen
+                      const cell = { chord: degree, box: boxNumber, caged: shape ?? undefined };
+                      return (
+                        <td key={boxNumber}>
+                          <button
+                            type="button"
+                            aria-label={`${numeral} – ${name}, Box ${boxNumber}${shape === null ? "" : `, ${shape} shape`}`}
+                            aria-pressed={isSelected(cell)}
+                            onClick={() => toggle(cell)}
+                          >
+                            {shape ?? "–"}
+                          </button>
+                        </td>
+                      );
+                    })}
+                  </tr>
                 ))}
-              </select>
-            </label>
-            <label>
-              Box{" "}
-              <select
-                value={box ?? ""}
-                onChange={(event) => choose({ box: event.target.value === "" ? undefined : Number(event.target.value) })}
-              >
-                <option value="">None</option>
-                {options.boxes.map((number) => (
-                  <option key={number} value={number}>
-                    Box {number}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              CAGED{" "}
-              <select
-                value={caged ?? ""}
-                disabled={cagedDisabled}
-                title={cagedDisabled ? "Choose a major or minor chord to see its CAGED shapes" : undefined}
-                onChange={(event) => choose({ caged: event.target.value === "" ? undefined : (event.target.value as CagedShape) })}
-              >
-                <option value="">None</option>
-                {options.cagedShapes.map(({ shape, disabled }) => (
-                  <option key={shape} value={shape} disabled={disabled}>
-                    {shape} shape
-                  </option>
-                ))}
-              </select>
-            </label>
+              </tbody>
+            </table>
           </div>
           <div className={styles.panelGroup}>
             <label>

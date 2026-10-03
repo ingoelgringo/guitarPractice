@@ -272,38 +272,79 @@ function boxInstances(shape: readonly Place[]): Place[][] {
 
 const placeKey = ({ string, fret }: Place) => `${string}-${fret}`;
 
+/** Ett CAGED-grepp: dess lägen inom band 0–15 (lägsta först) och de strängar det dämpar. */
+interface Grip {
+  positions: Place[][];
+  /** Delarna inom banden när greppet inte ryms någonstans. */
+  fallback: Place[];
+  mutedStrings: number[];
+}
+
 /**
- * CAGED-greppet för ett dur- eller mollackord: formens öppna grepp flyttat till Ackordets grundton.
- * Med en vald Box ritas det i varje kopia av Boxen, i det oktavläge som har flest toner inom kopians
- * band och där hela greppet ryms inom band 0–15. Annars, eller om inget läge passar, ritas det i det
- * lägsta läget där det ryms. Greppet läggs som tonhöjder, så att det följer Stämningen. Ger platserna
- * och de dämpade strängarna.
+ * CAGED-greppet för ett dur- eller mollackord: formens öppna grepp flyttat till Ackordets grundton,
+ * i varje oktavläge där hela greppet ryms inom band 0–15. Greppet läggs som tonhöjder, så att det
+ * följer Stämningen.
  */
-function cagedGrip(
-  tuning: readonly number[],
-  quality: CagedQuality,
-  shape: CagedShape,
-  chordRoot: number,
-  boxes: readonly Place[][],
-): { places: Place[]; mutedStrings: number[] } {
+function cagedGrip(tuning: readonly number[], quality: CagedQuality, shape: CagedShape, chordRoot: number): Grip {
   const { root, frets } = CAGED_GRIPS[quality][shape];
   const shift = pitchClassOf(chordRoot - root);
   const pitches = frets.map((fret, index) => (fret === null ? null : STANDARD_TUNING[index] + fret + shift));
   const placesAt = (octave: number): Place[] =>
     pitches.flatMap((pitch, index) => (pitch === null ? [] : [{ string: index + 1, fret: pitch + octave - tuning[index] }]));
   const onNeck = ({ fret }: Place) => fret >= 0 && fret <= FRET_COUNT;
-  const candidates = [-12, 0, 12].map(placesAt).filter((candidate) => candidate.every(onNeck));
-  const inBoxes = boxes.flatMap((box) => {
-    const overlap = (candidate: Place[]) => candidate.filter((place) => withinSpan(box, place)).length;
-    const best = candidates.reduce<Place[] | undefined>(
-      (found, candidate) => (overlap(candidate) > (found === undefined ? 0 : overlap(found)) ? candidate : found),
+  return {
+    positions: [-12, 0, 12].map(placesAt).filter((position) => position.every(onNeck)),
+    fallback: placesAt(0).filter(onNeck),
+    mutedStrings: frets.flatMap((fret, index) => (fret === null ? [index + 1] : [])),
+  };
+}
+
+/**
+ * Greppets läge i varje kopia av en Box: det läge som har flest toner inom kopians band, och det
+ * antalet. En kopia som inget läge når får inget grepp.
+ */
+function gripInBox(grip: Grip, instances: readonly Place[][]): { positions: Place[][]; overlap: number } {
+  const fits = instances.flatMap((instance) => {
+    const overlap = (position: Place[]) => position.filter((place) => withinSpan(instance, place)).length;
+    const best = grip.positions.reduce<Place[] | undefined>(
+      (found, position) => (overlap(position) > (found === undefined ? 0 : overlap(found)) ? position : found),
       undefined,
     );
-    return best === undefined ? [] : [best];
+    return best === undefined ? [] : [{ position: best, overlap: overlap(best) }];
   });
-  const places = inBoxes.length > 0 ? [...new Set(inBoxes)].flat() : (candidates[0] ?? placesAt(0).filter(onNeck));
-  const mutedStrings = frets.flatMap((fret, index) => (fret === null ? [index + 1] : []));
-  return { places, mutedStrings };
+  return {
+    positions: [...new Set(fits.map(({ position }) => position))],
+    overlap: Math.max(0, ...fits.map(({ overlap }) => overlap)),
+  };
+}
+
+/**
+ * Greppets platser: i varje kopia av den valda Boxen, eller utan Box (eller om greppet inte når
+ * Boxen) i det lägsta läget där det ryms.
+ */
+function gripPlaces(grip: Grip, instances: readonly Place[][]): Place[] {
+  const { positions } = gripInBox(grip, instances);
+  return positions.length > 0 ? positions.flat() : (grip.positions[0] ?? grip.fallback);
+}
+
+/**
+ * Formen i varje Box för ett dur- eller mollackord: en rotation av C-A-G-E-D (formernas ordning
+ * uppåt längs halsen), den där greppen sammanlagt har flest toner inom sina Boxars band.
+ */
+function shapesPerBox(
+  tuning: readonly number[],
+  quality: CagedQuality,
+  chordRoot: number,
+  boxes: readonly Place[][][],
+): CagedShape[] {
+  const overlaps = CAGED_SHAPES.map((shape) => {
+    const grip = cagedGrip(tuning, quality, shape, chordRoot);
+    return boxes.map((instances) => gripInBox(grip, instances).overlap);
+  });
+  const rotations = CAGED_SHAPES.map((_, offset) => boxes.map((_, box) => (offset + box) % CAGED_SHAPES.length));
+  const score = (rotation: number[]) => rotation.reduce((sum, shape, box) => sum + overlaps[shape][box], 0);
+  const best = rotations.reduce((found, rotation) => (score(rotation) > score(found) ? rotation : found));
+  return best.map((shape) => CAGED_SHAPES[shape]);
 }
 
 export interface FretboardSelection {
@@ -343,6 +384,11 @@ export interface Dot {
   layer: Layer;
 }
 
+/** En rad i CAGED-tabellen: ett Ackord och en cell per Box (Box 1 först) med formen, `null` för ett förminskat Ackord. */
+export interface CagedRow extends ChordOption {
+  cells: { box: number; shape: CagedShape | null }[];
+}
+
 export interface FretboardView {
   /** Urvalet med de val som inte gäller för Skalan borttagna. */
   selection: FretboardSelection;
@@ -353,12 +399,10 @@ export interface FretboardView {
   options: {
     /** Grundtonsmenyns namn per tonklass, C först. */
     roots: string[];
-    /** Skalans Ackord, hämtade från Föräldraskalan, steg 1 först. */
-    chords: ChordOption[];
     /** Skalans Boxar, 1–5. */
     boxes: number[];
-    /** CAGED-formerna, gråade när inget dur- eller mollackord är valt. */
-    cagedShapes: { shape: CagedShape; disabled: boolean }[];
+    /** CAGED-tabellen: en rad per Ackord i Skalan (från Föräldraskalan), steg 1 först. */
+    cagedTable: CagedRow[];
   };
 }
 
@@ -384,9 +428,9 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
   const caged = gripQuality === undefined ? undefined : requestedShape;
   const grip =
     caged === undefined || gripQuality === undefined
-      ? { places: [], mutedStrings: [] }
-      : cagedGrip(selection.tuning, gripQuality, caged, root + chordTones[0].semitones, instances);
-  const inGrip = new Set(grip.places.map(placeKey));
+      ? undefined
+      : cagedGrip(selection.tuning, gripQuality, caged, root + chordTones[0].semitones);
+  const inGrip = new Set((grip === undefined ? [] : gripPlaces(grip, instances)).map(placeKey));
   const inBox = new Set(instances.flat().map(placeKey));
   // En ackordton utanför skalan hör till Boxen när den ligger inom Boxens band
   const insideBox = (step: Step, place: Place) =>
@@ -425,13 +469,24 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
   const roots = ROOT_MENU.map((spellings) =>
     spellings.map(([letter, accidental]) => noteName(letter, accidental, noteNames)).join("/"),
   );
-  const chords = parent.map((step) => chordOption(parent, step.degree, (chordRoot) => stepName(letter, root, chordRoot, noteNames)));
-  const cagedShapes = CAGED_SHAPES.map((shape) => ({ shape, disabled: gripQuality === undefined }));
+  const instancesPerBox = boxes.map((number) => boxInstances(boxShape(selection, number)));
+  const cagedTable = parent.map(({ degree }): CagedRow => {
+    const rowQuality = chordQuality(parent, degree);
+    const [rowRoot] = chordSteps(parent, degree);
+    const shapes =
+      rowQuality === "diminished"
+        ? boxes.map(() => null)
+        : shapesPerBox(selection.tuning, rowQuality, root + rowRoot.semitones, instancesPerBox);
+    return {
+      ...chordOption(parent, degree, (chordRoot) => stepName(letter, root, chordRoot, noteNames)),
+      cells: boxes.map((number, index) => ({ box: number, shape: shapes[index] })),
+    };
+  });
   return {
     selection: { ...selection, chord, box, caged },
     dots,
-    mutedStrings: grip.mutedStrings,
-    options: { roots, chords, boxes, cagedShapes },
+    mutedStrings: grip?.mutedStrings ?? [],
+    options: { roots, boxes, cagedTable },
   };
 }
 

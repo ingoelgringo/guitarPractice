@@ -81,6 +81,61 @@
   padding: 4px 6px;
 }
 
+/* Fliken CAGED: rubriken och CAGED-tabellen med Skalans Ackord som rader och Boxarna som kolumner */
+.tabHeading {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 1rem;
+}
+
+.cagedTable {
+  border-collapse: collapse;
+}
+
+.cagedTable th,
+.cagedTable td {
+  padding: 1px;
+  font-weight: normal;
+  text-align: center;
+}
+
+.cagedTable thead th[scope="colgroup"] {
+  font-size: 0.85rem;
+  color: var(--neck-line);
+}
+
+.cagedTable button {
+  font: inherit;
+  min-width: 30px;
+  min-height: 28px;
+  padding: 2px 6px;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.cagedTable th[scope="row"] button {
+  width: 100%;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.cagedTable td button {
+  font-weight: bold;
+}
+
+/* Det valda: en cell, ett Ackord eller en Box */
+.cagedTable button[aria-pressed="true"] {
+  border-color: var(--foreground);
+}
+
+.cagedTable button:focus-visible {
+  outline: 2px solid var(--dot-box);
+  outline-offset: 1px;
+}
+
 /* Halsen krymper med tillgänglig bredd ner till sin minsta storlek och skrollar sedan i sidled. */
 .scroller {
   flex: 1;

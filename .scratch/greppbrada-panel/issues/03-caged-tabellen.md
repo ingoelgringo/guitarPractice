@@ -6,7 +6,16 @@
 
 **Status:** ready-for-agent
 
-- [ ] Tester genom `fretboardView`: raden för I i C-dur är E, D, C, A, G. Varje rad för dur- och mollackord har varje form exakt en gång. Raden för vii° i C-dur har inga former.
-- [ ] Tabellen följer Skalan: A mollpentatonik har raderna i–VII från A naturlig moll.
-- [ ] Klick på cell, radrubrik och kolumnrubrik väljer och avmarkerar som beskrivet, och valet skrivs i adressen (`chord`, `box`, `caged`).
-- [ ] Bokmärken från v1 öppnar rätt cell som vald.
+- [x] Tester genom `fretboardView`: raden för I i C-dur är E, D, C, A, G. Varje rad för dur- och mollackord har varje form exakt en gång. Raden för vii° i C-dur har inga former.
+- [x] Tabellen följer Skalan: A mollpentatonik har raderna i–VII från A naturlig moll.
+- [x] Klick på cell, radrubrik och kolumnrubrik väljer och avmarkerar som beskrivet, och valet skrivs i adressen (`chord`, `box`, `caged`).
+- [x] Bokmärken från v1 öppnar rätt cell som vald.
+
+## Comments
+
+**Implementerad.**
+- `view.options.cagedTable` har en rad per Ackord (steg, siffra, namn) med en cell per Box: `{ box, shape }`, där `shape` är `null` för förminskade Ackord. Den ersätter `options.chords` och `options.cagedShapes`.
+- Rotationen av C-A-G-E-D väljs efter flest greppstoner inom Boxarnas band, summerat över de fem Boxarna. Vid lika poäng vinner den första rotationen. Greppen placeras med samma mått som halsen använder för greppet i en vald Box.
+- Kolumnrubrikerna är alltid den kompakta formen: "1"–"5" under rubriken "Box".
+- Ett v1-bokmärke markerar en cell när Ackord, Box och form motsvarar den. Annars markeras ingen cell men halsen visar urvalet. Det gäller till exempel Ackord och form utan Box, en form som inte ligger i Boxen, eller Ackord och Box utan form för ett dur- eller mollackord.
+- Klicken på cell, radrubrik och kolumnrubrik, avmarkeringen och adressen är verifierade i headless Chrome via DevTools-protokollet.
