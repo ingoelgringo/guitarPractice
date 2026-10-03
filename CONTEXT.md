@@ -126,12 +126,24 @@ _Avoid_: Ackordskala, arpeggio
 En av de fem Boxarna i Ackordets penta, numrerad 1–5 på samma sätt som Skalans Boxar men från Ackordets grundton.
 _Avoid_: Penta-läge, penta-position
 
+**Strängset** (`StringSet`):
+De tre strängar som ett Treklangsgrepp spelas på: tre intilliggande strängar (6-5-4, 5-4-3, 4-3-2, 3-2-1) eller en basssträng följd av en överhoppad sträng och de två nästa (6-4-3, 5-3-2, 4-2-1).
+_Avoid_: Stränggrupp, strängar
+
+**Treklangsgrepp** (`Triad`):
+Ett Ackords tre toner spelade på ett Strängset, en ton per sträng. Alla Ackord har Treklangsgrepp, även förminskade.
+_Avoid_: Triad, voicing, shape, treklang (ett Ackord är redan en treklang)
+
+**Omvändning** (`Inversion`):
+Vilken av Ackordets toner som ligger lägst i ett Treklangsgrepp: grundtonen (grundläge), tersen (första omvändningen) eller kvinten (andra omvändningen).
+_Avoid_: Inversion, läge
+
 **Lager** (`Layer`):
-Hur en Prick visas på Greppbrädan: i Ackordets lager (orange: greppet, Penta-boxen, Ackordets penta eller Ackordets toner), i Boxens lager (blått: Boxens övriga toner), i skalans lager (blått: alla skaltoner när inget är valt) eller nedtonad.
+Hur en Prick visas på Greppbrädan: i Ackordets lager (orange: greppet, Penta-boxen, Treklangsgreppet, Ackordets penta eller Ackordets toner), i Boxens lager (blått: Boxens övriga toner), i skalans lager (blått: alla skaltoner när inget är valt) eller nedtonad.
 _Avoid_: Betoning, färg, nivå
 
 **Flik** (`Tab`):
-Ett sätt att välja i Greppbrädans panel. Flikarna är *CAGED* och *Penta*, och senare kan flikar för treklanger och fyrklanger komma.
+Ett sätt att välja i Greppbrädans panel. Flikarna är *CAGED*, *Penta* och *Treklanger*, och senare kan en flik för fyrklanger komma.
 _Avoid_: Vy, läge, visningssätt
 
 **CAGED-tabellen**:
@@ -140,6 +152,9 @@ _Avoid_: Matris, rutnät
 
 **Penta-tabellen**:
 Penta-flikens tabell med samma rader och kolumner som CAGED-tabellen. Varje cell är numret på den Penta-box i radens Ackords penta som ligger i kolumnens Box.
+
+**Treklangstabellen**:
+Treklangsflikens tabell med samma rader och kolumner som CAGED-tabellen. Varje cell är det Treklangsgrepp för radens Ackord på det valda Strängsetet som ligger närmast kolumnens Box, angivet med Omvändningens lägsta ton (R, 3 eller 5).
 
 **Notnamnsläge** (`NoteNameMode`):
 Hur tonnamn skrivs: *svenskt* (H, och B för det som på engelska heter B♭) eller *engelskt*. I övrigt följer stavningen tonarten, så F-dur skrivs med B♭ och E-dur med D♯.
