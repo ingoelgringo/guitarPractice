@@ -1,10 +1,11 @@
 "use client";
 
 import type { AlphaTabApi } from "@coderline/alphatab";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
 import { browserStorage, loadDraft, saveDraft, type Draft } from "@/lib/draft";
 import { apply, createEditor, neighbourBeat, type Cursor, type Side } from "@/lib/editor";
-import { keyToBeatText, keyToCommand, SHORTCUTS } from "@/lib/keyboard";
+import { keyToBeatText, keyToCommand, type KeyPress } from "@/lib/keyboard";
 import { addToLibrary, loadFromLibrary, saveToLibrary, type LibraryFailure } from "@/lib/libraryClient";
 import { LibrarySync } from "@/lib/librarySync";
 import type { BeatText, Score } from "@/lib/score";
@@ -17,6 +18,7 @@ import { DEFAULT_PLAYBACK_OPTIONS, PlaybackControls, playNoteAt } from "./Playba
 import { ScoreFileButtons, type ReplacedBy } from "./ScoreFileButtons";
 import { ScoreSettings } from "./ScoreSettings";
 import { ScoreView } from "./ScoreView";
+import { ShortcutButtons } from "./ShortcutButtons";
 import styles from "./TabEditor.module.css";
 
 /**
@@ -224,6 +226,23 @@ export function TabEditor({ owner, fromLibrary }: { owner: boolean; fromLibrary?
   // Textfältet för Ackordnamnet eller Anteckningen på slaget under markören, när det är öppet
   const [openTextField, setOpenTextField] = useState<BeatText | null>(null);
 
+  /**
+   * Ett tangenttryck från tangentbordet eller en knapp: öppnar ett textfält på slaget eller blir
+   * ett Editor-kommando. Svarar om trycket gjorde något.
+   */
+  const onPress = useCallback((press: KeyPress) => {
+    const textField = keyToBeatText(press);
+    if (textField) {
+      setOpenTextField(textField);
+      return true;
+    }
+    const command = keyToCommand(press);
+    if (!command) return false;
+    if (command.type === "typeDigit") soundPendingRef.current = true;
+    dispatch(command);
+    return true;
+  }, []);
+
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       const target = event.target instanceof HTMLElement ? event.target : null;
@@ -232,26 +251,17 @@ export function TabEditor({ owner, fromLibrary }: { owner: boolean; fromLibrary?
       // En öppen dialog är modal, så Partituret bakom den ändras inte
       if (document.querySelector("dialog[open]")) return;
       if (matchMedia(VIEW_ONLY_MEDIA).matches) return;
-      const textField = keyToBeatText(event);
-      if (textField && !target?.closest("select")) {
-        // Tangenten öppnar fältet och ska inte skrivas i det
-        event.preventDefault();
-        setOpenTextField(textField);
-        return;
-      }
       const command = keyToCommand(event);
-      if (!command) return;
       // I en rullgardin styr tangenterna rullgardinen, men ångra och gör om gäller Partituret
-      if (target?.closest("select") && command.type !== "undo" && command.type !== "redo") return;
+      if (target?.closest("select") && command?.type !== "undo" && command?.type !== "redo") return;
       // Markerad text på sidan kopieras som vanligt
-      if (command.type === "copy" && !window.getSelection()?.isCollapsed) return;
-      event.preventDefault();
-      if (command.type === "typeDigit") soundPendingRef.current = true;
-      dispatch(command);
+      if (command?.type === "copy" && !window.getSelection()?.isCollapsed) return;
+      // Tangenten ska inte heller göra sitt vanliga, t.ex. skrivas i ett textfält som den öppnar
+      if (onPress(event)) event.preventDefault();
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [onPress]);
 
   function commitBeatText(field: BeatText, text: string, move?: Side) {
     dispatch({ type: "setBeatText", field, text });
@@ -267,25 +277,11 @@ export function TabEditor({ owner, fromLibrary }: { owner: boolean; fromLibrary?
   return (
     <div className={styles.editor}>
       <ScoreSettings score={state.score} cursor={state.cursor} dispatch={dispatch} />
-      <details className={styles.help}>
-        <summary>Keyboard shortcuts</summary>
-        <table>
-          <tbody>
-            {SHORTCUTS.map(({ keys, action, symbol }) => (
-              <tr key={keys}>
-                <td>
-                  <kbd>{keys}</kbd>
-                </td>
-                <td className={styles.symbol} aria-hidden="true">
-                  {symbol}
-                </td>
-                <td>{action}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </details>
+      <ShortcutButtons onPress={onPress} />
       <div className={styles.toolbar}>
+        <nav className={styles.buttonGroup} aria-label="Site">
+          <Link href="/">← Guitar Practice</Link>
+        </nav>
         <ScoreFileButtons
           score={state.score}
           nothingToLose={nothingToLose}

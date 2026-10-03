@@ -108,13 +108,15 @@
   white-space: nowrap;
 }
 
-/* Hjälpruta med kortkommandon, alltid nåbar i hörnet */
+/* Knappar för kortkommandona, alltid nåbara i hörnet */
 .help {
   position: fixed;
   top: 16px;
   right: 16px;
   z-index: 1;
-  max-width: 320px;
+  max-width: 300px;
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
   padding: 8px 12px;
   border-radius: 6px;
   background: var(--background);
@@ -128,28 +130,59 @@
   font-weight: bold;
 }
 
-.help table {
-  margin-top: 8px;
-  border-collapse: collapse;
+.shortcutGroup h3 {
+  margin: 10px 0 4px;
+  font-size: 11px;
+  font-weight: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
 }
 
-.help td {
-  padding: 2px 8px 2px 0;
-  vertical-align: top;
+.shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+/* En knapp med kortkommandot bredvid */
+.shortcut {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.shortcut button {
+  min-width: 2.2em;
+  padding: 3px 6px;
+  border: 1px solid color-mix(in srgb, var(--foreground) 25%, transparent);
+  border-radius: 4px;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  cursor: pointer;
+}
+
+.shortcut button:hover {
+  background: color-mix(in srgb, #1e6fd9 12%, var(--background));
+}
+
+.shortcut button:active {
+  background: color-mix(in srgb, #1e6fd9 25%, var(--background));
 }
 
 .help kbd {
   font-family: ui-monospace, monospace;
+  font-size: 11px;
+  opacity: 0.75;
   white-space: nowrap;
 }
 
-/* Notationstecknet för kortkommandot, i ett typsnitt som har musiksymbolerna */
-.help .symbol {
-  min-width: 2.5em;
+/* Notationstecknet på knappen, i ett typsnitt som har musiksymbolerna */
+.shortcut button.symbol {
   font-family: "Segoe UI Symbol", "Noto Music", "Apple Symbols", serif;
   font-size: 1.15em;
-  line-height: 1;
-  text-align: center;
+  line-height: 1.2;
   white-space: nowrap;
 }
 

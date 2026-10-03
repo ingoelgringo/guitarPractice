@@ -14,7 +14,7 @@ const SIDE_KEYS: Record<string, Side> = {
   ArrowRight: "right",
 };
 
-/** Tangent, Notvärde och namn i hjälprutan. Tangenterna gäller oavsett skiftläge. */
+/** Tangent, Notvärde och namn på knapparna. Tangenterna gäller oavsett skiftläge. */
 const DURATION_KEYS: readonly { key: string; duration: Duration; name: string; symbol: string }[] = [
   { key: "w", duration: 1, name: "Whole note", symbol: "\u{1D15D}" },
   { key: "h", duration: 2, name: "Half note", symbol: "\u{1D15E}" },
@@ -24,7 +24,7 @@ const DURATION_KEYS: readonly { key: string; duration: Duration; name: string; s
   { key: "t", duration: 32, name: "Thirty-second note", symbol: "\u{1D162}" },
 ];
 
-/** Tangent, kommando och namn i hjälprutan för speltekniker. Tangenterna gäller oavsett skiftläge. */
+/** Tangent, kommando och namn på knapparna för speltekniker. Tangenterna gäller oavsett skiftläge. */
 const TECHNIQUE_KEYS: Record<string, { command: TechniqueCommand; name: string; symbol: string }> = {
   p: { command: "toggleHammerPull", name: "Toggle hammer-on / pull-off to the next note", symbol: "H/P" },
   l: { command: "toggleSlide", name: "Toggle slide to the next note", symbol: "↗" },
@@ -68,10 +68,10 @@ export function keyToCommand(press: KeyPress): Command | null {
   return duration ? { type: "setDuration", duration: duration.duration } : null;
 }
 
-/** Tangent och namn i hjälprutan för textfälten på slaget. Tangenterna gäller oavsett skiftläge. */
-const BEAT_TEXT_KEYS: Record<string, { field: BeatText; name: string }> = {
-  c: { field: "chordName", name: "Chord name above the beat (Tab: next beat, Enter: done)" },
-  a: { field: "annotation", name: "Annotation on the beat (Tab: next beat, Enter: done)" },
+/** Tangent, etikett och namn för textfälten på slaget. Tangenterna gäller oavsett skiftläge. */
+const BEAT_TEXT_KEYS: Record<string, { field: BeatText; label: string; name: string }> = {
+  c: { field: "chordName", label: "Chord", name: "Chord name above the beat (Tab: next beat, Enter: done)" },
+  a: { field: "annotation", label: "Text", name: "Annotation on the beat (Tab: next beat, Enter: done)" },
 };
 
 /**
@@ -93,24 +93,136 @@ function symbolToCommand(key: string): Command | null {
   return null;
 }
 
-/** Kortkommandona som de visas i editorns hjälpruta, med notationstecknet där det finns ett. */
-export const SHORTCUTS: readonly { keys: string; action: string; symbol?: string }[] = [
-  { keys: "← → ↑ ↓", action: "Move cursor between beats and strings" },
-  { keys: "0–9", action: "Enter fret (type two digits quickly for 10–24)" },
-  ...DURATION_KEYS.map(({ key, name, symbol }) => ({ keys: key.toUpperCase(), action: name, symbol })),
-  { keys: ".", action: "Toggle dotted", symbol: "\u{1D15F}." },
-  { keys: "/", action: "Toggle triplet", symbol: "³" },
-  { keys: "R", action: "Insert rest and move on", symbol: "\u{1D13D}" },
-  ...Object.entries(TECHNIQUE_KEYS).map(([key, { name, symbol }]) => ({ keys: key.toUpperCase(), action: name, symbol })),
-  ...Object.entries(BEAT_TEXT_KEYS).map(([key, { name }]) => ({ keys: key.toUpperCase(), action: name })),
-  { keys: "[", action: "Toggle repeat start on the bar", symbol: "\u{1D106}" },
-  { keys: "]", action: "Toggle repeat end on the bar (set the count under Bar)", symbol: "\u{1D107}" },
-  { keys: "Shift+← →", action: "Select beats" },
-  { keys: "Ctrl+Shift+← →", action: "Select whole bars" },
-  { keys: "Ctrl+C", action: "Copy selection" },
-  { keys: "Ctrl+V", action: "Paste over the beats from the cursor" },
-  { keys: "Delete", action: "Delete selection, or the note on the cursor's string" },
-  { keys: "Shift+Delete", action: "Delete selection, or the beat" },
-  { keys: "Ctrl+Z", action: "Undo" },
-  { keys: "Ctrl+Y / Ctrl+Shift+Z", action: "Redo" },
+/** Det tangenttryck som en knapp gör, med modifierarna som behövs. */
+export type ShortcutPress = Pick<KeyPress, "key"> & Partial<Pick<KeyPress, "ctrlKey" | "shiftKey">>;
+
+/**
+ * Ett kortkommando som det visas som knapp i editorn. Knappen gör samma tangenttryck, så att
+ * knappen och tangenten alltid gör samma sak.
+ */
+export interface Shortcut {
+  press: ShortcutPress;
+  /** Notationstecknet, eller en kort text när det inte finns något bra tecken. */
+  label: string;
+  /** Om etiketten är ett notationstecken, som behöver ett typsnitt med musiksymbolerna. */
+  symbol?: boolean;
+  /** Kortkommandot som det skrivs bredvid knappen. Utelämnas när det är etiketten, t.ex. siffrorna. */
+  keys?: string;
+  description: string;
+}
+
+export interface ShortcutGroup {
+  name: string;
+  shortcuts: readonly Shortcut[];
+}
+
+/** Kortkommandona som knappar, i grupper. */
+export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
+  {
+    name: "Cursor",
+    shortcuts: [
+      { press: { key: "ArrowLeft" }, label: "←", keys: "←", description: "Previous beat" },
+      { press: { key: "ArrowRight" }, label: "→", keys: "→", description: "Next beat" },
+      { press: { key: "ArrowUp" }, label: "↑", keys: "↑", description: "Higher string" },
+      { press: { key: "ArrowDown" }, label: "↓", keys: "↓", description: "Lower string" },
+    ],
+  },
+  {
+    name: "Fret (type two digits quickly for 10–24)",
+    shortcuts: Array.from({ length: 10 }, (_, digit) => ({
+      press: { key: String(digit) },
+      label: String(digit),
+      description: `Enter fret ${digit}`,
+    })),
+  },
+  {
+    name: "Duration",
+    shortcuts: DURATION_KEYS.map(({ key, name, symbol }) => ({
+      press: { key },
+      label: symbol,
+      symbol: true,
+      keys: key.toUpperCase(),
+      description: name,
+    })),
+  },
+  {
+    name: "Rhythm",
+    shortcuts: [
+      { press: { key: "." }, label: "\u{1D15F}.", symbol: true, keys: ".", description: "Toggle dotted" },
+      { press: { key: "/" }, label: "³", symbol: true, keys: "/", description: "Toggle triplet" },
+      { press: { key: "r" }, label: "\u{1D13D}", symbol: true, keys: "R", description: "Insert rest and move on" },
+    ],
+  },
+  {
+    name: "Techniques",
+    shortcuts: Object.entries(TECHNIQUE_KEYS).map(([key, { name, symbol }]) => ({
+      press: { key },
+      label: symbol,
+      symbol: true,
+      keys: key.toUpperCase(),
+      description: name,
+    })),
+  },
+  {
+    name: "Text",
+    shortcuts: Object.entries(BEAT_TEXT_KEYS).map(([key, { label, name }]) => ({
+      press: { key },
+      label,
+      keys: key.toUpperCase(),
+      description: name,
+    })),
+  },
+  {
+    name: "Repeats",
+    shortcuts: [
+      { press: { key: "[" }, label: "\u{1D106}", symbol: true, keys: "[", description: "Toggle repeat start on the bar" },
+      {
+        press: { key: "]" },
+        label: "\u{1D107}",
+        symbol: true,
+        keys: "]",
+        description: "Toggle repeat end on the bar (set the count under Bar)",
+      },
+    ],
+  },
+  {
+    name: "Select",
+    shortcuts: [
+      { press: { key: "ArrowLeft", shiftKey: true }, label: "Beat ←", keys: "Shift+←", description: "Select beats to the left" },
+      { press: { key: "ArrowRight", shiftKey: true }, label: "Beat →", keys: "Shift+→", description: "Select beats to the right" },
+      {
+        press: { key: "ArrowLeft", ctrlKey: true, shiftKey: true },
+        label: "Bar ←",
+        keys: "Ctrl+Shift+←",
+        description: "Select whole bars to the left",
+      },
+      {
+        press: { key: "ArrowRight", ctrlKey: true, shiftKey: true },
+        label: "Bar →",
+        keys: "Ctrl+Shift+→",
+        description: "Select whole bars to the right",
+      },
+    ],
+  },
+  {
+    name: "Edit",
+    shortcuts: [
+      { press: { key: "c", ctrlKey: true }, label: "Copy", keys: "Ctrl+C", description: "Copy selection" },
+      { press: { key: "v", ctrlKey: true }, label: "Paste", keys: "Ctrl+V", description: "Paste over the beats from the cursor" },
+      {
+        press: { key: "Delete" },
+        label: "Delete note",
+        keys: "Delete",
+        description: "Delete selection, or the note on the cursor's string",
+      },
+      {
+        press: { key: "Delete", shiftKey: true },
+        label: "Delete beat",
+        keys: "Shift+Delete",
+        description: "Delete selection, or the beat",
+      },
+      { press: { key: "z", ctrlKey: true }, label: "↶", keys: "Ctrl+Z", description: "Undo" },
+      { press: { key: "y", ctrlKey: true }, label: "↷", keys: "Ctrl+Y / Ctrl+Shift+Z", description: "Redo" },
+    ],
+  },
 ];
