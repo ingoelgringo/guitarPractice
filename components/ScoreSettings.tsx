@@ -20,6 +20,7 @@ import {
 } from "@/lib/score";
 import { findTuningPreset, noteName, TUNING_PRESETS } from "@/lib/tuning";
 import styles from "./TabEditor.module.css";
+import { ViewModePicker } from "./ViewModePicker";
 
 const METADATA_FIELDS: readonly { field: keyof Metadata; label: string }[] = [
   { field: "title", label: "Title" },
@@ -32,7 +33,7 @@ const METADATA_FIELDS: readonly { field: keyof Metadata; label: string }[] = [
 const PITCHES = Array.from({ length: 49 }, (_, i) => 28 + i);
 
 /**
- * Tunt skal: panel för metadata, Stämning, Capo, starttempo och starttaktart, samt byten och
+ * Tunt skal: panel för Vy-läge, metadata, Stämning, Capo, starttempo och starttaktart, samt byten och
  * repriser på markörens Takt. Varje ändring blir ett Editor-kommando och går därför att ångra.
  */
 export function ScoreSettings({
@@ -58,6 +59,7 @@ export function ScoreSettings({
     <details className={styles.settings}>
       <summary>Score settings</summary>
       <div className={styles.settingsGrid}>
+        <ViewModePicker viewMode={score.viewMode} dispatch={dispatch} />
         {METADATA_FIELDS.map(({ field, label }) => (
           <label key={field}>
             <span>{label}</span>

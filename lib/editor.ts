@@ -6,6 +6,7 @@ import {
   CONNECTIONS,
   connectionTarget,
   DURATIONS,
+  MAX_BEAT_TEXT_LENGTH,
   MAX_FRET,
   MAX_PITCH,
   MAX_REPEAT_COUNT,
@@ -18,7 +19,7 @@ import {
   STANDARD_TUNING,
   tempoAt,
   TIME_SIGNATURE_BEAT_VALUES,
-  timeSignatureAt, type Bar, type BarChange, type Beat, type Connection, type Duration, type Metadata, type Note, type Score, type TimeSignature, type Track, VIEW_MODES, type ViewMode, withValidConnections } from "./score";
+  timeSignatureAt, type Bar, type BarChange, type Beat, type BeatText, type Connection, type Duration, type Metadata, type Note, type Score, type TimeSignature, type Track, VIEW_MODES, type ViewMode, withValidConnections } from "./score";
 
 export interface Cursor {
   track: number;
@@ -150,6 +151,11 @@ export type Command =
   | { type: "cycleBend" }
   /** Växlar palm mute för tonen på markörens sträng. */
   | { type: "togglePalmMute" }
+  /**
+   * Sätter Ackordnamnet eller Anteckningen på slaget under markören, även med en markering.
+   * Blanksteg runt texten tas bort, tom text tar bort fältet och för lång text avvisas.
+   */
+  | { type: "setBeatText"; field: BeatText; text: string }
   /** Sätter de angivna fälten i metadatan och lämnar resten orörda. */
   | { type: "setMetadata"; metadata: Partial<Metadata> }
   /** Byter Stämning för markörens Spår. Antalet strängar ändras inte. */
@@ -335,6 +341,14 @@ function applyCommand(
       return insertBar(state, state.cursor.bar + 1);
     case "deleteBar":
       return deleteBar(state);
+    case "setBeatText": {
+      const text = command.text.trim();
+      if (text.length > MAX_BEAT_TEXT_LENGTH[command.field]) return state;
+      return updateBeat(state, (beat) => {
+        if (text) beat[command.field] = text;
+        else delete beat[command.field];
+      });
+    }
     case "setMetadata":
       return updateScore(state, (score) => {
         for (const [field, value] of Object.entries(command.metadata)) {
@@ -626,6 +640,17 @@ function extendByBar(
 function coversWholeBars(bars: readonly Bar[], selection: Selection): boolean {
   const { start, end } = selectionRange(selection);
   return start.beat === 0 && end.beat === bars[end.bar].beats.length - 1;
+}
+
+/**
+ * Markören flyttad till slaget före eller efter, även i en annan Takt, eller `null` vid
+ * Partiturets början eller slut. Till skillnad från `moveCursor` skapas inget nytt slag.
+ */
+export function neighbourBeat(state: EditorState, side: Side): Cursor | null {
+  const { cursor } = state;
+  const bars = state.score.tracks[cursor.track].bars;
+  const position = side === "right" ? nextBeat(bars, cursor) : previousBeat(bars, cursor);
+  return position && { ...cursor, ...position };
 }
 
 /** Slaget före `position`, även i föregående Takt, eller `null` vid Partiturets början. */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { apply, createEditor, TWO_DIGIT_WINDOW_MS, type Command, type EditorState, type SelectionUnit, type Side } from "./editor";
-import type { TimeSignature, ViewMode } from "./score";
+import { apply, createEditor, neighbourBeat, TWO_DIGIT_WINDOW_MS, type Command, type EditorState, type SelectionUnit, type Side } from "./editor";
+import { MAX_BEAT_TEXT_LENGTH, type BeatText, type TimeSignature, type ViewMode } from "./score";
 import { invalidBars } from "./validation";
 
 describe("Editor", () => {
@@ -1438,6 +1438,84 @@ describe("infoga och ta bort Takter", () => {
       expect(undone.score, type).toEqual(start.score);
       expect(undone.cursor, type).toEqual(start.cursor);
     }
+  });
+});
+
+describe("Ackordnamn och Anteckning", () => {
+  function text(field: BeatText, value: string): Command {
+    return { type: "setBeatText", field, text: value };
+  }
+
+  it("sätter Ackordnamnet och Anteckningen på markörens slag, utan blanksteg runt texten", () => {
+    const state = run(filled(1), [at(0, 1), text("chordName", "  Am7 "), text("annotation", "let ring")]);
+
+    expect(beatsOf(state)[1]).toMatchObject({ chordName: "Am7", annotation: "let ring" });
+    expect(beatsOf(state)[0].chordName).toBeUndefined();
+  });
+
+  it("tom text tar bort fältet", () => {
+    const state = run(filled(1), [text("chordName", "G"), text("chordName", "   ")]);
+
+    expect(beatsOf(state)[3]).not.toHaveProperty("chordName");
+  });
+
+  it("går att sätta på en paus, och en paus behåller Ackordnamnet", () => {
+    const state = run(createEditor(), [text("chordName", "E"), { type: "insertRest" }]);
+
+    expect(beatsOf(state)[0]).toMatchObject({ notes: [], chordName: "E" });
+  });
+
+  it("avvisar text som är för lång", () => {
+    const state = run(createEditor(), [
+      text("chordName", "x".repeat(MAX_BEAT_TEXT_LENGTH.chordName + 1)),
+      text("annotation", "x".repeat(MAX_BEAT_TEXT_LENGTH.annotation + 1)),
+    ]);
+
+    expect(beatsOf(state)[0]).toEqual({ duration: 4, notes: [] });
+  });
+
+  it("går att ångra, och samma text igen blir inget nytt steg", () => {
+    const state = run(createEditor(), [text("chordName", "C"), text("chordName", "C")]);
+
+    expect(state.history.undo).toHaveLength(1);
+    expect(beatsOf(apply(state, { type: "undo" }))[0].chordName).toBeUndefined();
+  });
+
+  it("ändrar bara markörens slag även med en markering (markören står där markeringen slutar)", () => {
+    const state = run(filled(1), [at(0, 0), extend("right"), text("chordName", "D")]);
+
+    expect(beatsOf(state).map((beat) => beat.chordName)).toEqual([undefined, "D", undefined, undefined]);
+  });
+
+  it("följer med slaget när det kopieras och klistras in", () => {
+    const state = run(filled(2), [
+      at(0, 0),
+      text("chordName", "A"),
+      text("annotation", "x2"),
+      extend("right"),
+      { type: "copy" },
+      at(1, 0),
+      { type: "paste" },
+    ]);
+
+    expect(beatsOf(state, 1)[0]).toMatchObject({ chordName: "A", annotation: "x2" });
+    expect(beatsOf(state, 1)[1].chordName).toBeUndefined();
+  });
+});
+
+describe("grannslaget till markören", () => {
+  it("är nästa eller föregående slag, även i en annan Takt, på samma sträng", () => {
+    const state = run(filled(2), [at(0, 3), { type: "moveCursor", direction: "down" }]);
+
+    expect(neighbourBeat(state, "right")).toEqual({ track: 0, bar: 1, beat: 0, string: 2 });
+    expect(neighbourBeat(state, "left")).toEqual({ track: 0, bar: 0, beat: 2, string: 2 });
+  });
+
+  it("saknas vid Partiturets början och slut, så att inga nya slag skapas", () => {
+    const state = filled(1);
+
+    expect(neighbourBeat(state, "right")).toBeNull();
+    expect(neighbourBeat(apply(state, at(0, 0)), "left")).toBeNull();
   });
 });
 

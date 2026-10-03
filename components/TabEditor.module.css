@@ -24,6 +24,19 @@
   isolation: isolate;
 }
 
+/* Textfältet för Ackordnamn och Anteckning, ovanför eller under markören */
+.beatTextField {
+  position: absolute;
+  z-index: 1;
+  width: 12em;
+  padding: 2px 4px;
+  font: inherit;
+  font-size: 0.9rem;
+  border: 2px solid #1e6fd9;
+  border-radius: 3px;
+  background: #fff;
+}
+
 .cursor {
   position: absolute;
   pointer-events: none;
@@ -127,6 +140,16 @@
 
 .help kbd {
   font-family: ui-monospace, monospace;
+  white-space: nowrap;
+}
+
+/* Notationstecknet för kortkommandot, i ett typsnitt som har musiksymbolerna */
+.help .symbol {
+  min-width: 2.5em;
+  font-family: "Segoe UI Symbol", "Noto Music", "Apple Symbols", serif;
+  font-size: 1.15em;
+  line-height: 1;
+  text-align: center;
   white-space: nowrap;
 }
 

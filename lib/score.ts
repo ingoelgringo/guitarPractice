@@ -38,7 +38,16 @@ export interface Beat {
   /** I triol: tre slag på två slags tid. Utelämnas när det inte gäller. */
   triplet?: boolean;
   notes: Note[];
+  /** Ackordnamn ovanför slaget, t.ex. "Am7". Tolkas inte. Utelämnas när det saknas. */
+  chordName?: string;
+  /** Anteckning vid slaget, t.ex. "let ring". Utelämnas när den saknas. */
+  annotation?: string;
 }
+
+/** Texterna som ett slag kan ha: Ackordnamn och Anteckning. */
+export const BEAT_TEXTS = ["chordName", "annotation"] as const;
+
+export type BeatText = (typeof BEAT_TEXTS)[number];
 
 /**
  * En Takt. Byten och repriser gäller hela Partituret och utelämnas när de inte gäller. Editorn
@@ -125,6 +134,9 @@ export const TIME_SIGNATURE_BEAT_VALUES: readonly Duration[] = [2, 4, 8, 16];
 /** Det lägsta och högsta antalet varv i en repris. */
 export const MIN_REPEAT_COUNT = 2;
 export const MAX_REPEAT_COUNT = 99;
+
+/** Det högsta antalet tecken i ett slags Ackordnamn och Anteckning, utan blanksteg runt texten. */
+export const MAX_BEAT_TEXT_LENGTH: Readonly<Record<BeatText, number>> = { chordName: 16, annotation: 40 };
 
 /** Den lägsta och högsta MIDI-tonhöjd som en lös sträng kan ha. */
 export const MIN_PITCH = 0;

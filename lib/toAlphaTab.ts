@@ -125,14 +125,17 @@ function toTrack(track: Track, index: number, viewMode: ViewMode): model.Track {
     const voice = new model.Voice();
     alphaTabBar.addVoice(voice);
     for (const beat of bar.beats) {
-      voice.addBeat(toBeat(beat, track.tuning.length));
+      voice.addBeat(toBeat(beat, track.tuning.length, staff));
     }
   }
   return result;
 }
 
-function toBeat(beat: Beat, stringCount: number): model.Beat {
+function toBeat(beat: Beat, stringCount: number, staff: model.Staff): model.Beat {
   const result = new model.Beat();
+  if (beat.chordName) result.chordId = addChordName(staff, beat.chordName);
+  // Anteckningen ritas som sångtext: under notsystemet, eller ovanför tabben när notsystemet saknas
+  if (beat.annotation) result.lyrics = [beat.annotation];
   result.duration = DURATIONS[beat.duration];
   if (beat.dotted) result.dots = 1;
   if (beat.triplet) {
@@ -152,6 +155,20 @@ function toBeat(beat: Beat, stringCount: number): model.Beat {
     result.addNote(alphaTabNote);
   }
   return result;
+}
+
+/**
+ * alphaTab ritar ett Ackordnamn som ett ackord på staven, som slagen pekar på. Namnet blir id,
+ * så att slag med samma Ackordnamn delar ackord. Inget greppdiagram, eftersom namnet inte tolkas.
+ */
+function addChordName(staff: model.Staff, name: string): string {
+  if (!staff.getChord(name)) {
+    const chord = new model.Chord();
+    chord.name = name;
+    chord.showDiagram = false;
+    staff.addChord(name, chord);
+  }
+  return name;
 }
 
 /**

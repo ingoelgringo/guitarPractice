@@ -3,21 +3,21 @@
 import type { AlphaTabApi } from "@coderline/alphatab";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
 import { browserStorage, loadDraft, saveDraft, type Draft } from "@/lib/draft";
-import { apply, createEditor, type Cursor } from "@/lib/editor";
-import { keyToCommand, SHORTCUTS } from "@/lib/keyboard";
+import { apply, createEditor, neighbourBeat, type Cursor, type Side } from "@/lib/editor";
+import { keyToBeatText, keyToCommand, SHORTCUTS } from "@/lib/keyboard";
 import { addToLibrary, loadFromLibrary, saveToLibrary, type LibraryFailure } from "@/lib/libraryClient";
 import { LibrarySync } from "@/lib/librarySync";
-import type { Score } from "@/lib/score";
+import type { BeatText, Score } from "@/lib/score";
 import { serialize } from "@/lib/scoreFile";
 import { invalidBars } from "@/lib/validation";
 import { BarButtons } from "./BarButtons";
+import { BeatTextField } from "./BeatTextField";
 import { LibraryButtons } from "./LibraryButtons";
 import { DEFAULT_PLAYBACK_OPTIONS, PlaybackControls, playNoteAt } from "./PlaybackControls";
 import { ScoreFileButtons, type ReplacedBy } from "./ScoreFileButtons";
 import { ScoreSettings } from "./ScoreSettings";
 import { ScoreView } from "./ScoreView";
 import styles from "./TabEditor.module.css";
-import { ViewModePicker } from "./ViewModePicker";
 
 /**
  * Smal skärm eller pekenhet: Partituret går att visa och spela upp men inte redigera. Samma fråga
@@ -221,6 +221,9 @@ export function TabEditor({ owner, fromLibrary }: { owner: boolean; fromLibrary?
     if (api && playbackOptions.soundOnInput) playNoteAt(api, state.cursor);
   }, [state, api, playbackOptions.soundOnInput]);
 
+  // Textfältet för Ackordnamnet eller Anteckningen på slaget under markören, när det är öppet
+  const [openTextField, setOpenTextField] = useState<BeatText | null>(null);
+
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       const target = event.target instanceof HTMLElement ? event.target : null;
@@ -229,6 +232,13 @@ export function TabEditor({ owner, fromLibrary }: { owner: boolean; fromLibrary?
       // En öppen dialog är modal, så Partituret bakom den ändras inte
       if (document.querySelector("dialog[open]")) return;
       if (matchMedia(VIEW_ONLY_MEDIA).matches) return;
+      const textField = keyToBeatText(event);
+      if (textField && !target?.closest("select")) {
+        // Tangenten öppnar fältet och ska inte skrivas i det
+        event.preventDefault();
+        setOpenTextField(textField);
+        return;
+      }
       const command = keyToCommand(event);
       if (!command) return;
       // I en rullgardin styr tangenterna rullgardinen, men ångra och gör om gäller Partituret
@@ -243,6 +253,14 @@ export function TabEditor({ owner, fromLibrary }: { owner: boolean; fromLibrary?
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  function commitBeatText(field: BeatText, text: string, move?: Side) {
+    dispatch({ type: "setBeatText", field, text });
+    // Texten ändrar inte slagen, så grannslaget är detsamma efter kommandot
+    const next = move && neighbourBeat(state, move);
+    if (next) dispatch({ type: "moveCursorTo", position: next });
+    else setOpenTextField(null);
+  }
+
   // Stabil, så att notvyn inte får en ny klickhanterare vid varje rendering
   const onPositionClick = useCallback((position: Cursor) => dispatch({ type: "moveCursorTo", position }), []);
 
@@ -253,10 +271,13 @@ export function TabEditor({ owner, fromLibrary }: { owner: boolean; fromLibrary?
         <summary>Keyboard shortcuts</summary>
         <table>
           <tbody>
-            {SHORTCUTS.map(({ keys, action }) => (
+            {SHORTCUTS.map(({ keys, action, symbol }) => (
               <tr key={keys}>
                 <td>
                   <kbd>{keys}</kbd>
+                </td>
+                <td className={styles.symbol} aria-hidden="true">
+                  {symbol}
                 </td>
                 <td>{action}</td>
               </tr>
@@ -285,7 +306,6 @@ export function TabEditor({ owner, fromLibrary }: { owner: boolean; fromLibrary?
           />
         )}
         <div className={styles.editTools}>
-          <ViewModePicker viewMode={state.score.viewMode} dispatch={dispatch} />
           <BarButtons dispatch={dispatch} />
         </div>
         <div className={styles.buttonGroup}>
@@ -313,6 +333,24 @@ export function TabEditor({ owner, fromLibrary }: { owner: boolean; fromLibrary?
         invalidBars={barProblems}
         onApiChange={setApi}
         onPositionClick={onPositionClick}
+        cursorOverlay={
+          openTextField
+            ? (box) => {
+                const { track, bar, beat } = state.cursor;
+                return (
+                  <BeatTextField
+                    // Ett nytt fält för varje slag, med slagets text
+                    key={`${openTextField}-${bar}-${beat}`}
+                    field={openTextField}
+                    value={state.score.tracks[track].bars[bar].beats[beat][openTextField] ?? ""}
+                    cursorBox={box}
+                    onCommit={(text, move) => commitBeatText(openTextField, text, move)}
+                    onCancel={() => setOpenTextField(null)}
+                  />
+                );
+              }
+            : undefined
+        }
       />
     </div>
   );

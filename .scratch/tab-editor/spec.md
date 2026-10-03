@@ -38,7 +38,7 @@ En webbplats med en enkel landningssida som hubb för **Verktyg**. Det första V
 9. Som användare vill jag ange Capo, så att bandnumren är relativa till kapodastern och uppspelningen låter rätt.
 10. Som användare vill jag ange starttempo, så att uppspelningen går i rätt takt.
 11. Som användare vill jag ange starttaktart, så att Takterna får rätt längd.
-12. Som användare vill jag välja Vy-läge för Partituret, så att det visas och skrivs ut så som jag vill läsa det.
+12. Som användare vill jag välja Vy-läge för Partituret i Partiturinställningarna, så att det visas och skrivs ut så som jag vill läsa det.
 13. Som användare vill jag att Vy-läget sparas i Partituret, så att det ser likadant ut nästa gång jag öppnar det och när jag skriver ut.
 
 ### Inmatning (tab-först)
@@ -65,6 +65,8 @@ En webbplats med en enkel landningssida som hubb för **Verktyg**. Det första V
 30. Som användare vill jag ändra taktart från en viss Takt, så att låtar med taktartsbyten kan skrivas.
 31. Som användare vill jag ändra tempo från en viss Takt, så att tempobyten följs vid uppspelning.
 32. Som användare vill jag markera början och slut på en repris (med antal varv), så att repetitioner inte behöver skrivas ut.
+32a. Som användare vill jag skriva ett Ackordnamn ovanför ett Slag (även en paus), så att den som läser ser vilket ackord som spelas. *(Tillagt efter version 1, ticket 20.)*
+32b. Som användare vill jag skriva en kort Anteckning vid ett Slag, t.ex. "let ring", så att jag kan ge spelanvisningar. *(Tillagt efter version 1, ticket 21.)*
 
 ### Redigering
 
@@ -243,7 +245,7 @@ En webbplats med en enkel landningssida som hubb för **Verktyg**. Det första V
 
 - Landningssidans slutliga design. Version 1 är en funktionell hubb.
 - Flera Spår, 7-strängad gitarr, bas och andra instrument (modellen tillåter det, men UI:t gör det inte).
-- Sångtext, ackordnamn och ackorddiagram, volta (1:a/2:a slut), vibrato, döda toner och andra tekniker utöver de som räknas upp ovan.
+- Sångtext, ackorddiagram, volta (1:a/2:a slut), vibrato, döda toner och andra tekniker utöver de som räknas upp ovan.
 - Transponering och loop av en markerad del (planerade till version 1.1).
 - Not-först-inmatning (att placera toner i notsystemet).
 - Redigering på mobil och surfplatta (visning och uppspelning fungerar).

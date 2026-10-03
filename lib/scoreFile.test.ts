@@ -71,6 +71,15 @@ describe("Partiturfil: rundtur", () => {
           { beats: [{ duration: 2, dotted: true, notes: [] }], tempo: 72, repeatStart: true, repeatEnd: 99 },
         ]),
     ],
+    [
+      "Ackordnamn och Anteckningar, även på en paus",
+      (s) =>
+        (s.tracks[0].bars[0].beats = [
+          { duration: 4, notes: [], chordName: "Am7", annotation: "let ring" },
+          { duration: 4, notes: [{ string: 1, fret: 0 }], chordName: "G/B" },
+          { duration: 2, notes: [], annotation: "x2" },
+        ]),
+    ],
   ])("%s kommer tillbaka likadant", (_, change) => {
     const score = scoreWith(change);
 
@@ -152,6 +161,11 @@ describe("Partiturfil: trasigt Partitur", () => {
     ["en reprisstart som inte är sant eller falskt", (s) => (s.tracks[0].bars[0].repeatStart = "yes")],
     ["ett reprisslut med ett varv", (s) => (s.tracks[0].bars[0].repeatEnd = 1)],
     ["ett reprisslut med över 99 varv", (s) => (s.tracks[0].bars[0].repeatEnd = 100)],
+    ["ett Ackordnamn som inte är text", (s) => (s.tracks[0].bars[0].beats[0].chordName = 7)],
+    ["ett Ackordnamn över 16 tecken", (s) => (s.tracks[0].bars[0].beats[0].chordName = "x".repeat(17))],
+    ["ett tomt Ackordnamn", (s) => (s.tracks[0].bars[0].beats[0].chordName = " ")],
+    ["en Anteckning som inte är text", (s) => (s.tracks[0].bars[0].beats[0].annotation = true)],
+    ["en Anteckning över 40 tecken", (s) => (s.tracks[0].bars[0].beats[0].annotation = "x".repeat(41))],
     [
       "två toner på samma sträng i ett slag",
       (s) => (s.tracks[0].bars[0].beats[0].notes = [{ string: 1, fret: 0 }, { string: 1, fret: 2 }]),
@@ -243,6 +257,15 @@ describe("Partiturfil: äldre versioner", () => {
       { beats: [{ duration: 2, notes: [{ string: 1, fret: 3 }] }], repeatStart: true },
       { beats: [{ duration: 2, dotted: true, notes: [] }], timeSignature: { beats: 3, beatValue: 4 }, repeatEnd: 3 },
       { beats: [{ duration: 2, dotted: true, notes: [{ string: 2, fret: 5 }] }], tempo: 140, repeatEnd: 2 },
+    ]);
+  });
+
+  it("en fil i version 4 går att öppna, med Ackordnamn och Anteckningar", () => {
+    const result = parse(fixture(4));
+
+    expect(result.ok && result.score.tracks[0].bars[0].beats).toEqual([
+      { duration: 2, notes: [], chordName: "Em", annotation: "let ring" },
+      { duration: 2, notes: [{ string: 6, fret: 0 }], chordName: "C/G" },
     ]);
   });
 

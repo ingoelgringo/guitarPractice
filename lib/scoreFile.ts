@@ -1,6 +1,7 @@
 import {
   BEND_TARGETS,
   DURATIONS,
+  MAX_BEAT_TEXT_LENGTH,
   MAX_FRET,
   MAX_PITCH,
   MAX_REPEAT_COUNT,
@@ -14,6 +15,7 @@ import {
   VIEW_MODES,
   type Bar,
   type Beat,
+  type BeatText,
   type Metadata,
   type Note,
   type Score,
@@ -38,7 +40,7 @@ const FORMAT = "itab";
 export const FILE_EXTENSION = ".itab";
 
 /** Formatets nuvarande version. */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 /** En migrering tar Partituret i ett dokument från en version till nästa. */
 export type Migration = (score: unknown) => unknown;
@@ -50,6 +52,9 @@ const MIGRATIONS: Readonly<Record<number, Migration>> = {
   // Version 3 lade till takt- och tempobyten samt repriser på Takterna. Ett Partitur i version 2
   // har inga och är oförändrat.
   2: (score) => score,
+  // Version 4 lade till Ackordnamn och Anteckningar på slagen. Ett Partitur i version 3 har inga
+  // och är oförändrat.
+  3: (score) => score,
 };
 
 export type ParseError =
@@ -207,7 +212,16 @@ function readBeat(data: unknown, stringCount: number): Beat {
     ...(readFlag(beat.dotted) && { dotted: true }),
     ...(readFlag(beat.triplet) && { triplet: true }),
     notes,
+    ...(beat.chordName !== undefined && { chordName: readBeatText(beat.chordName, "chordName") }),
+    ...(beat.annotation !== undefined && { annotation: readBeatText(beat.annotation, "annotation") }),
   };
+}
+
+/** Ett Ackordnamn eller en Anteckning som Editorn skriver dem: utan blanksteg runt, inte tom och inte för lång. */
+function readBeatText(value: unknown, field: BeatText): string {
+  const text = readText(value);
+  ensure(text === text.trim() && text.length > 0 && text.length <= MAX_BEAT_TEXT_LENGTH[field]);
+  return text;
 }
 
 function readNote(data: unknown, stringCount: number): Note {

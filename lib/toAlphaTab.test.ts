@@ -403,6 +403,33 @@ describe("speltekniker i toAlphaTab", () => {
   });
 });
 
+describe("Ackordnamn och Anteckningar i toAlphaTab", () => {
+  const score = () =>
+    scoreWithBeats([
+      { duration: 4, notes: [], chordName: "Am7", annotation: "let ring" },
+      { duration: 4, notes: [{ string: 1, fret: 0 }], chordName: "Am7" },
+      { duration: 2, notes: [{ string: 2, fret: 1 }] },
+    ]);
+
+  it("ett Ackordnamn visas ovanför slaget utan greppdiagram, även på en paus", () => {
+    const staff = toAlphaTab(score()).tracks[0].staves[0];
+    const [rest, note, plain] = staff.bars[0].voices[0].beats;
+
+    const chord = staff.getChord(rest.chordId!);
+    expect([chord?.name, chord?.showName, chord?.showDiagram]).toEqual(["Am7", true, false]);
+    expect(rest.isRest && rest.hasChord).toBe(true);
+    expect(note.hasChord).toBe(true);
+    expect(plain.hasChord).toBe(false);
+  });
+
+  it("en Anteckning visas som sångtext vid slaget", () => {
+    const [first, second] = firstBarBeats(score());
+
+    expect(first.lyrics).toEqual(["let ring"]);
+    expect(second.lyrics).toBeNull();
+  });
+});
+
 describe("takt- och tempobyten samt repriser i toAlphaTab", () => {
   /** Ett Partitur med `count` Takter i 4/4, där varje Takt är en helnot. */
   function scoreWithBars(count: number): Score {

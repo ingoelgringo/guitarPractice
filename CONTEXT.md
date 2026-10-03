@@ -27,7 +27,15 @@ En följd av Takter som spelas flera varv. Den börjar med en reprisstart och sl
 _Avoid_: Loop, upprepning
 
 **Slag** (`Beat`):
-En tidpunkt i en Takt med ett Notvärde. Ett slag utan toner är en paus, och ett slag med flera toner är ett ackord.
+En tidpunkt i en Takt med ett Notvärde. Ett slag utan toner är en paus, och ett slag med flera toner är ett ackord. Ett slag kan också ha ett Ackordnamn och en Anteckning.
+
+**Ackordnamn** (`chordName`):
+En fri text ovanför ett Slag som namnger ackordet som spelas där, t.ex. "Am7" eller "G/B". Den tolkas inte och påverkar inte vilka Toner Slaget har eller hur det låter. Den kan stå på en paus.
+_Avoid_: Ackord (det är ett Slag med flera Toner), ackordsymbol
+
+**Anteckning** (`annotation`):
+En fri kort text vid ett Slag, t.ex. "let ring". Den står under notsystemet, eller ovanför tabulaturen när notsystemet inte visas. Den påverkar inte uppspelningen.
+_Avoid_: Sångtext, kommentar, text
 
 **Ton** (`Note`):
 Ett band på en sträng i ett Slag. Strängarna numreras från den ljusaste: sträng 1 är ljusa e i standardstämning.

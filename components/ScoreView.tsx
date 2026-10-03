@@ -8,14 +8,14 @@ import {
   Settings,
   type model,
 } from "@coderline/alphatab";
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { selectionRange, type Cursor, type Selection } from "@/lib/editor";
 import type { Score } from "@/lib/score";
 import { beatAt, configureStaves, toAlphaTab } from "@/lib/toAlphaTab";
 import type { InvalidBar } from "@/lib/validation";
 import styles from "./TabEditor.module.css";
 
-interface Box {
+export interface Box {
   left: number;
   top: number;
   width: number;
@@ -58,7 +58,7 @@ const PLAYBACK_BAR_SPACE = 64;
  * Tunt skal kring alphaTab: renderar Partituret som A4-Sida, visar markören och markeringen
  * och markerar Takter som valideringen har pekat ut. Ett klick i notbilden blir en position för
  * markören via `onPositionClick`. Uppspelningen styrs via alphaTab-API:t, som lämnas ut med
- * `onApiChange`.
+ * `onApiChange`. `cursorOverlay` ritar något vid markörens ruta, t.ex. ett textfält för slaget.
  */
 export function ScoreView({
   score,
@@ -67,6 +67,7 @@ export function ScoreView({
   invalidBars,
   onApiChange,
   onPositionClick,
+  cursorOverlay,
 }: {
   score: Score;
   cursor: Cursor;
@@ -74,6 +75,7 @@ export function ScoreView({
   invalidBars: InvalidBar[];
   onApiChange: (api: AlphaTabApi | null) => void;
   onPositionClick: (position: Cursor) => void;
+  cursorOverlay?: (box: Box) => ReactNode;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<AlphaTabApi | null>(null);
@@ -169,6 +171,7 @@ export function ScoreView({
             {cursorBox.string !== undefined && <span className={styles.cursorString}>String {cursorBox.string}</span>}
           </div>
         )}
+        {cursorBox && cursorOverlay?.(boxStyle(cursorBox))}
       </div>
     </div>
   );
