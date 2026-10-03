@@ -25,6 +25,14 @@ describe("Greppbrädans val i adressen", () => {
     expect(choiceFromParams(new URLSearchParams("labels=x")).labels).toBe("interval");
   });
 
+  it("Ackordet ligger i adressen som steg, och saknas när inget Ackord är valt", () => {
+    expect(choiceFromParams(new URLSearchParams("chord=2")).chord).toBe(2);
+    expect(choiceFromParams(new URLSearchParams()).chord).toBeUndefined();
+    expect(choiceFromParams(new URLSearchParams("chord=ii")).chord).toBeUndefined();
+    expect(choiceToParams({ root: 0, scale: "major", labels: "interval", chord: 5 }).get("chord")).toBe("5");
+    expect(choiceToParams({ root: 0, scale: "major", labels: "interval" }).has("chord")).toBe(false);
+  });
+
   it("skriver valet som läsbara parametrar", () => {
     expect(choiceToParams({ root: 10, scale: "naturalMinor", labels: "interval" }).toString()).toBe(
       "root=Bb&scale=natural-minor&labels=intervals",
@@ -32,7 +40,7 @@ describe("Greppbrädans val i adressen", () => {
   });
 
   it("ett val överlever en tur via adressen", () => {
-    const choice = { root: 6, scale: "majorPentatonic", labels: "noteName" } as const;
+    const choice = { root: 6, scale: "majorPentatonic", labels: "noteName", chord: 4 } as const;
 
     expect(choiceFromParams(choiceToParams(choice))).toEqual(choice);
   });

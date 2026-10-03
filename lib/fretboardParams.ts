@@ -3,7 +3,7 @@
 import { DEFAULT_LABEL_MODE, type FretboardSelection, type LabelMode, type ScaleId } from "./fretboard";
 
 /** Det man väljer på Greppbrädan och som ligger i adressen. Notnamnsläget sparas i webbläsaren i stället. */
-export type FretboardChoice = Required<Pick<FretboardSelection, "root" | "scale" | "labels">>;
+export type FretboardChoice = Required<Pick<FretboardSelection, "root" | "scale" | "labels">> & Pick<FretboardSelection, "chord">;
 
 const DEFAULT_CHOICE: FretboardChoice = { root: 9, scale: "minorPentatonic", labels: DEFAULT_LABEL_MODE };
 
@@ -37,6 +37,11 @@ function keyOf<K extends string>(params: Record<K, string>, value: string | null
   return (Object.keys(params) as K[]).find((key) => params[key] === value);
 }
 
+/** Ackordets steg i adressen, eller inget. Om steget finns i Skalan avgör `fretboardView`. */
+function parseChord(value: string | null): number | undefined {
+  return value !== null && /^[1-9]$/.test(value) ? Number(value) : undefined;
+}
+
 /** Valet i adressen. Saknade eller ogiltiga värden ger standardvalet, vart och ett för sig. */
 export function choiceFromParams(params: URLSearchParams): FretboardChoice {
   const root = parseRoot(params.get("root"));
@@ -44,14 +49,17 @@ export function choiceFromParams(params: URLSearchParams): FretboardChoice {
     root: root === -1 ? DEFAULT_CHOICE.root : root,
     scale: keyOf(SCALE_PARAMS, params.get("scale")) ?? DEFAULT_CHOICE.scale,
     labels: keyOf(LABEL_PARAMS, params.get("labels")) ?? DEFAULT_CHOICE.labels,
+    chord: parseChord(params.get("chord")),
   };
 }
 
-/** Valet som parametrar för adressen, t.ex. `root=Eb&scale=blues&labels=notes`. */
+/** Valet som parametrar för adressen, t.ex. `root=Eb&scale=blues&labels=notes&chord=4`. */
 export function choiceToParams(choice: FretboardChoice): URLSearchParams {
-  return new URLSearchParams({
+  const params = new URLSearchParams({
     root: ROOT_PARAMS[choice.root],
     scale: SCALE_PARAMS[choice.scale],
     labels: LABEL_PARAMS[choice.labels],
   });
+  if (choice.chord !== undefined) params.set("chord", String(choice.chord));
+  return params;
 }

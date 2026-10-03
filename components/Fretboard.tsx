@@ -65,13 +65,15 @@ function stringY(string: number): number {
 
 export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice }) {
   const [choice, setChoice] = useState(initialChoice);
-  const { root, scale, labels } = choice;
   const noteNames = useSyncExternalStore(subscribeNoteNameMode, readNoteNameMode, () => DEFAULT_NOTE_NAME_MODE);
-  const { dots, options } = fretboardView({ root, scale, labels, noteNames, tuning: STANDARD_TUNING });
+  const { root, scale, labels } = choice;
+  const { selection, dots, options } = fretboardView({ ...choice, noteNames, tuning: STANDARD_TUNING });
+  const { chord } = selection;
 
-  /** Byter val och skriver det i adressen, utan en ny post i historiken per val. */
+  /** Byter val och skriver det i adressen, utan en ny post i historiken per val. Val som inte gäller släpps. */
   function choose(change: Partial<FretboardChoice>) {
     const next = { ...choice, ...change };
+    next.chord = fretboardView({ ...next, tuning: STANDARD_TUNING }).selection.chord;
     setChoice(next);
     window.history.replaceState(null, "", `?${choiceToParams(next)}`);
   }
@@ -99,6 +101,20 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
             {SCALES.map(({ id, name }) => (
               <option key={id} value={id}>
                 {name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Chord{" "}
+          <select
+            value={chord ?? ""}
+            onChange={(event) => choose({ chord: event.target.value === "" ? undefined : Number(event.target.value) })}
+          >
+            <option value="">None</option>
+            {options.chords.map(({ degree, numeral, name }) => (
+              <option key={degree} value={degree}>
+                {numeral} – {name}
               </option>
             ))}
           </select>
@@ -156,7 +172,10 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
             </text>
           ))}
           {dots.map((dot) => (
-            <g key={`${dot.string}-${dot.fret}`} className={dot.isRoot ? styles.rootDot : styles.dot}>
+            <g
+              key={`${dot.string}-${dot.fret}`}
+              className={[dot.isRoot ? styles.rootDot : styles.dot, styles[dot.emphasis]].filter(Boolean).join(" ")}
+            >
               <circle cx={fretCenter(dot.fret)} cy={stringY(dot.string)} r={DOT_RADIUS} />
               <text x={fretCenter(dot.fret)} y={stringY(dot.string)}>
                 {dot.label}

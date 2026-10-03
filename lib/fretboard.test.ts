@@ -22,8 +22,8 @@ describe("Greppbräda", () => {
     const dots = dotsOn({ root: A, scale: "minorPentatonic", tuning: STANDARD_TUNING }, 6);
 
     expect(dots.map((dot) => dot.fret)).toEqual([0, 3, 5, 8, 10, 12, 15]);
-    expect(dots.find((dot) => dot.fret === 5)).toEqual({ string: 6, fret: 5, label: "1", isRoot: true });
-    expect(dots.find((dot) => dot.fret === 8)).toEqual({ string: 6, fret: 8, label: "♭3", isRoot: false });
+    expect(dots.find((dot) => dot.fret === 5)).toEqual({ string: 6, fret: 5, label: "1", isRoot: true, emphasis: "scale" });
+    expect(dots.find((dot) => dot.fret === 8)).toEqual({ string: 6, fret: 8, label: "♭3", isRoot: false, emphasis: "scale" });
   });
 
   it("C-dur på ljusa e-strängen: bara skaltoner, lösa e är tersen", () => {
@@ -100,6 +100,83 @@ describe("Greppbräda", () => {
 
     it("pentatonik stavas efter sin Föräldraskala: E♭-durpentatonik har B♭ och inte A♯", () => {
       expect(namesOn(E_FLAT, "majorPentatonic", 6, "english")).toContain("B♭");
+    });
+  });
+
+  describe("Ackord", () => {
+    it("C-dur erbjuder de diatoniska treklangerna I–vii°", () => {
+      const { chords } = fretboardView({ root: C, scale: "major", tuning: STANDARD_TUNING, noteNames: "english" }).options;
+
+      expect(chords.map((chord) => `${chord.numeral} – ${chord.name}`)).toEqual([
+        "I – C",
+        "ii – Dm",
+        "iii – Em",
+        "IV – F",
+        "V – G",
+        "vi – Am",
+        "vii° – B°",
+      ]);
+    });
+
+    it("A mollpentatonik erbjuder ackorden i A naturlig moll, med svenska namn", () => {
+      const { chords } = fretboardView({ root: A, scale: "minorPentatonic", tuning: STANDARD_TUNING }).options;
+
+      expect(chords.map((chord) => `${chord.numeral} – ${chord.name}`)).toEqual([
+        "i – Am",
+        "ii° – H°",
+        "III – C",
+        "iv – Dm",
+        "v – Em",
+        "VI – F",
+        "VII – G",
+      ]);
+    });
+
+    it("urvalet normaliseras: ett Ackord utanför stegen släpps, ett giltigt behålls", () => {
+      const chordOf = (chord: number) =>
+        fretboardView({ root: C, scale: "major", chord, tuning: STANDARD_TUNING }).selection.chord;
+
+      expect(chordOf(0)).toBeUndefined();
+      expect(chordOf(8)).toBeUndefined();
+      expect(chordOf(2.5)).toBeUndefined();
+      expect(chordOf(7)).toBe(7);
+    });
+
+    it("ett släppt Ackord visar bara skalan", () => {
+      const { dots } = fretboardView({ root: C, scale: "major", chord: 9, tuning: STANDARD_TUNING });
+
+      expect(new Set(dots.map((dot) => dot.emphasis))).toEqual(new Set(["scale"]));
+    });
+
+    it("skalbyte behåller Ackordets steg: V i C-dur blir v i C mollpentatonik", () => {
+      const view = fretboardView({ root: C, scale: "minorPentatonic", chord: 5, tuning: STANDARD_TUNING, noteNames: "english" });
+
+      expect(view.selection.chord).toBe(5);
+      expect(view.options.chords[4].name).toBe("Gm");
+    });
+
+    it("utan Ackord har alla Prickar skalans betoning", () => {
+      const { dots } = fretboardView({ root: C, scale: "major", tuning: STANDARD_TUNING });
+
+      expect(new Set(dots.map((dot) => dot.emphasis))).toEqual(new Set(["scale"]));
+    });
+
+    it("ett valt Ackord framhävs över hela halsen och skalans övriga toner tonas ner", () => {
+      // Ljusa e-strängen i C-dur med ii – Dm (D, F, A)
+      const dots = dotsOn({ root: C, scale: "major", chord: 2, tuning: STANDARD_TUNING }, 1);
+      const highlighted = dots.filter((dot) => dot.emphasis === "highlighted").map((dot) => dot.fret);
+      const muted = dots.filter((dot) => dot.emphasis === "muted").map((dot) => dot.fret);
+
+      expect(highlighted).toEqual([1, 5, 10, 13]);
+      expect(muted).toEqual([0, 3, 7, 8, 12, 15]);
+    });
+
+    it("ett Ackords toner utanför pentatoniken visas också: ii° i A mollpentatonik har H", () => {
+      // Ljusa e-strängen: H på band 7 är inte med i pentatoniken men i Ackordet H°
+      const dots = dotsOn({ root: A, scale: "minorPentatonic", chord: 2, tuning: STANDARD_TUNING }, 1);
+
+      expect(dots.find((dot) => dot.fret === 7)).toEqual({ string: 1, fret: 7, label: "2", isRoot: false, emphasis: "highlighted" });
+      expect(dots.find((dot) => dot.fret === 5)?.emphasis).toBe("muted");
     });
   });
 

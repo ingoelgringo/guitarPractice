@@ -82,3 +82,13 @@
   text-anchor: middle;
   dominant-baseline: central;
 }
+
+/* Betoning: ett valt Ackord framhävs och skalans övriga toner tonas ner. */
+.muted {
+  opacity: 0.3;
+}
+
+.highlighted circle {
+  stroke: var(--foreground);
+  stroke-width: 2.5;
+}

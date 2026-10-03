@@ -115,6 +115,35 @@ function intervalLabel(step: Step): string {
   return `${ACCIDENTAL_SIGNS[step.semitones - MAJOR[step.degree - 1].semitones]}${step.degree}`;
 }
 
+const NUMERALS = ["I", "II", "III", "IV", "V", "VI", "VII"];
+
+/** Ett Ackord bland Föräldraskalans diatoniska treklanger, t.ex. steg 2 "ii" och "Dm". */
+export interface ChordOption {
+  degree: number;
+  numeral: string;
+  name: string;
+}
+
+/** Föräldraskalans steg för Ackordet på ett steg: grundton, ters och kvint. */
+function chordSteps(parent: readonly Step[], degree: number): Step[] {
+  return [0, 2, 4].map((offset) => parent[(degree - 1 + offset) % 7]);
+}
+
+/** Avståndet i halvtoner uppåt mellan två steg. */
+function interval(from: Step, to: Step): number {
+  return (to.semitones - from.semitones + 12) % 12;
+}
+
+/** Treklangens steg och namn, med Ackordets grundton stavad efter tonarten. */
+function chordOption(parent: readonly Step[], degree: number, nameOf: (step: Step) => string): ChordOption {
+  const [chordRoot, third, fifth] = chordSteps(parent, degree);
+  const minor = interval(chordRoot, third) === 3;
+  const diminished = minor && interval(chordRoot, fifth) === 6;
+  const numeral = minor ? NUMERALS[degree - 1].toLowerCase() : NUMERALS[degree - 1];
+  const suffix = diminished ? "°" : minor ? "m" : "";
+  return { degree, numeral: diminished ? `${numeral}°` : numeral, name: `${nameOf(chordRoot)}${suffix}` };
+}
+
 export interface FretboardSelection {
   /** Grundtonens tonklass, C = 0 … H/B = 11. */
   root: number;
@@ -125,7 +154,12 @@ export interface FretboardSelection {
   labels?: LabelMode;
   /** Svenskt om inget anges. */
   noteNames?: NoteNameMode;
+  /** Det valda Ackordets steg i Föräldraskalan, 1–7. Inget Ackord om det saknas. */
+  chord?: number;
 }
+
+/** Hur starkt en Prick visas: nedtonad, som en vanlig skalton eller framhävd. */
+export type Emphasis = "muted" | "scale" | "highlighted";
 
 /** En Prick: en markerad position på halsen. Sträng 1 är den ljusaste. */
 export interface Dot {
@@ -133,14 +167,19 @@ export interface Dot {
   fret: number;
   label: string;
   isRoot: boolean;
+  emphasis: Emphasis;
 }
 
 export interface FretboardView {
+  /** Urvalet med de val som inte gäller för Skalan borttagna. */
+  selection: FretboardSelection;
   dots: Dot[];
   /** Det som går att välja, med namn för gränssnittet. */
   options: {
     /** Grundtonsmenyns namn per tonklass, C först. */
     roots: string[];
+    /** Skalans Ackord, hämtade från Föräldraskalan, steg 1 först. */
+    chords: ChordOption[];
   };
 }
 
@@ -148,21 +187,33 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
   const { root, labels = DEFAULT_LABEL_MODE, noteNames = DEFAULT_NOTE_NAME_MODE } = selection;
   const { steps, parent } = SCALE_STEPS[selection.scale];
   const letter = rootLetter(root, parent);
+  const chord = parent.some((step) => step.degree === selection.chord) ? selection.chord : undefined;
   const labelOf = (step: Step) => (labels === "interval" ? intervalLabel(step) : stepName(letter, root, step, noteNames));
+
+  // Ackordets toner visas även när de ligger utanför skalan, som H i ii° för A mollpentatonik
+  const chordTones = chord === undefined ? [] : chordSteps(parent, chord);
+  const inScale = new Set(steps.map((step) => step.semitones));
+  const inChord = new Set(chordTones.map((step) => step.semitones));
+  const shown = [...steps, ...chordTones.filter((step) => !inScale.has(step.semitones))];
+  const emphasisOf = (step: Step): Emphasis => {
+    if (chord === undefined) return "scale";
+    return inChord.has(step.semitones) ? "highlighted" : "muted";
+  };
 
   const dots: Dot[] = [];
   selection.tuning.forEach((openPitch, index) => {
     for (let fret = 0; fret <= FRET_COUNT; fret++) {
       const semitones = (((openPitch + fret - root) % 12) + 12) % 12;
-      const step = steps.find((candidate) => candidate.semitones === semitones);
+      const step = shown.find((candidate) => candidate.semitones === semitones);
       if (!step) continue;
-      dots.push({ string: index + 1, fret, label: labelOf(step), isRoot: semitones === 0 });
+      dots.push({ string: index + 1, fret, label: labelOf(step), isRoot: semitones === 0, emphasis: emphasisOf(step) });
     }
   });
   const roots = ROOT_MENU.map((spellings) =>
     spellings.map(([letter, accidental]) => noteName(letter, accidental, noteNames)).join("/"),
   );
-  return { dots, options: { roots } };
+  const chords = parent.map((step) => chordOption(parent, step.degree, (chordRoot) => stepName(letter, root, chordRoot, noteNames)));
+  return { selection: { ...selection, chord }, dots, options: { roots, chords } };
 }
 
 /** Skalorna i den ordning de erbjuds, med namn för gränssnittet. */
