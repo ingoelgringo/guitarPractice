@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] Tester genom `fretboardView`: raden för I i C-dur är 1, 2, 3, 4, 5 och raden för ii – Dm är 5, 1, 2, 3, 4. Varje rad för dur- och mollackord har varje Penta-box exakt en gång för alla Skalor. Raden för vii° har inga.
-- [ ] Tester genom `fretboardView`: en cell lägger Penta-boxen i Ackordets lager och Boxens övriga toner i Boxens lager, i varje kopia av Boxen. `caged` släpps i Penta-fliken.
-- [ ] Tester för adressen: `tab=penta` läses och skrivs. Saknas den, eller är den ogiltig, gäller CAGED.
+- [x] Tester genom `fretboardView`: raden för I i C-dur är 1, 2, 3, 4, 5 och raden för ii – Dm är 5, 1, 2, 3, 4. Varje rad för dur- och mollackord har varje Penta-box exakt en gång för alla Skalor. Raden för vii° har inga.
+- [x] Tester genom `fretboardView`: en cell lägger Penta-boxen i Ackordets lager och Boxens övriga toner i Boxens lager, i varje kopia av Boxen. `caged` släpps i Penta-fliken.
+- [x] Tester för adressen: `tab=penta` läses och skrivs. Saknas den, eller är den ogiltig, gäller CAGED.
 - [ ] Flikarna går att välja med klick och tangentbord, och den valda är markerad.

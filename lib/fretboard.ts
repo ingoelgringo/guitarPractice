@@ -300,13 +300,13 @@ function cagedGrip(tuning: readonly number[], quality: CagedQuality, shape: Cage
 }
 
 /**
- * Greppets läge i varje kopia av en Box: det läge som har flest toner inom kopians band, och det
- * antalet. En kopia som inget läge når får inget grepp.
+ * Ett mönsters läge (ett grepp eller en kopia av en Penta-box) i varje kopia av en Box: det läge som
+ * har flest toner inom kopians band, och det antalet. En kopia som inget läge når får inget.
  */
-function gripInBox(grip: Grip, instances: readonly Place[][]): { positions: Place[][]; overlap: number } {
+function fitInBox(positions: readonly Place[][], instances: readonly Place[][]): { positions: Place[][]; overlap: number } {
   const fits = instances.flatMap((instance) => {
     const overlap = (position: Place[]) => position.filter((place) => withinSpan(instance, place)).length;
-    const best = grip.positions.reduce<Place[] | undefined>(
+    const best = positions.reduce<Place[] | undefined>(
       (found, position) => (overlap(position) > (found === undefined ? 0 : overlap(found)) ? position : found),
       undefined,
     );
@@ -323,7 +323,7 @@ function gripInBox(grip: Grip, instances: readonly Place[][]): { positions: Plac
  * Boxen) i det lägsta läget där det ryms.
  */
 function gripPlaces(grip: Grip, instances: readonly Place[][]): Place[] {
-  const { positions } = gripInBox(grip, instances);
+  const { positions } = fitInBox(grip.positions, instances);
   return positions.length > 0 ? positions.flat() : (grip.positions[0] ?? grip.fallback);
 }
 
@@ -339,13 +339,51 @@ function shapesPerBox(
 ): CagedShape[] {
   const overlaps = CAGED_SHAPES.map((shape) => {
     const grip = cagedGrip(tuning, quality, shape, chordRoot);
-    return boxes.map((instances) => gripInBox(grip, instances).overlap);
+    return boxes.map((instances) => fitInBox(grip.positions, instances).overlap);
   });
-  const rotations = CAGED_SHAPES.map((_, offset) => boxes.map((_, box) => (offset + box) % CAGED_SHAPES.length));
-  const score = (rotation: number[]) => rotation.reduce((sum, shape, box) => sum + overlaps[shape][box], 0);
-  const best = rotations.reduce((found, rotation) => (score(rotation) > score(found) ? rotation : found));
-  return best.map((shape) => CAGED_SHAPES[shape]);
+  return bestRotation(overlaps).map((shape) => CAGED_SHAPES[shape]);
 }
+
+/**
+ * Den rotation av fem mönster (index 0–4) på de fem Boxarna där mönstren sammanlagt har flest toner
+ * inom sina Boxars band. `overlaps[mönster][box]` är antalet för ett mönster i en Box.
+ */
+function bestRotation(overlaps: readonly (readonly number[])[]): number[] {
+  const rotations = overlaps.map((_, offset) => overlaps.map((_, box) => (offset + box) % overlaps.length));
+  const score = (rotation: number[]) => rotation.reduce((sum, pattern, box) => sum + overlaps[pattern][box], 0);
+  return rotations.reduce((found, rotation) => (score(rotation) > score(found) ? rotation : found));
+}
+
+/** Ackordets penta: durpentatonik för ett durackord och mollpentatonik för ett mollackord. */
+const CHORD_PENTATONIC: Record<CagedQuality, ScaleId> = { major: "majorPentatonic", minor: "minorPentatonic" };
+
+/**
+ * Ackordets penta som Föräldraskalans steg. Den ryms alltid i Föräldraskalan: durackordens steg har
+ * durpentatonikens toner och mollackordens steg mollpentatonikens.
+ */
+function chordPentaSteps(parent: readonly Step[], quality: CagedQuality, chordRoot: Step): Step[] {
+  return SCALE_STEPS[CHORD_PENTATONIC[quality]].steps.map(
+    (step) => parent.find((candidate) => candidate.semitones === (chordRoot.semitones + step.semitones) % 12)!,
+  );
+}
+
+/** Kopiorna av varje Penta-box (1–5 först) i Ackordets penta, byggda som Skalans Boxar från Ackordets grundton. */
+function pentaBoxInstances(tuning: readonly number[], quality: CagedQuality, chordRoot: number): Place[][][] {
+  const pentaSelection = { root: pitchClassOf(chordRoot), scale: CHORD_PENTATONIC[quality], tuning };
+  return Array.from({ length: BOX_COUNT }, (_, i) => boxInstances(boxShape(pentaSelection, i + 1)));
+}
+
+/**
+ * Penta-boxens nummer i varje Box: en rotation av 1–5 (boxarnas ordning uppåt längs halsen), den där
+ * Penta-boxarna sammanlagt har flest toner inom sina Boxars band.
+ */
+function pentaBoxesPerBox(pentaBoxes: readonly Place[][][], boxes: readonly Place[][][]): number[] {
+  const overlaps = pentaBoxes.map((penta) => boxes.map((instances) => fitInBox(penta, instances).overlap));
+  return bestRotation(overlaps).map((pentaBox) => pentaBox + 1);
+}
+
+/** Fliken i Greppbrädans panel. */
+export type FretboardTab = "caged" | "penta";
 
 export interface FretboardSelection {
   /** Grundtonens tonklass, C = 0 … H/B = 11. */
@@ -361,14 +399,16 @@ export interface FretboardSelection {
   chord?: number;
   /** Den valda Boxen, 1–5. Ingen Box om den saknas. */
   box?: number;
-  /** Den valda CAGED-formen för Ackordet. Gäller bara dur- och mollackord. */
+  /** Den valda CAGED-formen för Ackordet. Gäller bara dur- och mollackord i CAGED-fliken. */
   caged?: CagedShape;
+  /** Fliken. CAGED om den saknas. */
+  tab?: FretboardTab;
 }
 
 /**
- * Prickens lager. Ackordets lager är greppet, eller Ackordets toner när inget grepp finns (i Boxen om
- * en Box är vald). Boxens lager är Boxens övriga toner. Skalans lager gäller när varken Ackord eller
- * Box är valt. Resten tonas ner.
+ * Prickens lager. Ackordets lager är greppet, Penta-boxen, Ackordets penta i Penta-fliken, eller annars
+ * Ackordets toner (i Boxen om en Box är vald). Boxens lager är Boxens övriga toner. Skalans lager gäller
+ * när varken Ackord eller Box är valt. Resten tonas ner.
  */
 export type Layer = "chord" | "box" | "scale" | "muted";
 
@@ -389,6 +429,11 @@ export interface CagedRow extends ChordOption {
   cells: { box: number; shape: CagedShape | null }[];
 }
 
+/** En rad i Penta-tabellen: ett Ackord och en cell per Box (Box 1 först) med Penta-boxens nummer, `null` för ett förminskat Ackord. */
+export interface PentaRow extends ChordOption {
+  cells: { box: number; pentaBox: number | null }[];
+}
+
 export interface FretboardView {
   /** Urvalet med de val som inte gäller för Skalan borttagna. */
   selection: FretboardSelection;
@@ -403,6 +448,8 @@ export interface FretboardView {
     boxes: number[];
     /** CAGED-tabellen: en rad per Ackord i Skalan (från Föräldraskalan), steg 1 först. */
     cagedTable: CagedRow[];
+    /** Penta-tabellen: samma rader som CAGED-tabellen, med Penta-boxen i varje cell. */
+    pentaTable: PentaRow[];
   };
 }
 
@@ -411,26 +458,61 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
   const { steps, parent } = SCALE_STEPS[selection.scale];
   const letter = rootLetter(root, parent);
   const chord = parent.some((step) => step.degree === selection.chord) ? selection.chord : undefined;
+  const tab: FretboardTab = selection.tab === "penta" ? "penta" : "caged";
   const labelOf = (step: Step) => (labels === "interval" ? intervalLabel(step) : stepName(letter, root, step, noteNames));
 
-  // Ackordets toner visas även när de ligger utanför skalan, som H i ii° för A mollpentatonik
   const chordTones = chord === undefined ? [] : chordSteps(parent, chord);
-  const inScale = new Set(steps.map((step) => step.semitones));
-  const inChord = new Set(chordTones.map((step) => step.semitones));
-  const shown = [...steps, ...chordTones.filter((step) => !inScale.has(step.semitones))];
   const requestedBox = selection.box ?? 0;
   const box = Number.isInteger(requestedBox) && requestedBox >= 1 && requestedBox <= BOX_COUNT ? requestedBox : undefined;
-  const instances = box === undefined ? [] : boxInstances(boxShape(selection, box));
-  // CAGED-former finns bara för dur- och mollackord
+  const boxes = Array.from({ length: BOX_COUNT }, (_, i) => i + 1);
+  const instancesPerBox = boxes.map((number) => boxInstances(boxShape(selection, number)));
+  const instances = box === undefined ? [] : instancesPerBox[box - 1];
+  // CAGED-former och Ackordets penta finns bara för dur- och mollackord
   const quality = chord === undefined ? undefined : chordQuality(parent, chord);
   const gripQuality: CagedQuality | undefined = quality === "diminished" ? undefined : quality;
   const requestedShape = CAGED_SHAPES.find((shape) => shape === selection.caged);
-  const caged = gripQuality === undefined ? undefined : requestedShape;
+  const caged = tab === "caged" && gripQuality !== undefined ? requestedShape : undefined;
   const grip =
     caged === undefined || gripQuality === undefined
       ? undefined
       : cagedGrip(selection.tuning, gripQuality, caged, root + chordTones[0].semitones);
-  const inGrip = new Set((grip === undefined ? [] : gripPlaces(grip, instances)).map(placeKey));
+
+  /** En rad per Ackord med en cell per Box. Ett förminskat Ackord har bara tomma celler. */
+  const tableRows = <T,>(cellsOf: (quality: CagedQuality, chordRoot: number) => T[]) =>
+    parent.map(({ degree }) => {
+      const rowQuality = chordQuality(parent, degree);
+      const [rowRoot] = chordSteps(parent, degree);
+      const cells = rowQuality === "diminished" ? boxes.map(() => null) : cellsOf(rowQuality, root + rowRoot.semitones);
+      return {
+        ...chordOption(parent, degree, (chordRoot) => stepName(letter, root, chordRoot, noteNames)),
+        cells: boxes.map((number, index) => ({ box: number, value: cells[index] })),
+      };
+    });
+  const cagedTable = tableRows((rowQuality, rowRoot) =>
+    shapesPerBox(selection.tuning, rowQuality, rowRoot, instancesPerBox),
+  ).map((row): CagedRow => ({ ...row, cells: row.cells.map(({ box: number, value }) => ({ box: number, shape: value })) }));
+  const pentaTable = tableRows((rowQuality, rowRoot) =>
+    pentaBoxesPerBox(pentaBoxInstances(selection.tuning, rowQuality, rowRoot), instancesPerBox),
+  ).map((row): PentaRow => ({ ...row, cells: row.cells.map(({ box: number, value }) => ({ box: number, pentaBox: value })) }));
+
+  const pentaTones =
+    tab === "penta" && gripQuality !== undefined ? chordPentaSteps(parent, gripQuality, chordTones[0]) : undefined;
+  // Penta-boxen i varje kopia av Boxen: den som Penta-tabellen har i Boxens cell
+  const pentaBoxPlaces = (() => {
+    const pentaBox = pentaTable.find((row) => row.degree === chord)?.cells.find((cell) => cell.box === box)?.pentaBox;
+    if (pentaTones === undefined || gripQuality === undefined || pentaBox == null) return undefined;
+    const pentaBoxes = pentaBoxInstances(selection.tuning, gripQuality, root + chordTones[0].semitones);
+    return fitInBox(pentaBoxes[pentaBox - 1], instances).positions.flat();
+  })();
+  /** Platserna i Ackordets lager när de är ett mönster (greppet eller Penta-boxen) och inte bara tonerna. */
+  const patternPlaces = grip === undefined ? pentaBoxPlaces : gripPlaces(grip, instances);
+  const inPattern = new Set((patternPlaces ?? []).map(placeKey));
+  // Tonerna i Ackordets lager (Ackordets penta eller toner) visas även när de ligger utanför skalan,
+  // som H i ii° för A mollpentatonik
+  const chordLayerTones = pentaTones ?? chordTones;
+  const inScale = new Set(steps.map((step) => step.semitones));
+  const inChord = new Set(chordLayerTones.map((step) => step.semitones));
+  const shown = [...steps, ...chordLayerTones.filter((step) => !inScale.has(step.semitones))];
   const inBox = new Set(instances.flat().map(placeKey));
   // En ackordton utanför skalan hör till Boxen när den ligger inom Boxens band
   const insideBox = (step: Step, place: Place) =>
@@ -443,9 +525,9 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
     // Utan Box gäller Ackordets toner över hela halsen
     const inSelectedBox = box !== undefined && insideBox(step, place);
     const shownAsChord =
-      caged === undefined
+      patternPlaces === undefined
         ? inChord.has(step.semitones) && (box === undefined || inSelectedBox)
-        : inGrip.has(placeKey(place));
+        : inPattern.has(placeKey(place));
     if (shownAsChord) return "chord";
     return inSelectedBox && inScale.has(step.semitones) ? "box" : "muted";
   };
@@ -465,28 +547,14 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
       dots.push({ ...place, label: labelOf(step), rootRole: rootRoleOf(semitones), layer: layerOf(step, place) });
     }
   });
-  const boxes = Array.from({ length: BOX_COUNT }, (_, i) => i + 1);
   const roots = ROOT_MENU.map((spellings) =>
     spellings.map(([letter, accidental]) => noteName(letter, accidental, noteNames)).join("/"),
   );
-  const instancesPerBox = boxes.map((number) => boxInstances(boxShape(selection, number)));
-  const cagedTable = parent.map(({ degree }): CagedRow => {
-    const rowQuality = chordQuality(parent, degree);
-    const [rowRoot] = chordSteps(parent, degree);
-    const shapes =
-      rowQuality === "diminished"
-        ? boxes.map(() => null)
-        : shapesPerBox(selection.tuning, rowQuality, root + rowRoot.semitones, instancesPerBox);
-    return {
-      ...chordOption(parent, degree, (chordRoot) => stepName(letter, root, chordRoot, noteNames)),
-      cells: boxes.map((number, index) => ({ box: number, shape: shapes[index] })),
-    };
-  });
   return {
-    selection: { ...selection, chord, box, caged },
+    selection: { ...selection, chord, box, caged, tab },
     dots,
     mutedStrings: grip?.mutedStrings ?? [],
-    options: { roots, boxes, cagedTable },
+    options: { roots, boxes, cagedTable, pentaTable },
   };
 }
 

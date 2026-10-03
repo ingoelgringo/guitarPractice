@@ -440,6 +440,101 @@ describe("Greppbräda", () => {
     });
   });
 
+  describe("Penta-tabellen", () => {
+    /** Penta-boxarna i radens celler för Box 1–5, "–" där ingen finns. */
+    function row(selection: FretboardSelection, degree: number): string[] {
+      const found = fretboardView(selection).options.pentaTable.find((candidate) => candidate.degree === degree)!;
+      return found.cells.map(({ pentaBox }) => (pentaBox === null ? "–" : String(pentaBox)));
+    }
+
+    it("raden för I i C-dur är 1, 2, 3, 4, 5: C-durpentatonikens Penta-boxar är Skalans Boxar", () => {
+      expect(row({ root: C, scale: "major", tuning: STANDARD_TUNING }, 1)).toEqual(["1", "2", "3", "4", "5"]);
+    });
+
+    it("raden för ii – Dm i C-dur är 5, 1, 2, 3, 4: D mollpentatonikens Box 1 ligger i Box 2", () => {
+      expect(row({ root: C, scale: "major", tuning: STANDARD_TUNING }, 2)).toEqual(["5", "1", "2", "3", "4"]);
+    });
+
+    it("varje rad för dur- och mollackord har varje Penta-box exakt en gång, i alla Skalor och tonarter", () => {
+      for (const scale of ["major", "naturalMinor", "majorPentatonic", "minorPentatonic", "blues"] as const) {
+        for (let root = 0; root < 12; root++) {
+          for (const { numeral, cells } of fretboardView({ root, scale, tuning: STANDARD_TUNING }).options.pentaTable) {
+            if (numeral.endsWith("°")) continue;
+            expect(cells.map(({ pentaBox }) => pentaBox).sort()).toEqual([1, 2, 3, 4, 5]);
+          }
+        }
+      }
+    });
+
+    it("raden för vii° i C-dur har inga Penta-boxar", () => {
+      expect(row({ root: C, scale: "major", tuning: STANDARD_TUNING }, 7)).toEqual(["–", "–", "–", "–", "–"]);
+    });
+
+    it("raden för vi – Am i C-dur är 2, 3, 4, 5, 1: A mollpentatonikens Box 1 börjar på A, som Box 5", () => {
+      expect(row({ root: C, scale: "major", tuning: STANDARD_TUNING }, 6)).toEqual(["2", "3", "4", "5", "1"]);
+    });
+  });
+
+  describe("Penta-fliken", () => {
+    /** Banden per sträng (sträng 1 först) för Prickarna i ett lager. */
+    function layerFrets(selection: FretboardSelection, layer: Dot["layer"]): number[][] {
+      return [1, 2, 3, 4, 5, 6].map((string) =>
+        dotsOn(selection, string)
+          .filter((dot) => dot.layer === layer)
+          .map((dot) => dot.fret),
+      );
+    }
+
+    it("cell: ii – Dm i Box 2 av C-dur visar D mollpentatonikens Box 1 i Ackordets lager och Boxens övriga toner i Boxens", () => {
+      const selection: FretboardSelection = { root: C, scale: "major", tab: "penta", chord: 2, box: 2, tuning: STANDARD_TUNING };
+
+      expect(layerFrets(selection, "chord")).toEqual([[10, 13], [10, 13], [10, 12], [10, 12], [10, 12], [10, 13]]);
+      expect(layerFrets(selection, "box")).toEqual([[12], [12], [9], [9], [], [12]]);
+    });
+
+    it("cell: Penta-boxen ritas i varje kopia av Boxen: i – Am i Box 4 av A mollpentatonik vid band 0–3 och 12–15", () => {
+      const selection: FretboardSelection = { root: A, scale: "minorPentatonic", tab: "penta", chord: 1, box: 4, tuning: STANDARD_TUNING };
+
+      expect(layerFrets(selection, "chord")[5]).toEqual([0, 3, 12, 15]);
+      expect(layerFrets(selection, "box")).toEqual([[], [], [], [], [], []]);
+    });
+
+    it("radrubrik: iv – Dm i A mollpentatonik visar D mollpentatonik över hela halsen, också F utanför Skalan", () => {
+      const selection: FretboardSelection = { root: A, scale: "minorPentatonic", tab: "penta", chord: 4, tuning: STANDARD_TUNING };
+      const dots = dotsOn(selection, 6);
+
+      // E-strängen: F 1, G 3, A 5, C 8, D 10, F 13, G 15
+      expect(layerFrets(selection, "chord")[5]).toEqual([1, 3, 5, 8, 10, 13, 15]);
+      expect(layerFrets(selection, "muted")[5]).toEqual([0, 12]);
+      expect(dots.find((dot) => dot.fret === 1)?.label).toBe("♭6");
+    });
+
+    it("radrubrik med förminskat Ackord: ii° i A mollpentatonik visar Ackordets toner, som i CAGED-fliken", () => {
+      const penta = fretboardView({ root: A, scale: "minorPentatonic", tab: "penta", chord: 2, tuning: STANDARD_TUNING });
+      const caged = fretboardView({ root: A, scale: "minorPentatonic", chord: 2, tuning: STANDARD_TUNING });
+
+      expect(penta.dots).toEqual(caged.dots);
+    });
+
+    it("cell med förminskat Ackord: ii° i Box 1 av A mollpentatonik visar Ackordets toner i Boxen, som i CAGED-fliken", () => {
+      const penta = fretboardView({ root: A, scale: "minorPentatonic", tab: "penta", chord: 2, box: 1, tuning: STANDARD_TUNING });
+      const caged = fretboardView({ root: A, scale: "minorPentatonic", chord: 2, box: 1, tuning: STANDARD_TUNING });
+
+      expect(penta.dots).toEqual(caged.dots);
+    });
+
+    it("CAGED-formen släpps i Penta-fliken, och Fliken är CAGED om den saknas", () => {
+      const penta = fretboardView({ root: C, scale: "major", tab: "penta", chord: 1, box: 1, caged: "E", tuning: STANDARD_TUNING });
+      const missing = fretboardView({ root: C, scale: "major", chord: 1, box: 1, caged: "E", tuning: STANDARD_TUNING });
+
+      expect(penta.selection.caged).toBeUndefined();
+      expect(penta.selection.tab).toBe("penta");
+      expect(penta.mutedStrings).toEqual([]);
+      expect(missing.selection.caged).toBe("E");
+      expect(missing.selection.tab).toBe("caged");
+    });
+  });
+
   describe("grundtoner", () => {
     /** Banden per grundtonsroll på en sträng. */
     function rootFrets(selection: FretboardSelection, string: number) {

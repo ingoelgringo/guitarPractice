@@ -72,6 +72,20 @@
   }
 }
 
+/* Grundton och Skala bredvid varandra med etiketten ovanför, så att valet läses som "C Major" */
+.scalePicker {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: start;
+}
+
+.scalePicker label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
 .panelGroup + .panelGroup {
   padding-top: 20px;
   border-top: 1px solid var(--panel-divider);
@@ -82,30 +96,51 @@
   padding: 4px 6px;
 }
 
-/* Fliken CAGED: rubriken och CAGED-tabellen med Skalans Ackord som rader och Boxarna som kolumner */
-.tabHeading {
+/* Flikarna CAGED och Penta, och Flikens tabell med Skalans Ackord som rader och Boxarna som kolumner */
+.tabs {
   flex-basis: 100%;
-  margin: 0;
-  font-size: 1rem;
+  display: flex;
+  gap: 4px;
 }
 
-.cagedTable {
+.tabs button {
+  font: inherit;
+  font-weight: bold;
+  padding: 4px 12px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--neck-line);
+  cursor: pointer;
+}
+
+.tabs button[aria-selected="true"] {
+  color: var(--foreground);
+  border-bottom-color: var(--foreground);
+}
+
+.tabs button:focus-visible {
+  outline: 2px solid var(--dot-box);
+  outline-offset: 1px;
+}
+
+.chordTable {
   border-collapse: collapse;
 }
 
-.cagedTable th,
-.cagedTable td {
+.chordTable th,
+.chordTable td {
   padding: 1px;
   font-weight: normal;
   text-align: center;
 }
 
-.cagedTable thead th[scope="colgroup"] {
+.chordTable thead th[scope="colgroup"] {
   font-size: 0.85rem;
   color: var(--neck-line);
 }
 
-.cagedTable button {
+.chordTable button {
   font: inherit;
   min-width: 30px;
   min-height: 28px;
@@ -117,27 +152,27 @@
   cursor: pointer;
 }
 
-.cagedTable th[scope="row"] button {
+.chordTable th[scope="row"] button {
   width: 100%;
   text-align: left;
   white-space: nowrap;
 }
 
-.cagedTable td button {
+.chordTable td button {
   font-weight: bold;
 }
 
 /* Det hovrade, som förhandsvisas på halsen */
-.cagedTable button[data-hovered] {
+.chordTable button[data-hovered] {
   background: var(--neck-inlay);
 }
 
 /* Det valda: en cell, ett Ackord eller en Box */
-.cagedTable button[aria-pressed="true"] {
+.chordTable button[aria-pressed="true"] {
   border-color: var(--foreground);
 }
 
-.cagedTable button:focus-visible {
+.chordTable button:focus-visible {
   outline: 2px solid var(--dot-box);
   outline-offset: 1px;
 }

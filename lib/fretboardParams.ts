@@ -1,9 +1,9 @@
 /** Greppbrädans val i adressens query-parametrar, så att det går att bokmärka och dela. */
 
-import { CAGED_SHAPES, type CagedShape, DEFAULT_LABEL_MODE, type FretboardSelection, type LabelMode, type ScaleId } from "./fretboard";
+import { CAGED_SHAPES, type CagedShape, DEFAULT_LABEL_MODE, type FretboardSelection, type FretboardTab, type LabelMode, type ScaleId } from "./fretboard";
 
 /** Det man väljer på Greppbrädan och som ligger i adressen. Notnamnsläget sparas i webbläsaren i stället. */
-export type FretboardChoice = Required<Pick<FretboardSelection, "root" | "scale" | "labels">> & Pick<FretboardSelection, "chord" | "box" | "caged">;
+export type FretboardChoice = Required<Pick<FretboardSelection, "root" | "scale" | "labels">> & Pick<FretboardSelection, "chord" | "box" | "caged" | "tab">;
 
 const DEFAULT_CHOICE: FretboardChoice = { root: 9, scale: "minorPentatonic", labels: DEFAULT_LABEL_MODE };
 
@@ -47,6 +47,8 @@ function parseCaged(value: string | null): CagedShape | undefined {
   return CAGED_SHAPES.find((shape) => shape === value?.toUpperCase());
 }
 
+const TABS: readonly FretboardTab[] = ["caged", "penta"];
+
 /** Valet i adressen. Saknade eller ogiltiga värden ger standardvalet, vart och ett för sig. */
 export function choiceFromParams(params: URLSearchParams): FretboardChoice {
   const root = parseRoot(params.get("root"));
@@ -57,10 +59,12 @@ export function choiceFromParams(params: URLSearchParams): FretboardChoice {
     chord: parseDigit(params.get("chord")),
     box: parseDigit(params.get("box")),
     caged: parseCaged(params.get("caged")),
+    // Utan Flik gäller CAGED, så att bokmärken från före Penta-fliken fungerar
+    tab: TABS.find((tab) => tab === params.get("tab")),
   };
 }
 
-/** Valet som parametrar för adressen, t.ex. `root=Eb&scale=blues&labels=notes&chord=4&box=1&caged=E`. */
+/** Valet som parametrar för adressen, t.ex. `root=Eb&scale=blues&labels=notes&chord=4&box=1&caged=E` eller `…&tab=penta`. */
 export function choiceToParams(choice: FretboardChoice): URLSearchParams {
   const params = new URLSearchParams({
     root: ROOT_PARAMS[choice.root],
@@ -70,5 +74,6 @@ export function choiceToParams(choice: FretboardChoice): URLSearchParams {
   if (choice.chord !== undefined) params.set("chord", String(choice.chord));
   if (choice.box !== undefined) params.set("box", String(choice.box));
   if (choice.caged !== undefined) params.set("caged", choice.caged);
+  if (choice.tab === "penta") params.set("tab", choice.tab);
   return params;
 }

@@ -48,6 +48,16 @@ describe("Greppbrädans val i adressen", () => {
     expect(choiceToParams({ root: 0, scale: "major", labels: "interval" }).has("caged")).toBe(false);
   });
 
+  it("Penta-fliken ligger i adressen som tab=penta, och CAGED gäller när den saknas eller är ogiltig", () => {
+    expect(choiceFromParams(new URLSearchParams("tab=penta")).tab).toBe("penta");
+    expect(choiceFromParams(new URLSearchParams("tab=caged")).tab).toBe("caged");
+    expect(choiceFromParams(new URLSearchParams()).tab).toBeUndefined();
+    expect(choiceFromParams(new URLSearchParams("tab=x")).tab).toBeUndefined();
+    expect(choiceToParams({ root: 0, scale: "major", labels: "interval", tab: "penta" }).get("tab")).toBe("penta");
+    expect(choiceToParams({ root: 0, scale: "major", labels: "interval", tab: "caged" }).has("tab")).toBe(false);
+    expect(choiceToParams({ root: 0, scale: "major", labels: "interval" }).has("tab")).toBe(false);
+  });
+
   it("skriver valet som läsbara parametrar", () => {
     expect(choiceToParams({ root: 10, scale: "naturalMinor", labels: "interval" }).toString()).toBe(
       "root=Bb&scale=natural-minor&labels=intervals",
@@ -56,7 +66,9 @@ describe("Greppbrädans val i adressen", () => {
 
   it("ett val överlever en tur via adressen", () => {
     const choice = { root: 6, scale: "majorPentatonic", labels: "noteName", chord: 4, box: 5, caged: "A" } as const;
+    const penta = { root: 6, scale: "majorPentatonic", labels: "noteName", chord: 4, box: 5, tab: "penta" } as const;
 
     expect(choiceFromParams(choiceToParams(choice))).toEqual(choice);
+    expect(choiceFromParams(choiceToParams(penta))).toEqual(penta);
   });
 });
