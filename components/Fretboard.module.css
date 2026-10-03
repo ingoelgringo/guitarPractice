@@ -1,0 +1,84 @@
+.page {
+  --neck-line: color-mix(in srgb, var(--foreground) 45%, transparent);
+  --neck-inlay: color-mix(in srgb, var(--foreground) 12%, transparent);
+  --dot: #2f5d8a;
+  --dot-text: #ffffff;
+  --root-dot: #c2410c;
+
+  flex: 1;
+  width: 100%;
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .page {
+    --dot: #5b8fc4;
+    --dot-text: #0a0a0a;
+    --root-dot: #f97316;
+  }
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.controls select {
+  font: inherit;
+  padding: 4px 6px;
+}
+
+/* På smal skärm skrollar halsen i sidled i stället för att krympa. */
+.scroller {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.neck {
+  display: block;
+  max-width: none;
+}
+
+.string,
+.fretWire {
+  stroke: var(--neck-line);
+  stroke-width: 1.5;
+}
+
+.nut {
+  stroke: var(--foreground);
+  stroke-width: 5;
+}
+
+.inlay {
+  fill: var(--neck-inlay);
+}
+
+.fretNumber {
+  fill: var(--neck-line);
+  font-size: 12px;
+  text-anchor: middle;
+}
+
+.dot circle {
+  fill: var(--dot);
+}
+
+.rootDot circle {
+  fill: var(--root-dot);
+}
+
+.dot text,
+.rootDot text {
+  fill: var(--dot-text);
+  font-size: 12px;
+  font-weight: bold;
+  text-anchor: middle;
+  dominant-baseline: central;
+}

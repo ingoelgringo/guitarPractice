@@ -27,11 +27,11 @@ En följd av Takter som spelas flera varv. Den börjar med en reprisstart och sl
 _Avoid_: Loop, upprepning
 
 **Slag** (`Beat`):
-En tidpunkt i en Takt med ett Notvärde. Ett slag utan toner är en paus, och ett slag med flera toner är ett ackord. Ett slag kan också ha ett Ackordnamn och en Anteckning.
+En tidpunkt i en Takt med ett Notvärde. Ett slag utan toner är en paus, och ett slag med flera toner klingar som ett ackord. Ett slag kan också ha ett Ackordnamn och en Anteckning.
 
 **Ackordnamn** (`chordName`):
 En fri text ovanför ett Slag som namnger ackordet som spelas där, t.ex. "Am7" eller "G/B". Den tolkas inte och påverkar inte vilka Toner Slaget har eller hur det låter. Den kan stå på en paus.
-_Avoid_: Ackord (det är ett Slag med flera Toner), ackordsymbol
+_Avoid_: Ackord (Ackordnamnet tolkas inte), ackordsymbol
 
 **Anteckning** (`annotation`):
 En fri kort text vid ett Slag, t.ex. "let ring". Den står under notsystemet, eller ovanför tabulaturen när notsystemet inte visas. Den påverkar inte uppspelningen.
@@ -87,10 +87,44 @@ _Avoid_: Krock, versionsfel
 Den automatiskt sparade kopian av det Partitur man arbetar med. Den finns bara i den aktuella webbläsaren och är inte en säker lagring.
 _Avoid_: Autosave, cache
 
+### Greppbräda
+
+**Greppbräda** (`Fretboard`):
+Verktyget som visar en liggande gitarrhals med Prickar för det man valt att se: en Skala och, utifrån den, Ackord, Boxar och CAGED-former.
+_Avoid_: Gitarrhals, halskarta, skalverktyg
+
+**Prick** (`Dot`):
+En markerad position (sträng, band) på Greppbrädan, med en etikett (intervall eller tonnamn). En prick hör inte till något Slag.
+_Avoid_: Ton, not, markering
+
+**Grundton** (`root`):
+Den ton som en Skala eller ett Ackord utgår från. Det kan vara vilken som helst av de tolv tonerna.
+
+**Skala** (`Scale`):
+En Grundton och ett mönster av intervall, t.ex. A mollpentatonik eller C-dur.
+
+**Föräldraskala**:
+Den sjutoniga skala som en pentatonisk skala eller en bluesskala hämtar sina Ackord från, t.ex. A naturlig moll för A mollpentatonik.
+
+**Ackord** (`Chord`):
+En treklang byggd på ett steg i en Skala (eller i dess Föräldraskala), angiven med steg och namn, t.ex. "ii – Dm".
+_Avoid_: Ackordnamn (fri text i editorn)
+
+**Box** (`Box`):
+Ett av en Skalas fem lägen: ett område på några band där skalans toner spelas utan att flytta handen. Boxarna numreras 1–5 från det läge som har Grundtonen på sträng 6.
+_Avoid_: Position, mönster
+
+**CAGED-form** (`CagedShape`):
+En av fem greppformer (C, A, G, E, D) för ett dur- eller mollackord, flyttad längs halsen till Ackordets Grundton. Den visar exakt ett grepp. Ett förminskat Ackord har ingen CAGED-form.
+_Avoid_: Grepp, shape
+
+**Notnamnsläge** (`NoteNameMode`):
+Hur tonnamn skrivs: *svenskt* (H, och B för det som på engelska heter B♭) eller *engelskt*. I övrigt följer stavningen tonarten, så F-dur skrivs med B♭ och E-dur med D♯.
+
 ### Sajt
 
 **Verktyg** (`Tool`):
-En fristående funktion på sajten som nås från landningssidan, t.ex. Tab-editorn.
+En fristående funktion på sajten som nås från landningssidan, t.ex. Tab-editorn och Greppbrädan.
 _Avoid_: Modul, app, sida
 
 ### Användare

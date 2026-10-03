@@ -11,4 +11,9 @@ export const TOOLS: Tool[] = [
     title: "Tab Editor",
     description: "Write guitar tablature with standard notation, play it back and print it.",
   },
+  {
+    href: "/fretboard",
+    title: "Fretboard",
+    description: "See scales on the guitar neck.",
+  },
 ];

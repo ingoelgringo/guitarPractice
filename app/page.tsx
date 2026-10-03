@@ -9,7 +9,7 @@ export default async function Home() {
   return (
     <main className={styles.main}>
       <h1>Guitar Practice</h1>
-      <p>Tools for guitarists: write tabs with notation, play them back and print them.</p>
+      <p>Tools for guitarists: write tabs with notation, and see scales on the fretboard.</p>
       <ul className={styles.tools}>
         {TOOLS.map((tool) => (
           <li key={tool.href}>
