@@ -31,7 +31,7 @@ Panelen får en tredje Flik, *Triads*, bredvid *CAGED* och *Penta*. Ovanför tab
 
 - **Termerna** Strängset, Treklangsgrepp, Omvändning och Treklangstabellen står i `CONTEXT.md`.
 - **Strängseten** är sju, i den här ordningen: 6-5-4, 5-4-3, 4-3-2, 3-2-1, 6-4-3, 5-3-2, 4-2-1. Förvalt är 3-2-1.
-- **Treklangsgreppen** för ett Ackord på ett Strängset är alla placeringar inom band 0–15 där Ackordets tre toner ligger en per sträng. Den lägsta strängens ton bestämmer Omvändningen. Varje Omvändning har normalt flera kopior längs halsen (var tolfte band).
+- **Treklangsgreppen** för ett Ackord på ett Strängset är alla placeringar inom band 0–15 där Ackordets tre toner ligger en per sträng. Tonerna stiger från bastonen: på intilliggande strängar i Ackordets ordning (R-3-5, 3-5-R, 5-R-3), och med en överhoppad sträng med mellantonen en oktav upp (R-5-3, 3-R-5, 5-3-R). Den lägsta strängens ton bestämmer Omvändningen. Varje Omvändning har normalt flera kopior längs halsen (var tolfte band).
 - **Cellens Treklangsgrepp** väljs bland Ackordets Treklangsgrepp på Strängsetet i två steg:
   1. flest toner inne i Boxens band, i någon kopia av Boxen;
   2. vid lika: minst avstånd i band utanför Boxen och därefter lägst band.

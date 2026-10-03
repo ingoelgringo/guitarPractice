@@ -1,9 +1,9 @@
 /** Greppbrädans val i adressens query-parametrar, så att det går att bokmärka och dela. */
 
-import { CAGED_SHAPES, type CagedShape, DEFAULT_LABEL_MODE, type FretboardSelection, type FretboardTab, type LabelMode, type ScaleId } from "./fretboard";
+import { CAGED_SHAPES, type CagedShape, DEFAULT_LABEL_MODE, DEFAULT_STRING_SET, type FretboardSelection, type FretboardTab, type LabelMode, type ScaleId, STRING_SETS } from "./fretboard";
 
 /** Det man väljer på Greppbrädan och som ligger i adressen. Notnamnsläget sparas i webbläsaren i stället. */
-export type FretboardChoice = Required<Pick<FretboardSelection, "root" | "scale" | "labels">> & Pick<FretboardSelection, "chord" | "box" | "caged" | "tab">;
+export type FretboardChoice = Required<Pick<FretboardSelection, "root" | "scale" | "labels">> & Pick<FretboardSelection, "chord" | "box" | "caged" | "tab" | "strings">;
 
 const DEFAULT_CHOICE: FretboardChoice = { root: 9, scale: "minorPentatonic", labels: DEFAULT_LABEL_MODE };
 
@@ -47,7 +47,7 @@ function parseCaged(value: string | null): CagedShape | undefined {
   return CAGED_SHAPES.find((shape) => shape === value?.toUpperCase());
 }
 
-const TABS: readonly FretboardTab[] = ["caged", "penta"];
+const TABS: readonly FretboardTab[] = ["caged", "penta", "triads"];
 
 /** Valet i adressen. Saknade eller ogiltiga värden ger standardvalet, vart och ett för sig. */
 export function choiceFromParams(params: URLSearchParams): FretboardChoice {
@@ -61,10 +61,11 @@ export function choiceFromParams(params: URLSearchParams): FretboardChoice {
     caged: parseCaged(params.get("caged")),
     // Utan Flik gäller CAGED, så att bokmärken från före Penta-fliken fungerar
     tab: TABS.find((tab) => tab === params.get("tab")),
+    strings: STRING_SETS.find((strings) => strings === params.get("strings")),
   };
 }
 
-/** Valet som parametrar för adressen, t.ex. `root=Eb&scale=blues&labels=notes&chord=4&box=1&caged=E` eller `…&tab=penta`. */
+/** Valet som parametrar för adressen, t.ex. `root=Eb&scale=blues&labels=notes&chord=4&box=1&caged=E` eller `…&tab=triads&strings=643`. */
 export function choiceToParams(choice: FretboardChoice): URLSearchParams {
   const params = new URLSearchParams({
     root: ROOT_PARAMS[choice.root],
@@ -74,6 +75,8 @@ export function choiceToParams(choice: FretboardChoice): URLSearchParams {
   if (choice.chord !== undefined) params.set("chord", String(choice.chord));
   if (choice.box !== undefined) params.set("box", String(choice.box));
   if (choice.caged !== undefined) params.set("caged", choice.caged);
-  if (choice.tab === "penta") params.set("tab", choice.tab);
+  if (choice.tab !== undefined && choice.tab !== "caged") params.set("tab", choice.tab);
+  // Strängsetet ligger kvar i adressen i alla Flikar, så att det finns kvar när man kommer tillbaka
+  if (choice.strings !== undefined && choice.strings !== DEFAULT_STRING_SET) params.set("strings", choice.strings);
   return params;
 }

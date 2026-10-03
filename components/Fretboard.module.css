@@ -86,6 +86,15 @@
   gap: 4px;
 }
 
+/* Strängsetet ovanför Treklangstabellen, med etiketten ovanför som för Grundton och Skala */
+.panelGroup label.stringPicker {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
 .panelGroup + .panelGroup {
   padding-top: 20px;
   border-top: 1px solid var(--panel-divider);
@@ -96,7 +105,7 @@
   padding: 4px 6px;
 }
 
-/* Flikarna CAGED och Penta, och Flikens tabell med Skalans Ackord som rader och Boxarna som kolumner */
+/* Flikarna CAGED, Penta och Triads, och Flikens tabell med Skalans Ackord som rader och Boxarna som kolumner */
 .tabs {
   flex-basis: 100%;
   display: flex;

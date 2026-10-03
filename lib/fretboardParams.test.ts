@@ -58,6 +58,20 @@ describe("Greppbrädans val i adressen", () => {
     expect(choiceToParams({ root: 0, scale: "major", labels: "interval" }).has("tab")).toBe(false);
   });
 
+  it("Treklangsfliken ligger i adressen som tab=triads", () => {
+    expect(choiceFromParams(new URLSearchParams("tab=triads")).tab).toBe("triads");
+    expect(choiceToParams({ root: 0, scale: "major", labels: "interval", tab: "triads" }).get("tab")).toBe("triads");
+  });
+
+  it("Strängsetet ligger i adressen, och 3-2-1 gäller när det saknas eller är ogiltigt", () => {
+    expect(choiceFromParams(new URLSearchParams("strings=643")).strings).toBe("643");
+    expect(choiceFromParams(new URLSearchParams()).strings).toBeUndefined();
+    expect(choiceFromParams(new URLSearchParams("strings=642")).strings).toBeUndefined();
+    expect(choiceToParams({ root: 0, scale: "major", labels: "interval", strings: "532" }).get("strings")).toBe("532");
+    expect(choiceToParams({ root: 0, scale: "major", labels: "interval", strings: "321" }).has("strings")).toBe(false);
+    expect(choiceToParams({ root: 0, scale: "major", labels: "interval" }).has("strings")).toBe(false);
+  });
+
   it("skriver valet som läsbara parametrar", () => {
     expect(choiceToParams({ root: 10, scale: "naturalMinor", labels: "interval" }).toString()).toBe(
       "root=Bb&scale=natural-minor&labels=intervals",
@@ -70,5 +84,7 @@ describe("Greppbrädans val i adressen", () => {
 
     expect(choiceFromParams(choiceToParams(choice))).toEqual(choice);
     expect(choiceFromParams(choiceToParams(penta))).toEqual(penta);
+    const triads = { root: 6, scale: "majorPentatonic", labels: "noteName", chord: 4, box: 5, tab: "triads", strings: "421" } as const;
+    expect(choiceFromParams(choiceToParams(triads))).toEqual(triads);
   });
 });

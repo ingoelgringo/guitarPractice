@@ -535,6 +535,92 @@ describe("Greppbräda", () => {
     });
   });
 
+  describe("Treklangstabellen", () => {
+    /** Omvändningarna i radens celler för Box 1–5. */
+    function row(selection: FretboardSelection, degree: number): string[] {
+      return fretboardView(selection).options.triadTable.find((candidate) => candidate.degree === degree)!.cells.map(({ inversion }) => inversion);
+    }
+
+    it("raden för I i C-dur på 3-2-1 är 3, 5, 5, R, R: närmaste Omvändning i varje Box", () => {
+      // C på G-, H- och e-strängen: R vid band 5-5-3, 3 vid 9-8-8 och 5 vid 0-1-0 och 12-13-12.
+      // Box 5 (band 4–8) har två toner av både R och 3, och då vinner det lägre bandet.
+      expect(row({ root: C, scale: "major", tuning: STANDARD_TUNING }, 1)).toEqual(["3", "5", "5", "R", "R"]);
+    });
+
+    it("varje cell har en Omvändning, för alla Skalor, tonarter och Strängset, även förminskade Ackord", () => {
+      for (const scale of ["major", "naturalMinor", "majorPentatonic", "minorPentatonic", "blues"] as const) {
+        for (let root = 0; root < 12; root++) {
+          for (const strings of ["654", "543", "432", "321", "643", "532", "421"] as const) {
+            const { triadTable } = fretboardView({ root, scale, strings, tuning: STANDARD_TUNING }).options;
+            expect(triadTable).toHaveLength(7);
+            for (const { cells } of triadTable) {
+              expect(cells.every(({ inversion }) => ["R", "3", "5"].includes(inversion))).toBe(true);
+            }
+          }
+        }
+      }
+    });
+
+    it("raden för vii° – H° i C-dur har Omvändningar", () => {
+      expect(row({ root: C, scale: "major", tuning: STANDARD_TUNING }, 7)).toHaveLength(5);
+    });
+  });
+
+  describe("Treklangsfliken", () => {
+    /** Banden per sträng (sträng 1 först) för Prickarna i ett lager. */
+    function layerFrets(selection: FretboardSelection, layer: Dot["layer"]): number[][] {
+      return [1, 2, 3, 4, 5, 6].map((string) =>
+        dotsOn(selection, string)
+          .filter((dot) => dot.layer === layer)
+          .map((dot) => dot.fret),
+      );
+    }
+
+    const cMajor: FretboardSelection = { root: C, scale: "major", tab: "triads", chord: 1, tuning: STANDARD_TUNING };
+
+    it("cell: I i Box 1 av C-dur på 3-2-1 visar första omvändningen (E-G-C vid band 9-8-8) i Ackordets lager", () => {
+      expect(layerFrets({ ...cMajor, box: 1 }, "chord")).toEqual([[8], [8], [9], [], [], []]);
+    });
+
+    it("cell: Boxens övriga toner ligger i Boxens lager", () => {
+      const box = layerFrets({ ...cMajor, box: 1 }, "box");
+      const onlyBox = layerFrets({ root: C, scale: "major", tab: "triads", box: 1, tuning: STANDARD_TUNING }, "box");
+
+      expect(box[0]).toEqual(onlyBox[0].filter((fret) => fret !== 8));
+      expect(box[5]).toEqual(onlyBox[5]);
+    });
+
+    it("cell: Treklangsgreppet ritas i varje kopia av Boxen: andra omvändningen i Box 3 vid band 0-1-0 och 12-13-12", () => {
+      expect(layerFrets({ ...cMajor, box: 3 }, "chord")).toEqual([[0, 12], [1, 13], [0, 12], [], [], []]);
+    });
+
+    it("cell: greppet sticker ut när inget ryms helt: grundläget i Box 5 (band 4–8) med G vid band 3", () => {
+      expect(layerFrets({ ...cMajor, box: 5 }, "chord")).toEqual([[3], [5], [5], [], [], []]);
+    });
+
+    it("cell på 6-4-3: grundläget med mellantonen en oktav upp (C-G-E vid band 8-5-9), inget på A-strängen", () => {
+      expect(layerFrets({ ...cMajor, box: 1, strings: "643" }, "chord")).toEqual([[], [], [9], [5], [], [8]]);
+      expect(fretboardView({ ...cMajor, strings: "643" }).options.triadTable[0].cells[0].inversion).toBe("R");
+    });
+
+    it("cell med förminskat Ackord: vii° i C-dur har ett Treklangsgrepp med en ton per sträng", () => {
+      const chordFrets = layerFrets({ ...cMajor, chord: 7, box: 1 }, "chord");
+
+      expect(chordFrets.slice(0, 3).every((frets) => frets.length > 0)).toBe(true);
+      expect(chordFrets.slice(3).every((frets) => frets.length === 0)).toBe(true);
+    });
+
+    it("CAGED-formen släpps i Treklangsfliken, inga strängar dämpas, och Strängsetet är 3-2-1 om det saknas", () => {
+      const view = fretboardView({ ...cMajor, box: 1, caged: "E" });
+
+      expect(view.selection.caged).toBeUndefined();
+      expect(view.selection.tab).toBe("triads");
+      expect(view.selection.strings).toBe("321");
+      expect(view.mutedStrings).toEqual([]);
+      expect(fretboardView({ ...cMajor, strings: "642" as never }).selection.strings).toBe("321");
+    });
+  });
+
   describe("grundtoner", () => {
     /** Banden per grundtonsroll på en sträng. */
     function rootFrets(selection: FretboardSelection, string: number) {

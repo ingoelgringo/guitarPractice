@@ -4,7 +4,7 @@ import Link from "next/link";
 import { type KeyboardEvent, useRef, useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 import { browserStorage } from "@/lib/draft";
-import { type CagedShape, DEFAULT_NOTE_NAME_MODE, FRET_COUNT, type FretboardTab, fretboardView, INLAY_FRETS, type LabelMode, type NoteNameMode, type RootRole, SCALES, type ScaleId } from "@/lib/fretboard";
+import { type CagedShape, DEFAULT_NOTE_NAME_MODE, FRET_COUNT, type FretboardTab, fretboardView, INLAY_FRETS, type Inversion, type LabelMode, type NoteNameMode, type RootRole, SCALES, type ScaleId, type StringSet } from "@/lib/fretboard";
 import { choiceToParams, type FretboardChoice } from "@/lib/fretboardParams";
 import { STANDARD_TUNING } from "@/lib/score";
 import styles from "./Fretboard.module.css";
@@ -19,7 +19,14 @@ const CLEARED: TableChoice = { chord: undefined, box: undefined, caged: undefine
 const TABS: readonly { id: FretboardTab; name: string }[] = [
   { id: "caged", name: "CAGED" },
   { id: "penta", name: "Penta" },
+  { id: "triads", name: "Triads" },
 ];
+
+/** Det skärmläsare får höra för en Omvändning. */
+const INVERSION_NAMES: Record<Inversion, string> = { R: "root position", "3": "first inversion", "5": "second inversion" };
+
+/** Ett Strängset i dropdownen, t.ex. "6-4-3". */
+const stringSetName = (strings: StringSet) => [...strings].join("-");
 
 /** En rad i Flikens tabell: ett Ackord och en cell per Box med det cellen visar. */
 interface TableRow {
@@ -115,9 +122,18 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
   /** Halsen visar det hovrade urvalet, och annars det valda. */
   const preview = fretboardView({ ...choice, ...hovered, noteNames, tuning: STANDARD_TUNING });
   const { dots, mutedStrings } = preview;
-  const { chord, box, caged, tab = "caged" } = selection;
+  const { chord, box, caged, tab = "caged", strings } = selection;
   const tableRows: TableRow[] =
-    tab === "penta"
+    tab === "triads"
+      ? options.triadTable.map((row) => ({
+          ...row,
+          cells: row.cells.map(({ box: boxNumber, inversion }) => ({
+            box: boxNumber,
+            text: inversion,
+            description: `, ${INVERSION_NAMES[inversion]}`,
+          })),
+        }))
+      : tab === "penta"
       ? options.pentaTable.map((row) => ({
           ...row,
           cells: row.cells.map(({ box: boxNumber, pentaBox }) => ({
@@ -152,13 +168,14 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
     next.box = normalized.box;
     next.caged = normalized.caged;
     next.tab = normalized.tab;
+    next.strings = normalized.strings;
     setChoice(next);
     window.history.replaceState(null, "", `?${choiceToParams(next)}`);
   }
 
   /**
-   * Byter Flik med Ackord och Box kvar. Från en cell i Penta-fliken blir valet CAGED-tabellens cell
-   * för samma Ackord och Box. Till Penta-fliken släpps formen.
+   * Byter Flik med Ackord och Box kvar. Från en cell i Penta- eller Treklangsfliken blir valet
+   * CAGED-tabellens cell för samma Ackord och Box. Till de andra Flikarna släpps formen.
    */
   function chooseTab(next: FretboardTab) {
     if (next === tab) return;
@@ -332,6 +349,18 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
                 </button>
               ))}
             </div>
+            {tab === "triads" && (
+              <label className={styles.stringPicker}>
+                Strings
+                <select value={strings} onChange={(event) => choose({ strings: event.target.value as StringSet })}>
+                  {options.stringSets.map((stringSet) => (
+                    <option key={stringSet} value={stringSet}>
+                      {stringSetName(stringSet)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <table
               ref={tableRef}
               id="tab-panel"
@@ -368,7 +397,7 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
                       </button>
                     </th>
                     {cells.map(({ box: boxNumber, text, description, caged: cellShape }) => (
-                      // En cell utan form (i Penta-fliken eller för ett förminskat Ackord) väljer bara Ackordet och Boxen
+                      // En cell utan form (i Penta- och Treklangsfliken eller för ett förminskat Ackord) väljer bara Ackordet och Boxen
                       <td key={boxNumber}>
                         <button
                           aria-label={`${numeral} – ${name}, Box ${boxNumber}${description}`}

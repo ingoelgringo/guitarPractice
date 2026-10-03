@@ -131,7 +131,7 @@ De tre strängar som ett Treklangsgrepp spelas på: tre intilliggande strängar 
 _Avoid_: Stränggrupp, strängar
 
 **Treklangsgrepp** (`Triad`):
-Ett Ackords tre toner spelade på ett Strängset, en ton per sträng. Alla Ackord har Treklangsgrepp, även förminskade.
+Ett Ackords tre toner spelade på ett Strängset, en ton per sträng, stigande från bastonen. På intilliggande strängar följer tonerna Ackordets ordning (t.ex. R-3-5), och på ett Strängset med en överhoppad sträng ligger mellantonen en oktav upp (R-5-3). Alla Ackord har Treklangsgrepp, även förminskade.
 _Avoid_: Triad, voicing, shape, treklang (ett Ackord är redan en treklang)
 
 **Omvändning** (`Inversion`):

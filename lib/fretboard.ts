@@ -382,8 +382,91 @@ function pentaBoxesPerBox(pentaBoxes: readonly Place[][][], boxes: readonly Plac
   return bestRotation(overlaps).map((pentaBox) => pentaBox + 1);
 }
 
+/** Omvändningen: Ackordets lägsta ton i ett Treklangsgrepp, som intervall från Ackordets grundton. */
+export type Inversion = "R" | "3" | "5";
+
+const INVERSIONS: readonly Inversion[] = ["R", "3", "5"];
+
+/** Ett Treklangsgrepp: dess Omvändning och platser, lägsta strängen först. */
+interface Triad {
+  inversion: Inversion;
+  places: Place[];
+}
+
+/**
+ * Ackordets Treklangsgrepp på ett Strängset, i alla lägen inom band 0–15. Tonerna läggs stigande från
+ * bastonen: på intilliggande strängar i Ackordets ordning (R-3-5, 3-5-R, 5-R-3), och med en överhoppad
+ * sträng med mellantonen en oktav upp (R-5-3, 3-R-5, 5-3-R). `chordTones` är tonklasserna för grundton,
+ * ters och kvint.
+ */
+function triadsOn(tuning: readonly number[], chordTones: readonly number[], strings: StringSet): Triad[] {
+  const [low, middle, high] = [...strings].map(Number);
+  const spread = low - middle === 2;
+  const onNeck = ({ fret }: Place) => fret >= 0 && fret <= FRET_COUNT;
+  return INVERSIONS.flatMap((inversion, index) => {
+    const order = [0, 1, 2].map((offset) => chordTones[(index + offset) % 3]);
+    const [bass, ...upper] = spread ? [order[0], order[2], order[1]] : order;
+    const found: Triad[] = [];
+    for (let fret = 0; fret <= FRET_COUNT; fret++) {
+      let pitch = tuning[low - 1] + fret;
+      if (pitchClassOf(pitch) !== bass) continue;
+      const places: Place[] = [{ string: low, fret }];
+      [middle, high].forEach((string, i) => {
+        // Nästa ton uppåt med rätt tonklass
+        pitch += pitchClassOf(upper[i] - pitch);
+        places.push({ string, fret: pitch - tuning[string - 1] });
+      });
+      if (places.every(onNeck)) found.push({ inversion, places });
+    }
+    return found;
+  });
+}
+
+/**
+ * Hur nära ett Treklangsgrepp ligger en kopia av en Box, som ett tal där lägre är närmare: först flest
+ * toner inom kopians band, sedan minst avstånd i band utanför och sist det lägsta bandet.
+ */
+function triadDistance({ places }: Triad, instance: readonly Place[]): number {
+  const { low, high } = fretSpan(instance);
+  const outside = places.map(({ fret }) => Math.max(low - fret, fret - high, 0));
+  const inside = outside.filter((distance) => distance === 0).length;
+  const lowest = Math.min(...places.map(({ fret }) => fret));
+  return (places.length - inside) * 10_000 + outside.reduce((sum, distance) => sum + distance, 0) * 100 + lowest;
+}
+
+/** Det Treklangsgrepp som ligger närmast någon kopia av Boxen. */
+function closestTriad(triads: readonly Triad[], instances: readonly Place[][]): Triad {
+  const distance = (triad: Triad) => Math.min(...instances.map((instance) => triadDistance(triad, instance)));
+  return triads.reduce((found, triad) => (distance(triad) < distance(found) ? triad : found));
+}
+
+/**
+ * Cellens Treklangsgrepp i varje kopia av Boxen: det närmaste med cellens Omvändning, i de kopior som
+ * det når. Når det ingen kopia ritas det närmaste greppet en gång.
+ */
+function triadPlaces(triads: readonly Triad[], instances: readonly Place[][]): Place[] {
+  const closest = closestTriad(triads, instances);
+  const same = triads.filter(({ inversion }) => inversion === closest.inversion);
+  const perInstance = instances.flatMap((instance) => {
+    const triad = closestTriad(same, [instance]);
+    return triad.places.some((place) => withinSpan(instance, place)) ? [triad] : [];
+  });
+  return [...new Set(perInstance.length > 0 ? perInstance : [closest])].flatMap(({ places }) => places);
+}
+
 /** Fliken i Greppbrädans panel. */
-export type FretboardTab = "caged" | "penta";
+export type FretboardTab = "caged" | "penta" | "triads";
+
+/**
+ * Ett Strängset: de tre strängar ett Treklangsgrepp spelas på, lägsta först. Antingen tre intilliggande
+ * strängar, eller en bassträng följd av en överhoppad sträng och de två nästa.
+ */
+export type StringSet = "654" | "543" | "432" | "321" | "643" | "532" | "421";
+
+/** Strängseten i den ordning de erbjuds. */
+export const STRING_SETS: readonly StringSet[] = ["654", "543", "432", "321", "643", "532", "421"];
+
+export const DEFAULT_STRING_SET: StringSet = "321";
 
 export interface FretboardSelection {
   /** Grundtonens tonklass, C = 0 … H/B = 11. */
@@ -403,10 +486,12 @@ export interface FretboardSelection {
   caged?: CagedShape;
   /** Fliken. CAGED om den saknas. */
   tab?: FretboardTab;
+  /** Strängsetet för Treklangsgreppen. 3-2-1 om det saknas. */
+  strings?: StringSet;
 }
 
 /**
- * Prickens lager. Ackordets lager är greppet, Penta-boxen, Ackordets penta i Penta-fliken, eller annars
+ * Prickens lager. Ackordets lager är greppet, Penta-boxen, Treklangsgreppet, Ackordets penta i Penta-fliken, eller annars
  * Ackordets toner (i Boxen om en Box är vald). Boxens lager är Boxens övriga toner. Skalans lager gäller
  * när varken Ackord eller Box är valt. Resten tonas ner.
  */
@@ -434,6 +519,11 @@ export interface PentaRow extends ChordOption {
   cells: { box: number; pentaBox: number | null }[];
 }
 
+/** En rad i Treklangstabellen: ett Ackord och en cell per Box (Box 1 först) med Omvändningen för det närmaste Treklangsgreppet. */
+export interface TriadRow extends ChordOption {
+  cells: { box: number; inversion: Inversion }[];
+}
+
 export interface FretboardView {
   /** Urvalet med de val som inte gäller för Skalan borttagna. */
   selection: FretboardSelection;
@@ -450,6 +540,10 @@ export interface FretboardView {
     cagedTable: CagedRow[];
     /** Penta-tabellen: samma rader som CAGED-tabellen, med Penta-boxen i varje cell. */
     pentaTable: PentaRow[];
+    /** Treklangstabellen för det valda Strängsetet: samma rader som CAGED-tabellen, med Omvändningen i varje cell. */
+    triadTable: TriadRow[];
+    /** Strängseten, i den ordning de erbjuds. */
+    stringSets: readonly StringSet[];
   };
 }
 
@@ -458,7 +552,8 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
   const { steps, parent } = SCALE_STEPS[selection.scale];
   const letter = rootLetter(root, parent);
   const chord = parent.some((step) => step.degree === selection.chord) ? selection.chord : undefined;
-  const tab: FretboardTab = selection.tab === "penta" ? "penta" : "caged";
+  const tab: FretboardTab = selection.tab === "penta" || selection.tab === "triads" ? selection.tab : "caged";
+  const strings = STRING_SETS.find((candidate) => candidate === selection.strings) ?? DEFAULT_STRING_SET;
   const labelOf = (step: Step) => (labels === "interval" ? intervalLabel(step) : stepName(letter, root, step, noteNames));
 
   const chordTones = chord === undefined ? [] : chordSteps(parent, chord);
@@ -495,6 +590,24 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
     pentaBoxesPerBox(pentaBoxInstances(selection.tuning, rowQuality, rowRoot), instancesPerBox),
   ).map((row): PentaRow => ({ ...row, cells: row.cells.map(({ box: number, value }) => ({ box: number, pentaBox: value })) }));
 
+  // Treklangsgrepp finns för alla Ackord, även förminskade
+  const triadsOf = (degree: number) =>
+    triadsOn(
+      selection.tuning,
+      chordSteps(parent, degree).map((step) => pitchClassOf(root + step.semitones)),
+      strings,
+    );
+  const triadTable = parent.map(
+    ({ degree }): TriadRow => {
+      const triads = triadsOf(degree);
+      return {
+        ...chordOption(parent, degree, (chordRoot) => stepName(letter, root, chordRoot, noteNames)),
+        cells: boxes.map((number, index) => ({ box: number, inversion: closestTriad(triads, instancesPerBox[index]).inversion })),
+      };
+    },
+  );
+  const cellTriadPlaces = tab === "triads" && chord !== undefined && box !== undefined ? triadPlaces(triadsOf(chord), instances) : undefined;
+
   const pentaTones =
     tab === "penta" && gripQuality !== undefined ? chordPentaSteps(parent, gripQuality, chordTones[0]) : undefined;
   // Penta-boxen i varje kopia av Boxen: den som Penta-tabellen har i Boxens cell
@@ -505,7 +618,7 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
     return fitInBox(pentaBoxes[pentaBox - 1], instances).positions.flat();
   })();
   /** Platserna i Ackordets lager när de är ett mönster (greppet eller Penta-boxen) och inte bara tonerna. */
-  const patternPlaces = grip === undefined ? pentaBoxPlaces : gripPlaces(grip, instances);
+  const patternPlaces = grip === undefined ? (pentaBoxPlaces ?? cellTriadPlaces) : gripPlaces(grip, instances);
   const inPattern = new Set((patternPlaces ?? []).map(placeKey));
   // Tonerna i Ackordets lager (Ackordets penta eller toner) visas även när de ligger utanför skalan,
   // som H i ii° för A mollpentatonik
@@ -551,10 +664,10 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
     spellings.map(([letter, accidental]) => noteName(letter, accidental, noteNames)).join("/"),
   );
   return {
-    selection: { ...selection, chord, box, caged, tab },
+    selection: { ...selection, chord, box, caged, tab, strings },
     dots,
     mutedStrings: grip?.mutedStrings ?? [],
-    options: { roots, boxes, cagedTable, pentaTable },
+    options: { roots, boxes, cagedTable, pentaTable, triadTable, stringSets: STRING_SETS },
   };
 }
 

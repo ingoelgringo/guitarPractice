@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] Tester genom `fretboardView`: varje cell är R, 3 eller 5 för alla Skalor, Ackord och Strängset. När en Omvändning ryms helt i Boxen ligger cellens grepp i Boxen, och annars sticker det ut.
-- [ ] Tester genom `fretboardView`: en cell lägger en ton per sträng i Strängsetet i Ackordets lager, med cellens Omvändning lägst, i varje kopia av Boxen. Boxens övriga toner ligger i Boxens lager. Den överhoppade strängen i t.ex. 6-4-3 får ingen orange Prick. `caged` släpps och `mutedStrings` är tom.
-- [ ] Tester för adressen: `tab=triads` och `strings` läses och skrivs. Saknas `strings`, eller är det ogiltigt, gäller 3-2-1.
+- [x] Tester genom `fretboardView`: varje cell är R, 3 eller 5 för alla Skalor, Ackord och Strängset. När en Omvändning ryms helt i Boxen ligger cellens grepp i Boxen, och annars sticker det ut.
+- [x] Tester genom `fretboardView`: en cell lägger en ton per sträng i Strängsetet i Ackordets lager, med cellens Omvändning lägst, i varje kopia av Boxen. Boxens övriga toner ligger i Boxens lager. Den överhoppade strängen i t.ex. 6-4-3 får ingen orange Prick. `caged` släpps och `mutedStrings` är tom.
+- [x] Tester för adressen: `tab=triads` och `strings` läses och skrivs. Saknas `strings`, eller är det ogiltigt, gäller 3-2-1.
 - [ ] Dropdownen syns bara i Treklangsfliken, och Flikarna går att välja med klick och tangentbord.
