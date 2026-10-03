@@ -618,7 +618,12 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
       };
     },
   );
-  const cellTriadPlaces = tab === "triads" && chord !== undefined && box !== undefined ? triadPlaces(triadsOf(chord), instances) : undefined;
+  // I Treklangsfliken är Ackordets lager cellens Treklangsgrepp, eller utan Box alla Treklangsgrepp över halsen
+  const chordTriadPlaces = (() => {
+    if (tab !== "triads" || chord === undefined) return undefined;
+    const triads = triadsOf(chord);
+    return box === undefined ? triads.flatMap(({ places }) => places) : triadPlaces(triads, instances);
+  })();
 
   const pentaTones =
     tab === "penta" && gripQuality !== undefined ? chordPentaSteps(parent, gripQuality, chordTones[0]) : undefined;
@@ -630,7 +635,7 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
     return fitInBox(pentaBoxes[pentaBox - 1], instances).positions.flat();
   })();
   /** Platserna i Ackordets lager när de är ett mönster (greppet eller Penta-boxen) och inte bara tonerna. */
-  const patternPlaces = grip === undefined ? (pentaBoxPlaces ?? cellTriadPlaces) : gripPlaces(grip, instances);
+  const patternPlaces = grip === undefined ? (pentaBoxPlaces ?? chordTriadPlaces) : gripPlaces(grip, instances);
   const inPattern = new Set((patternPlaces ?? []).map(placeKey));
   // Tonerna i Ackordets lager (Ackordets penta eller toner) visas även när de ligger utanför skalan,
   // som H i ii° för A mollpentatonik

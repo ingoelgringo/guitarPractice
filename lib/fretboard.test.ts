@@ -615,6 +615,19 @@ describe("Greppbräda", () => {
       expect(chordFrets.slice(3).every((frets) => frets.length === 0)).toBe(true);
     });
 
+    it("radrubrik: I i C-dur visar alla Treklangsgrepp på 3-2-1 över hela halsen, och inget orange på andra strängar", () => {
+      // R vid band 5-5-3, 3 vid 9-8-8 och 5 vid 0-1-0 och 12-13-12 (sträng 3-2-1)
+      expect(layerFrets(cMajor, "chord")).toEqual([[0, 3, 8, 12], [1, 5, 8, 13], [0, 5, 9, 12], [], [], []]);
+      expect(layerFrets(cMajor, "muted")[5]).toEqual(layerFrets({ ...cMajor, tab: "caged", chord: undefined }, "scale")[5]);
+    });
+
+    it("radrubrik med förminskat Ackord: vii° i C-dur på 6-4-3 visar Treklangsgrepp bara på sträng 6, 4 och 3", () => {
+      const chordFrets = layerFrets({ ...cMajor, chord: 7, strings: "643" }, "chord");
+
+      expect([chordFrets[2], chordFrets[3], chordFrets[5]].every((frets) => frets.length > 0)).toBe(true);
+      expect([chordFrets[0], chordFrets[1], chordFrets[4]]).toEqual([[], [], []]);
+    });
+
     it("CAGED-formen släpps i Treklangsfliken, inga strängar dämpas, och Strängsetet är 3-2-1 om det saknas", () => {
       const view = fretboardView({ ...cMajor, box: 1, caged: "E" });
 

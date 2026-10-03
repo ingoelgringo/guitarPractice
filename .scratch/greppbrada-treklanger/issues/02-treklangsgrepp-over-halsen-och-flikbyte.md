@@ -6,5 +6,5 @@
 
 **Status:** ready-for-agent
 
-- [ ] Tester genom `fretboardView`: en radrubrik lägger alla Treklangsgrepp på Strängsetet i Ackordets lager över hela halsen, utan Prickar i Ackordets lager på andra strängar. Det gäller även förminskade Ackord.
+- [x] Tester genom `fretboardView`: en radrubrik lägger alla Treklangsgrepp på Strängsetet i Ackordets lager över hela halsen, utan Prickar i Ackordets lager på andra strängar. Det gäller även förminskade Ackord.
 - [ ] Flikbyte behåller Ackord, Box och Strängset, och CAGED-cellen väljs vid byte från en Treklangscell. Adressen följer med.
