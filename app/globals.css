@@ -3,10 +3,18 @@
   --foreground: #171717;
 }
 
+/* Mörkt när man valt det, eller när systemet vill ha mörkt och man inte valt ljust. Se lib/theme.ts. */
+:root[data-theme="dark"] {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  color-scheme: dark;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --background: #0a0a0a;
     --foreground: #ededed;
+    color-scheme: dark;
   }
 }
 
@@ -42,12 +50,6 @@ a {
   text-decoration: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
-}
-
 /* Utskrift på A4 med samma marginal som Sidan på skärmen, och alltid ljust som papper */
 @page {
   size: A4;
@@ -55,7 +57,9 @@ a {
 }
 
 @media print {
-  :root {
+  :root,
+  :root[data-theme="dark"],
+  :root:not([data-theme="light"]) {
     --background: #ffffff;
     --foreground: #000000;
     color-scheme: light;

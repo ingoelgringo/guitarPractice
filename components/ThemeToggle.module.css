@@ -1,0 +1,62 @@
+/* Nere i hörnet, där den inte krockar med Tabbeditorns paneler upptill */
+.toggle {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--foreground) 20%, transparent);
+  border-radius: 50%;
+  background: var(--background);
+  color: var(--foreground);
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.toggle:hover,
+.toggle:focus-visible {
+  opacity: 1;
+}
+
+.toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Visar temat man byter till: månen i ljust, solen i mörkt */
+.sun {
+  display: none;
+}
+
+:global(:root[data-theme="dark"]) .moon {
+  display: none;
+}
+
+:global(:root[data-theme="dark"]) .sun {
+  display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme="light"])) .moon {
+    display: none;
+  }
+
+  :global(:root:not([data-theme="light"])) .sun {
+    display: block;
+  }
+}
+
+@media print {
+  .toggle {
+    display: none;
+  }
+}

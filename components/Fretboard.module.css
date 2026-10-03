@@ -21,8 +21,17 @@
   gap: 20px;
 }
 
+/* Mörkt tema, se app/globals.css */
+:global(:root[data-theme="dark"]) .page {
+  --dot-chord: #f59e42;
+  --dot-box: #5b8fc4;
+  --dot-text: #0a0a0a;
+  --root-scale: #cfe3f7;
+  --root-chord: #ffe0bf;
+}
+
 @media (prefers-color-scheme: dark) {
-  .page {
+  :global(:root:not([data-theme="light"])) .page {
     --dot-chord: #f59e42;
     --dot-box: #5b8fc4;
     --dot-text: #0a0a0a;
