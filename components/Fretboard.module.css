@@ -126,6 +126,11 @@
   font-weight: bold;
 }
 
+/* Det hovrade, som förhandsvisas på halsen */
+.cagedTable button[data-hovered] {
+  background: var(--neck-inlay);
+}
+
 /* Det valda: en cell, ett Ackord eller en Box */
 .cagedTable button[aria-pressed="true"] {
   border-color: var(--foreground);

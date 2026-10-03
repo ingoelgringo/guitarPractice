@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useSyncExternalStore } from "react";
+import { type KeyboardEvent, useRef, useState, useSyncExternalStore } from "react";
+import { flushSync } from "react-dom";
 import { browserStorage } from "@/lib/draft";
 import { DEFAULT_NOTE_NAME_MODE, FRET_COUNT, fretboardView, INLAY_FRETS, type LabelMode, type NoteNameMode, type RootRole, SCALES, type ScaleId } from "@/lib/fretboard";
 import { choiceToParams, type FretboardChoice } from "@/lib/fretboardParams";
@@ -83,15 +84,27 @@ function stringY(string: number): number {
 
 export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice }) {
   const [choice, setChoice] = useState(initialChoice);
+  /** Urvalet som musen står över i CAGED-tabellen. Det förhandsvisas på halsen men skrivs inte i adressen. */
+  const [hovered, setHovered] = useState<TableChoice | null>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
   const noteNames = useSyncExternalStore(subscribeNoteNameMode, readNoteNameMode, () => DEFAULT_NOTE_NAME_MODE);
   const { root, scale, labels } = choice;
-  const { selection, dots, mutedStrings, options } = fretboardView({ ...choice, noteNames, tuning: STANDARD_TUNING });
+  const { selection, options } = fretboardView({ ...choice, noteNames, tuning: STANDARD_TUNING });
+  /** Halsen visar det hovrade urvalet, och annars det valda. */
+  const preview = fretboardView({ ...choice, ...hovered, noteNames, tuning: STANDARD_TUNING });
+  const { dots, mutedStrings } = preview;
   const { chord, box, caged } = selection;
   /** Om ett urval i CAGED-tabellen (en cell, ett Ackord eller en Box) är det valda. */
   const isSelected = (target: TableChoice) => chord === target.chord && box === target.box && caged === target.caged;
+  const isHovered = (target: TableChoice) =>
+    hovered !== null && hovered.chord === target.chord && hovered.box === target.box && hovered.caged === target.caged;
 
-  /** Byter val och skriver det i adressen, utan en ny post i historiken per val. Val som inte gäller släpps. */
+  /**
+   * Byter val och skriver det i adressen, utan en ny post i historiken per val. Val som inte gäller släpps.
+   * Halsen visar sedan det valda, inte det hovrade.
+   */
   function choose(change: Partial<FretboardChoice>) {
+    setHovered(null);
     const next = { ...choice, ...change };
     const normalized = fretboardView({ ...next, tuning: STANDARD_TUNING }).selection;
     next.chord = normalized.chord;
@@ -104,6 +117,54 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
   /** Väljer ett urval i CAGED-tabellen, eller avmarkerar det om det redan är valt. */
   function toggle(target: TableChoice) {
     choose(isSelected(target) ? CLEARED : { ...CLEARED, ...target });
+  }
+
+  /** Det som är gemensamt för en knapp i CAGED-tabellen: valt, hovrat, hovring förhandsvisar och klick väljer. */
+  function tableButton(target: Partial<TableChoice>) {
+    const full = { ...CLEARED, ...target };
+    return {
+      type: "button" as const,
+      "aria-pressed": isSelected(full),
+      "data-hovered": isHovered(full) || undefined,
+      onMouseEnter: () => setHovered(full),
+      onClick: () => toggle(full),
+    };
+  }
+
+  /**
+   * Piltangenterna flyttar valet i CAGED-tabellen: upp och ner byter Ackord, vänster och höger byter Box,
+   * och valet stannar vid kanten. Utan valt Ackord (eller Box) väljer de det första. Escape avmarkerar.
+   */
+  function handleTableKey(event: KeyboardEvent<HTMLTableElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      choose(CLEARED);
+      return;
+    }
+    const rows = options.cagedTable;
+    const row = rows.findIndex((r) => r.degree === chord);
+    const column = box === undefined ? -1 : options.boxes.indexOf(box);
+    /** Nästa index längs en axel, stopp vid kanten. Utan valt index (-1) blir det det första. */
+    const step = (index: number, delta: number, count: number) => (index < 0 ? 0 : Math.min(Math.max(index + delta, 0), count - 1));
+    let nextRow = row;
+    let nextColumn = column;
+    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+      nextRow = step(row, event.key === "ArrowUp" ? -1 : 1, rows.length);
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      nextColumn = step(column, event.key === "ArrowLeft" ? -1 : 1, options.boxes.length);
+    } else {
+      return;
+    }
+    event.preventDefault();
+    const nextChord = nextRow < 0 ? undefined : rows[nextRow];
+    const nextBox = nextColumn < 0 ? undefined : options.boxes[nextColumn];
+    // I en cell följer formen med, så att valet blir cellen. Ett förminskat Ackord har ingen form.
+    const shape = nextChord && nextBox !== undefined ? (nextChord.cells[nextColumn].shape ?? undefined) : undefined;
+    // Fokus följer med till det nya valet, som därför måste vara ritat först
+    flushSync(() => {
+      choose({ chord: nextChord?.degree, box: nextBox, caged: shape });
+    });
+    tableRef.current?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]')?.focus();
   }
 
   return (
@@ -192,7 +253,12 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
           </div>
           <div className={styles.panelGroup}>
             <h2 className={styles.tabHeading}>CAGED</h2>
-            <table className={styles.cagedTable}>
+            <table
+              ref={tableRef}
+              className={styles.cagedTable}
+              onKeyDown={handleTableKey}
+              onMouseLeave={() => setHovered(null)}
+            >
               <thead>
                 <tr>
                   <td />
@@ -204,12 +270,7 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
                   <td />
                   {options.boxes.map((boxNumber) => (
                     <th key={boxNumber} scope="col">
-                      <button
-                        type="button"
-                        aria-label={`Box ${boxNumber}`}
-                        aria-pressed={isSelected({ box: boxNumber })}
-                        onClick={() => toggle({ box: boxNumber })}
-                      >
+                      <button aria-label={`Box ${boxNumber}`} {...tableButton({ box: boxNumber })}>
                         {boxNumber}
                       </button>
                     </th>
@@ -220,11 +281,7 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
                 {options.cagedTable.map(({ degree, numeral, name, cells }) => (
                   <tr key={degree}>
                     <th scope="row">
-                      <button
-                        type="button"
-                        aria-pressed={isSelected({ chord: degree })}
-                        onClick={() => toggle({ chord: degree })}
-                      >
+                      <button {...tableButton({ chord: degree })}>
                         {numeral} – {name}
                       </button>
                     </th>
@@ -234,10 +291,8 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
                       return (
                         <td key={boxNumber}>
                           <button
-                            type="button"
                             aria-label={`${numeral} – ${name}, Box ${boxNumber}${shape === null ? "" : `, ${shape} shape`}`}
-                            aria-pressed={isSelected(cell)}
-                            onClick={() => toggle(cell)}
+                            {...tableButton(cell)}
                           >
                             {shape ?? "–"}
                           </button>
