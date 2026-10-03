@@ -118,17 +118,28 @@ _Avoid_: Position, mönster
 En av fem greppformer (C, A, G, E, D) för ett dur- eller mollackord, flyttad längs halsen till Ackordets Grundton. Den visar ett grepp, i varje kopia av den valda Boxen när Boxen syns på flera ställen. Ett förminskat Ackord har ingen CAGED-form.
 _Avoid_: Grepp, shape
 
+**Ackordets penta**:
+Den pentatoniska skalan på Ackordets grundton: durpentatonik för ett durackord och mollpentatonik för ett mollackord, t.ex. D mollpentatonik för ii – Dm i C-dur. Ett förminskat Ackord har ingen penta.
+_Avoid_: Ackordskala, arpeggio
+
+**Penta-box**:
+En av de fem Boxarna i Ackordets penta, numrerad 1–5 på samma sätt som Skalans Boxar men från Ackordets grundton.
+_Avoid_: Penta-läge, penta-position
+
 **Lager** (`Layer`):
-Hur en Prick visas på Greppbrädan: i Ackordets lager (orange: greppet, eller Ackordets toner när inget grepp finns), i Boxens lager (blått: Boxens övriga toner), i skalans lager (blått: alla skaltoner när inget är valt) eller nedtonad.
+Hur en Prick visas på Greppbrädan: i Ackordets lager (orange: greppet, Penta-boxen, Ackordets penta eller Ackordets toner), i Boxens lager (blått: Boxens övriga toner), i skalans lager (blått: alla skaltoner när inget är valt) eller nedtonad.
 _Avoid_: Betoning, färg, nivå
 
 **Flik** (`Tab`):
-Ett sätt att välja i Greppbrädans panel. Den första fliken är *CAGED*, och senare kan flikar för treklanger och fyrklanger komma.
+Ett sätt att välja i Greppbrädans panel. Flikarna är *CAGED* och *Penta*, och senare kan flikar för treklanger och fyrklanger komma.
 _Avoid_: Vy, läge, visningssätt
 
 **CAGED-tabellen**:
-Flikens tabell med Skalans Ackord som rader och Boxarna som kolumner. Varje cell är den CAGED-form för radens Ackord som ligger i kolumnens Box.
+CAGED-flikens tabell med Skalans Ackord som rader och Boxarna som kolumner. Varje cell är den CAGED-form för radens Ackord som ligger i kolumnens Box.
 _Avoid_: Matris, rutnät
+
+**Penta-tabellen**:
+Penta-flikens tabell med samma rader och kolumner som CAGED-tabellen. Varje cell är numret på den Penta-box i radens Ackords penta som ligger i kolumnens Box.
 
 **Notnamnsläge** (`NoteNameMode`):
 Hur tonnamn skrivs: *svenskt* (H, och B för det som på engelska heter B♭) eller *engelskt*. I övrigt följer stavningen tonarten, så F-dur skrivs med B♭ och E-dur med D♯.
