@@ -504,15 +504,14 @@ function parentBoxTones(selection: FretboardSelection, box: number): BoxTone[] {
 }
 
 /**
- * Boxens Tonpar för ett Intervall: bastonen går från Boxens lägsta Grundton uppåt så länge den övre
- * tonen finns i Boxen.
+ * Boxens Tonpar för ett Intervall, från Boxens lägsta ton som baston uppåt så länge den övre tonen finns
+ * i Boxen, och indexet för det Tonpar som har Boxens lägsta Grundton som baston.
  */
-function intervalPairs(tones: readonly BoxTone[], root: number, interval: number): [BoxTone, BoxTone][] {
-  const start = tones.findIndex(({ pitch }) => pitchClassOf(pitch - root) === 0);
-  if (start === -1) return [];
+function intervalPairs(tones: readonly BoxTone[], root: number, interval: number): { pairs: [BoxTone, BoxTone][]; start: number } {
   const pairs: [BoxTone, BoxTone][] = [];
-  for (let bass = start; bass + interval - 1 < tones.length; bass++) pairs.push([tones[bass], tones[bass + interval - 1]]);
-  return pairs;
+  for (let bass = 0; bass + interval - 1 < tones.length; bass++) pairs.push([tones[bass], tones[bass + interval - 1]]);
+  const start = pairs.findIndex(([bass]) => pitchClassOf(bass.pitch - root) === 0);
+  return start === -1 ? { pairs: [], start: 0 } : { pairs, start };
 }
 
 /** Fliken i Greppbrädans panel. */
@@ -554,7 +553,10 @@ export interface FretboardSelection {
   strings?: StringSet;
   /** Det valda Intervallet, 2–8. Gäller bara i Intervallfliken. */
   interval?: number;
-  /** Tonparets steg i Boxen, där 0 börjar på Boxens lägsta Grundton. Går runt åt båda hållen. 0 om det saknas. */
+  /**
+   * Tonparets steg i Boxen, där 0 börjar på Boxens lägsta Grundton och negativa steg går ner mot Boxens
+   * lägsta baston. Går runt åt båda hållen. 0 om det saknas.
+   */
   intervalStep?: number;
 }
 
@@ -696,11 +698,16 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
     return box === undefined ? triads.flatMap(({ places }) => places) : triadPlaces(triads, instances);
   })();
 
-  // Tonparet i varje kopia av Boxen där båda tonerna ryms. Steget går runt bland Boxens Tonpar.
-  const pairs = interval === undefined || box === undefined ? [] : intervalPairs(parentBoxTones(selection, box), root, interval);
-  const intervalStep =
-    pairs.length === 0 ? undefined : (((selection.intervalStep ?? 0) % pairs.length) + pairs.length) % pairs.length;
-  const pair = intervalStep === undefined ? undefined : pairs[intervalStep];
+  // Tonparet i varje kopia av Boxen där båda tonerna ryms. Steget räknas från Tonparet på Boxens lägsta
+  // Grundton, kan vara negativt ner till Boxens lägsta baston och går runt bland Boxens Tonpar.
+  const { pairs, start } =
+    interval === undefined || box === undefined
+      ? { pairs: [], start: 0 }
+      : intervalPairs(parentBoxTones(selection, box), root, interval);
+  const pairIndex =
+    pairs.length === 0 ? undefined : (((start + (selection.intervalStep ?? 0)) % pairs.length) + pairs.length) % pairs.length;
+  const intervalStep = pairIndex === undefined ? undefined : pairIndex - start;
+  const pair = pairIndex === undefined ? undefined : pairs[pairIndex];
   const pairPlaces = (() => {
     if (pair === undefined) return undefined;
     const onNeck = ({ fret }: Place) => fret >= 0 && fret <= FRET_COUNT;

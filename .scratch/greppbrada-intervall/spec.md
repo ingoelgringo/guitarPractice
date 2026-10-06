@@ -8,7 +8,7 @@ I panelen ser man Skalans Ackord på flera sätt, men inte dess intervall. När 
 
 ## Solution
 
-Panelen får en fjärde Flik, *Intervals*. Intervalltabellen har intervallen (sekund till oktav) som rader och Box 1–5 som kolumner. En cell väljer ett Intervall och en Box. Halsen visar då ett Tonpar orange i den blå Boxen. Paret börjar med Boxens lägsta Grundton som baston. Höger och vänster (piltangenterna i tabellen, eller knapparna ◀ ▶ ovanför den) flyttar Tonparet ett skalsteg upp eller ner. Efter Boxens sista Tonpar börjar det om från Boxens lägsta Grundton.
+Panelen får en fjärde Flik, *Intervals*. Intervalltabellen har intervallen (sekund till oktav) som rader och Box 1–5 som kolumner. En cell väljer ett Intervall och en Box. Halsen visar då ett Tonpar orange i den blå Boxen. Paret börjar med Boxens lägsta Grundton som baston. Höger och vänster (piltangenterna i tabellen, eller knapparna ◀ ▶ ovanför den) flyttar Tonparet ett skalsteg upp eller ner, ner till Boxens lägsta baston och upp till Boxens högsta ton. Därefter går det runt.
 
 ## User Stories
 
@@ -17,17 +17,18 @@ Panelen får en fjärde Flik, *Intervals*. Intervalltabellen har intervallen (se
 3. Som gitarrist vill jag att ett valt Intervall och en vald Box visar ett Tonpar, med Boxens lägsta Grundton som baston, så att jag vet var jag börjar.
 4. Som gitarrist vill jag gå ett skalsteg upp med höger och ett ner med vänster, så att jag spelar intervallet genom hela Skalan.
 5. Som gitarrist vill jag att Tonparet fortsätter in i nästa oktav efter skalans sjunde ton, så länge Boxen räcker.
-6. Som gitarrist vill jag att höger efter Boxens sista Tonpar börjar om från Boxens lägsta Grundton, så att jag kan gå runt utan att stanna.
-7. Som gitarrist vill jag se Tonparets namn och intervall (t.ex. "C – A, M6") ovanför tabellen, så att jag vet vad jag spelar.
-8. Som gitarrist vill jag att intervallen i pentatonik och blues räknas i Föräldraskalan, så att en sext alltid är en sext.
-9. Som gitarrist vill jag att Intervall och Box ligger i adressen men inte steget, så att ett bokmärke öppnar rätt cell från början.
+6. Som gitarrist vill jag kunna gå med vänster under Grundtonen ner till Boxens lägsta baston, så att jag övar hela Boxen.
+7. Som gitarrist vill jag att höger efter Boxens sista Tonpar börjar om från Boxens lägsta baston (och vänster från den lägsta går till det sista), så att jag kan gå runt utan att stanna.
+8. Som gitarrist vill jag se Tonparets namn och intervall (t.ex. "C – A, M6") ovanför tabellen, så att jag vet vad jag spelar.
+9. Som gitarrist vill jag att intervallen i pentatonik och blues räknas i Föräldraskalan, så att en sext alltid är en sext.
+10. Som gitarrist vill jag att Intervall och Box ligger i adressen men inte steget, så att ett bokmärke öppnar rätt cell från början.
 
 ## Implementation Decisions
 
 - **Termerna** Intervall, Tonpar, Intervallfliken och Intervalltabellen står i `CONTEXT.md`.
 - **Intervallet** är 2–8 (sekund till oktav) och räknas i skalsteg: Tonparets övre ton ligger `intervall − 1` steg ovanför bastonen i Föräldraskalan. Med 6 och baston C i C-dur blir det C och A.
 - **Boxens toner** för Tonparen är Föräldraskalans toner i Boxen, byggda som Boxen för Föräldraskalan (för dur och naturlig moll är det samma Box). I tonhöjdsordning är det en obruten följd av skaltoner.
-- **Tonparen** i en Box: bastonen går från Boxens lägsta Grundton uppåt så länge den övre tonen finns i Boxen. Steget är 0 för det första Tonparet. Höger ökar steget och vänster minskar det, och båda går runt: efter det sista kommer det första, och före det första kommer det sista.
+- **Tonparen** i en Box: bastonen går från Boxens lägsta ton uppåt så länge den övre tonen finns i Boxen. Steget räknas från Tonparet med Boxens lägsta Grundton som baston (steg 0), så Tonpar under Grundtonen har negativa steg. Höger ökar steget och vänster minskar det, och båda går runt: efter det sista (Boxens högsta ton överst) kommer det lägsta (Boxens lägsta ton som baston), och tvärtom.
 - **Steget** återgår till 0 när Grundton, Skala, Intervall eller Box ändras. Det ligger inte i adressen och sparas inte.
 - **Halsen i Intervallfliken**:
 
@@ -48,6 +49,7 @@ Panelen får en fjärde Flik, *Intervals*. Intervalltabellen har intervallen (se
 - Testerna går genom `fretboardView`. Exempel:
   - Sext i Box 1 av C-dur: steg 0 är C (sträng 6, band 8) och A (sträng 4, band 7). Steg 1 är D och H.
   - Steget går runt i båda riktningarna.
+  - I Box 2 av C-dur går vänster från C under Grundtonen ner till D, Boxens lägsta ton.
   - I A mollpentatonik räknas sekunden i Föräldraskalan: A och H, och H syns bara i Tonparet.
   - Ackordet släpps i Intervallfliken, och Intervallet i de andra.
 - Adressens `tab=intervals` och `interval` testas genom `choiceFromParams` och `choiceToParams`.

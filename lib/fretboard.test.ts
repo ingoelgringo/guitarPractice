@@ -690,6 +690,23 @@ describe("Greppbräda", () => {
       expect(fretboardView({ ...cMajorSixth, intervalStep: -1 }).selection.intervalStep).toBe(10);
     });
 
+    it("vänster går under den lägsta Grundtonen, ner till Boxens lägsta baston: Box 2 i C-dur börjar på D", () => {
+      // Box 2 har D E F G A H under C och 16 toner, alltså 11 sexter, varav 6 under Grundtonen
+      const box2 = { ...cMajorSixth, box: 2 };
+
+      expect(fretboardView(box2).intervalPair).toEqual({ bass: "C", upper: "A", quality: "M6" });
+      expect(fretboardView({ ...box2, intervalStep: -1 }).intervalPair).toEqual({ bass: "H", upper: "G", quality: "m6" });
+      expect(fretboardView({ ...box2, intervalStep: -6 }).intervalPair).toEqual({ bass: "D", upper: "H", quality: "M6" });
+      expect(pairPlaces({ ...box2, intervalStep: -6 })).toEqual(expect.arrayContaining([[6, 10], [4, 9]]));
+    });
+
+    it("i Box 2 går stegen runt mellan Boxens lägsta och högsta Tonpar", () => {
+      const box2 = { ...cMajorSixth, box: 2 };
+
+      expect(fretboardView({ ...box2, intervalStep: -7 }).selection.intervalStep).toBe(4);
+      expect(fretboardView({ ...box2, intervalStep: 5 }).selection.intervalStep).toBe(-6);
+    });
+
     it("intervallets namn följer skalan: ters från E i C-dur är liten, kvarten från F är överstigande", () => {
       const third = { ...cMajorSixth, interval: 3 };
 

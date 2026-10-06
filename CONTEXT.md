@@ -161,7 +161,7 @@ Avståndet i skalsteg mellan Tonparets två toner, från sekund (2) till oktav (
 _Avoid_: Avstånd, steg
 
 **Tonpar**:
-Två av Föräldraskalans toner i en Box med det valda Intervallet emellan: en baston och tonen ovanför. Intervallfliken visar ett Tonpar i taget, med början på Boxens lägsta Grundton, och man går ett skalsteg upp eller ner.
+Två av Föräldraskalans toner i en Box med det valda Intervallet emellan: en baston och tonen ovanför. Intervallfliken visar ett Tonpar i taget, med början på Boxens lägsta Grundton, och man går ett skalsteg upp eller ner, från Boxens lägsta baston till dess högsta ton.
 _Avoid_: Dyad, intervallgrepp
 
 **Intervalltabellen**:
