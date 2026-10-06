@@ -463,11 +463,63 @@ function triadPlaces(triads: readonly Triad[], instances: readonly Place[][]): P
   return [...new Set(perInstance.length > 0 ? perInstance : [closest])].flatMap(({ places }) => places);
 }
 
+/** Intervallen i Intervallfliken: sekund till oktav, räknat i skalsteg. */
+export const INTERVALS: readonly number[] = [2, 3, 4, 5, 6, 7, 8];
+
+/** Föräldraskalan som egen Skala, så att dess Box kan byggas. */
+const PARENT_SCALE: Record<ScaleId, ScaleId> = {
+  major: "major",
+  naturalMinor: "naturalMinor",
+  majorPentatonic: "major",
+  minorPentatonic: "naturalMinor",
+  blues: "naturalMinor",
+};
+
+/** Halvtoner i durskalan för varje intervall 1–8, det som intervallets kvalitet räknas mot. */
+const MAJOR_INTERVAL_SEMITONES = [0, 2, 4, 5, 7, 9, 11, 12];
+
+/** Intervallets namn, t.ex. "M6", "m3", "P5" eller "A4", av antal skalsteg (2–8) och halvtoner. */
+function intervalQuality(interval: number, semitones: number): string {
+  const difference = semitones - MAJOR_INTERVAL_SEMITONES[interval - 1];
+  const qualities: Record<number, string> = [1, 4, 5, 8].includes(interval)
+    ? { [-1]: "d", 0: "P", 1: "A" }
+    : { [-2]: "d", [-1]: "m", 0: "M", 1: "A" };
+  return `${qualities[difference] ?? "?"}${interval}`;
+}
+
+/** En ton i en Box: platsen och tonhöjden. */
+interface BoxTone extends Place {
+  pitch: number;
+}
+
+/**
+ * Föräldraskalans toner i en Box i tonhöjdsordning, byggda som Boxen för Föräldraskalan. Följden är
+ * obruten: varje ton är nästa skalsteg efter den förra.
+ */
+function parentBoxTones(selection: FretboardSelection, box: number): BoxTone[] {
+  const shape = boxShape({ ...selection, scale: PARENT_SCALE[selection.scale] }, box);
+  return shape
+    .map((place) => ({ ...place, pitch: selection.tuning[place.string - 1] + place.fret }))
+    .sort((a, b) => a.pitch - b.pitch);
+}
+
+/**
+ * Boxens Tonpar för ett Intervall: bastonen går från Boxens lägsta Grundton uppåt så länge den övre
+ * tonen finns i Boxen.
+ */
+function intervalPairs(tones: readonly BoxTone[], root: number, interval: number): [BoxTone, BoxTone][] {
+  const start = tones.findIndex(({ pitch }) => pitchClassOf(pitch - root) === 0);
+  if (start === -1) return [];
+  const pairs: [BoxTone, BoxTone][] = [];
+  for (let bass = start; bass + interval - 1 < tones.length; bass++) pairs.push([tones[bass], tones[bass + interval - 1]]);
+  return pairs;
+}
+
 /** Fliken i Greppbrädans panel. */
-export type FretboardTab = "caged" | "penta" | "triads";
+export type FretboardTab = "caged" | "penta" | "triads" | "intervals";
 
 /** Flikarna i den ordning de visas. */
-export const FRETBOARD_TABS: readonly FretboardTab[] = ["caged", "penta", "triads"];
+export const FRETBOARD_TABS: readonly FretboardTab[] = ["caged", "penta", "triads", "intervals"];
 
 /**
  * Ett Strängset: de tre strängar ett Treklangsgrepp spelas på, lägsta först. Antingen tre intilliggande
@@ -500,6 +552,10 @@ export interface FretboardSelection {
   tab?: FretboardTab;
   /** Strängsetet för Treklangsgreppen. 3-2-1 om det saknas. */
   strings?: StringSet;
+  /** Det valda Intervallet, 2–8. Gäller bara i Intervallfliken. */
+  interval?: number;
+  /** Tonparets steg i Boxen, där 0 börjar på Boxens lägsta Grundton. Går runt åt båda hållen. 0 om det saknas. */
+  intervalStep?: number;
 }
 
 /**
@@ -531,6 +587,12 @@ export interface PentaRow extends ChordOption {
   cells: { box: number; pentaBox: number | null }[];
 }
 
+/** En rad i Intervalltabellen: ett Intervall och en cell per Box (Box 1 först) med intervallet från Grundtonen, t.ex. "M6". */
+export interface IntervalRow {
+  interval: number;
+  cells: { box: number; quality: string }[];
+}
+
 /** En rad i Treklangstabellen: ett Ackord och en cell per Box (Box 1 först) med Omvändningen för det närmaste Treklangsgreppet. */
 export interface TriadRow extends ChordOption {
   cells: { box: number; inversion: Inversion }[];
@@ -544,6 +606,8 @@ export interface FretboardView {
   chordLabels: { name: string; low: number; high: number }[];
   /** Strängar som CAGED-greppet dämpar, sträng 1 först. Tom utan grepp. */
   mutedStrings: number[];
+  /** Tonparets tonnamn och intervall, t.ex. C, A och "M6". `null` utan Intervall och Box. */
+  intervalPair: { bass: string; upper: string; quality: string } | null;
   /** Det som går att välja, med namn för gränssnittet. */
   options: {
     /** Grundtonsmenyns namn per tonklass, C först. */
@@ -558,6 +622,8 @@ export interface FretboardView {
     triadTable: TriadRow[];
     /** Strängseten, i den ordning de erbjuds. */
     stringSets: readonly StringSet[];
+    /** Intervalltabellen: en rad per Intervall, sekund först. */
+    intervalTable: IntervalRow[];
   };
 }
 
@@ -565,8 +631,11 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
   const { root, labels = DEFAULT_LABEL_MODE, noteNames = DEFAULT_NOTE_NAME_MODE } = selection;
   const { steps, parent } = SCALE_STEPS[selection.scale];
   const letter = rootLetter(root, parent);
-  const chord = parent.some((step) => step.degree === selection.chord) ? selection.chord : undefined;
   const tab = FRETBOARD_TABS.find((candidate) => candidate === selection.tab) ?? "caged";
+  // Ackordet gäller inte i Intervallfliken, och Intervallet bara där
+  const chord =
+    tab !== "intervals" && parent.some((step) => step.degree === selection.chord) ? selection.chord : undefined;
+  const interval = tab === "intervals" ? INTERVALS.find((candidate) => candidate === selection.interval) : undefined;
   const strings = STRING_SETS.find((candidate) => candidate === selection.strings) ?? DEFAULT_STRING_SET;
   const labelOf = (step: Step) => (labels === "interval" ? intervalLabel(step) : stepName(letter, root, step, noteNames));
 
@@ -627,6 +696,34 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
     return box === undefined ? triads.flatMap(({ places }) => places) : triadPlaces(triads, instances);
   })();
 
+  // Tonparet i varje kopia av Boxen där båda tonerna ryms. Steget går runt bland Boxens Tonpar.
+  const pairs = interval === undefined || box === undefined ? [] : intervalPairs(parentBoxTones(selection, box), root, interval);
+  const intervalStep =
+    pairs.length === 0 ? undefined : (((selection.intervalStep ?? 0) % pairs.length) + pairs.length) % pairs.length;
+  const pair = intervalStep === undefined ? undefined : pairs[intervalStep];
+  const pairPlaces = (() => {
+    if (pair === undefined) return undefined;
+    const onNeck = ({ fret }: Place) => fret >= 0 && fret <= FRET_COUNT;
+    const copies = [-12, 0, 12]
+      .map((shift) => pair.map(({ string, fret }) => ({ string, fret: fret + shift })))
+      .filter((copy) => copy.every(onNeck) && copy.some((place) => instances.some((instance) => withinSpan(instance, place))));
+    return copies.length > 0 ? copies.flat() : pair.map(({ string, fret }) => ({ string, fret }));
+  })();
+  const pairTones = (pair ?? []).map(({ pitch }) => parent.find((step) => step.semitones === pitchClassOf(pitch - root))!);
+  const intervalPair =
+    pair === undefined || interval === undefined
+      ? null
+      : {
+          bass: stepName(letter, root, pairTones[0], noteNames),
+          upper: stepName(letter, root, pairTones[1], noteNames),
+          quality: intervalQuality(interval, pair[1].pitch - pair[0].pitch),
+        };
+  // Från Grundtonen är intervallet detsamma i alla Boxar, eftersom varje Box börjar sina Tonpar där
+  const intervalTable = INTERVALS.map((rowInterval): IntervalRow => {
+    const quality = intervalQuality(rowInterval, parent[(rowInterval - 1) % 7].semitones + (rowInterval === 8 ? 12 : 0));
+    return { interval: rowInterval, cells: boxes.map((number) => ({ box: number, quality })) };
+  });
+
   const pentaTones =
     tab === "penta" && gripQuality !== undefined ? chordPentaSteps(parent, gripQuality, chordTones[0]) : undefined;
   // Penta-boxen i varje kopia av Boxen: den som Penta-tabellen har i Boxens cell
@@ -637,14 +734,16 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
     return fitInBox(pentaBoxes[pentaBox - 1], instances).positions.flat();
   })();
   /** Platserna i Ackordets lager när de är ett mönster (greppet, Penta-boxen eller Treklangsgreppen) och inte bara tonerna. */
-  const patternPlaces = grip === undefined ? (pentaBoxPlaces ?? chordTriadPlaces) : gripPlaces(grip, instances);
+  const patternPlaces = grip === undefined ? (pentaBoxPlaces ?? chordTriadPlaces ?? pairPlaces) : gripPlaces(grip, instances);
   const inPattern = new Set((patternPlaces ?? []).map(placeKey));
   // Tonerna i Ackordets lager (Ackordets penta eller toner) visas även när de ligger utanför skalan,
   // som H i ii° för A mollpentatonik
   const chordLayerTones = pentaTones ?? chordTones;
   const inScale = new Set(steps.map((step) => step.semitones));
   const inChord = new Set(chordLayerTones.map((step) => step.semitones));
-  const shown = [...steps, ...chordLayerTones.filter((step) => !inScale.has(step.semitones))];
+  // Tonparets toner utanför skalan (som H i A mollpentatonik) syns bara i Tonparet
+  const outsidePair = pairTones.filter((step) => !inScale.has(step.semitones) && !inChord.has(step.semitones));
+  const shown = [...steps, ...chordLayerTones.filter((step) => !inScale.has(step.semitones)), ...outsidePair];
   const inBox = new Set(instances.flat().map(placeKey));
   // En ackordton utanför skalan hör till Boxen när den ligger inom Boxens band
   const insideBox = (step: Step, place: Place) =>
@@ -676,6 +775,7 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
       const step = shown.find((candidate) => candidate.semitones === semitones);
       if (!step) continue;
       const place = { string: index + 1, fret };
+      if (outsidePair.includes(step) && !inPattern.has(placeKey(place))) continue;
       dots.push({ ...place, label: labelOf(step), rootRole: rootRoleOf(semitones), layer: layerOf(step, place) });
     }
   });
@@ -685,11 +785,12 @@ export function fretboardView(selection: FretboardSelection): FretboardView {
   const chordName = cagedTable.find((row) => row.degree === chord)?.name;
   const chordLabels = chordName === undefined ? [] : instances.map((instance) => ({ name: chordName, ...fretSpan(instance) }));
   return {
-    selection: { ...selection, chord, box, caged, tab, strings },
+    selection: { ...selection, chord, box, caged, tab, strings, interval, intervalStep },
     dots,
     chordLabels,
     mutedStrings: grip?.mutedStrings ?? [],
-    options: { roots, boxes, cagedTable, pentaTable, triadTable, stringSets: STRING_SETS },
+    intervalPair,
+    options: { roots, boxes, cagedTable, pentaTable, triadTable, stringSets: STRING_SETS, intervalTable },
   };
 }
 

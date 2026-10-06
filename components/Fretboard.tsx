@@ -1,27 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { type KeyboardEvent, useRef, useState, useSyncExternalStore } from "react";
+import { type KeyboardEvent, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 import { browserStorage } from "@/lib/draft";
 import { type CagedShape, DEFAULT_NOTE_NAME_MODE, FRET_COUNT, type FretboardTab, fretboardView, INLAY_FRETS, type Inversion, type LabelMode, type NoteNameMode, type RootRole, SCALES, type ScaleId, type StringSet } from "@/lib/fretboard";
-import { choiceToParams, type FretboardChoice } from "@/lib/fretboardParams";
+import { choiceToParams, type FretboardChoice, restoredChoice } from "@/lib/fretboardParams";
 import { stepAround } from "@/lib/tableNavigation";
 import { STANDARD_TUNING } from "@/lib/score";
 import styles from "./Fretboard.module.css";
 
-/** Det man väljer i Flikens tabell: en cell, ett Ackord eller en Box. */
-type TableChoice = Pick<FretboardChoice, "chord" | "box" | "caged">;
+/** Det man väljer i Flikens tabell: en cell, ett Ackord, ett Intervall eller en Box. */
+type TableChoice = Pick<FretboardChoice, "chord" | "box" | "caged" | "interval">;
 
-/** Inget Ackord, ingen Box och ingen CAGED-form: bara Skalan. */
-const CLEARED: TableChoice = { chord: undefined, box: undefined, caged: undefined };
+/** Inget Ackord, ingen Box, ingen CAGED-form och inget Intervall: bara Skalan. */
+const CLEARED: TableChoice = { chord: undefined, box: undefined, caged: undefined, interval: undefined };
 
 /** Flikarna i panelen, i den ordning de visas. */
 const TABS: readonly { id: FretboardTab; name: string }[] = [
   { id: "caged", name: "CAGED" },
   { id: "penta", name: "Penta" },
   { id: "triads", name: "Triads" },
+  { id: "intervals", name: "Intervals" },
 ];
+
+/** Radrubrikerna i Intervalltabellen. */
+const INTERVAL_NAMES: Record<number, string> = { 2: "2nd", 3: "3rd", 4: "4th", 5: "5th", 6: "6th", 7: "7th", 8: "Octave" };
 
 /** Det skärmläsare får höra för en Omvändning. */
 const INVERSION_NAMES: Record<Inversion, string> = { R: "root position", "3": "first inversion", "5": "second inversion" };
@@ -29,11 +33,14 @@ const INVERSION_NAMES: Record<Inversion, string> = { R: "root position", "3": "f
 /** Ett Strängset i dropdownen, t.ex. "6-4-3". */
 const stringSetName = (strings: StringSet) => [...strings].join("-");
 
-/** En rad i Flikens tabell: ett Ackord och en cell per Box med det cellen visar. */
+/** En rad i Flikens tabell: ett Ackord (eller Intervall) och en cell per Box med det cellen visar. */
 interface TableRow {
-  degree: number;
-  numeral: string;
-  name: string;
+  /** Det radrubriken väljer: Ackordet eller Intervallet. */
+  row: Pick<TableChoice, "chord" | "interval">;
+  /** Radrubrikens text, t.ex. "ii – Dm" eller "6th". */
+  header: string;
+  /** Om radrubriken går att välja. Ett Intervall utan Box visar inget. */
+  headerSelects: boolean;
   cells: {
     box: number;
     /** Cellens text, `null` för ett förminskat Ackord. */
@@ -97,6 +104,25 @@ function subscribeNoteNameMode(listener: () => void) {
   };
 }
 
+// Det senaste valet sparas per webbläsare, så att sidan utan val i adressen börjar där man slutade
+const CHOICE_KEY = "guitarPractice.fretboard.choice";
+
+function readStoredChoice(): string | null {
+  try {
+    return browserStorage()?.getItem(CHOICE_KEY) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function saveChoice(params: URLSearchParams) {
+  try {
+    browserStorage()?.setItem(CHOICE_KEY, params.toString());
+  } catch {
+    // Utan lagring börjar sidan med standardvalet nästa gång
+  }
+}
+
 /** Kantlinjen för en Prick efter vilken grundton den är. */
 const ROOT_CLASSES: Record<RootRole, string | undefined> = {
   scale: styles.scaleRoot,
@@ -121,15 +147,33 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
   const tableRef = useRef<HTMLTableElement>(null);
   const noteNames = useSyncExternalStore(subscribeNoteNameMode, readNoteNameMode, () => DEFAULT_NOTE_NAME_MODE);
   const { root, scale, labels } = choice;
-  const { selection, options } = fretboardView({ ...choice, noteNames, tuning: STANDARD_TUNING });
-  /** Halsen visar det hovrade urvalet, och annars det valda. */
-  const preview = fretboardView({ ...choice, ...hovered, noteNames, tuning: STANDARD_TUNING });
+  const { selection, options, intervalPair } = fretboardView({ ...choice, noteNames, tuning: STANDARD_TUNING });
+  /** Halsen visar det hovrade urvalet (med dess första Tonpar), och annars det valda. */
+  const preview = fretboardView({
+    ...choice,
+    ...hovered,
+    ...(hovered && { intervalStep: undefined }),
+    noteNames,
+    tuning: STANDARD_TUNING,
+  });
   const { dots, mutedStrings, chordLabels } = preview;
-  const { chord, box, caged, tab = "caged", strings } = selection;
+  const { chord, box, interval, tab = "caged", strings } = selection;
+  const chordRow = ({ degree, numeral, name }: { degree: number; numeral: string; name: string }) => ({
+    row: { chord: degree },
+    header: `${numeral} – ${name}`,
+    headerSelects: true,
+  });
   const tableRows: TableRow[] =
-    tab === "triads"
+    tab === "intervals"
+      ? options.intervalTable.map(({ interval: rowInterval, cells }) => ({
+          row: { interval: rowInterval },
+          header: INTERVAL_NAMES[rowInterval],
+          headerSelects: false,
+          cells: cells.map(({ box: boxNumber, quality }) => ({ box: boxNumber, text: quality, description: "" })),
+        }))
+      : tab === "triads"
       ? options.triadTable.map((row) => ({
-          ...row,
+          ...chordRow(row),
           cells: row.cells.map(({ box: boxNumber, inversion }) => ({
             box: boxNumber,
             text: inversion,
@@ -138,7 +182,7 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
         }))
       : tab === "penta"
       ? options.pentaTable.map((row) => ({
-          ...row,
+          ...chordRow(row),
           cells: row.cells.map(({ box: boxNumber, pentaBox }) => ({
             box: boxNumber,
             text: pentaBox === null ? null : String(pentaBox),
@@ -146,7 +190,7 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
           })),
         }))
       : options.cagedTable.map((row) => ({
-          ...row,
+          ...chordRow(row),
           cells: row.cells.map(({ box: boxNumber, shape }) => ({
             box: boxNumber,
             text: shape,
@@ -155,26 +199,49 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
           })),
         }));
   /** Om ett urval i Flikens tabell (en cell, ett Ackord eller en Box) är det valda. */
-  const isSelected = (target: TableChoice) => chord === target.chord && box === target.box && caged === target.caged;
-  const isHovered = (target: TableChoice) =>
-    hovered !== null && hovered.chord === target.chord && hovered.box === target.box && hovered.caged === target.caged;
+  const sameTarget = (a: TableChoice, b: TableChoice) =>
+    a.chord === b.chord && a.box === b.box && a.caged === b.caged && a.interval === b.interval;
+  const isSelected = (target: TableChoice) => sameTarget(selection, target);
+  const isHovered = (target: TableChoice) => hovered !== null && sameTarget(hovered, target);
 
   /**
-   * Byter val och skriver det i adressen, utan en ny post i historiken per val. Val som inte gäller släpps.
-   * Halsen visar sedan det valda, inte det hovrade.
+   * Byter val och skriver det i adressen, utan en ny post i historiken per val. Val som inte gäller släpps,
+   * och Tonparet börjar om från Boxens lägsta Grundton. Halsen visar sedan det valda, inte det hovrade.
    */
   function choose(change: Partial<FretboardChoice>) {
     setHovered(null);
-    const next = { ...choice, ...change };
+    apply({ ...choice, intervalStep: undefined, ...change });
+  }
+
+  /** Flyttar Tonparet ett skalsteg upp eller ner. Modellen låter steget gå runt. */
+  function stepInterval(delta: number) {
+    choose({ intervalStep: (selection.intervalStep ?? 0) + delta });
+  }
+
+  /** Visar valet, med det som inte gäller släppt, och skriver det i adressen och webbläsaren. */
+  function apply(next: FretboardChoice) {
+    next = { ...next };
     const normalized = fretboardView({ ...next, tuning: STANDARD_TUNING }).selection;
     next.chord = normalized.chord;
     next.box = normalized.box;
     next.caged = normalized.caged;
     next.tab = normalized.tab;
     next.strings = normalized.strings;
+    next.interval = normalized.interval;
+    next.intervalStep = normalized.intervalStep;
     setChoice(next);
-    window.history.replaceState(null, "", `?${choiceToParams(next)}`);
+    const params = choiceToParams(next);
+    window.history.replaceState(null, "", `?${params}`);
+    saveChoice(params);
   }
+
+  // Utan val i adressen börjar sidan med det senast valda. Adressen finns bara i webbläsaren, så det sker efter hydreringen.
+  useLayoutEffect(() => {
+    const restored = restoredChoice(window.location.search, readStoredChoice());
+    if (restored) apply(restored);
+    else saveChoice(choiceToParams(choice));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- bara vid start
+  }, []);
 
   /**
    * Byter Flik med Ackord och Box kvar. Från en cell i Penta- eller Treklangsfliken blir valet
@@ -226,10 +293,17 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
       return;
     }
     const rows = tableRows;
-    const row = rows.findIndex((r) => r.degree === chord);
+    const row = rows.findIndex((r) => r.row.chord === chord && r.row.interval === interval);
     const column = box === undefined ? -1 : options.boxes.indexOf(box);
+    // Med en vald cell i Intervallfliken flyttar vänster och höger Tonparet i stället för Boxen
+    if (tab === "intervals" && intervalPair !== null && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+      event.preventDefault();
+      stepInterval(event.key === "ArrowLeft" ? -1 : 1);
+      return;
+    }
     let nextRow = row;
-    let nextColumn = column;
+    // I Intervallfliken väljer tangenterna alltid en cell, eftersom ett Intervall utan Box inte visar något
+    let nextColumn = tab === "intervals" && column < 0 ? 0 : column;
     if (event.key === "ArrowUp" || event.key === "ArrowDown") {
       nextRow = stepAround(row, event.key === "ArrowUp" ? -1 : 1, rows.length);
     } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
@@ -238,13 +312,13 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
       return;
     }
     event.preventDefault();
-    const nextChord = nextRow < 0 ? undefined : rows[nextRow];
+    const nextRowChoice = nextRow < 0 ? undefined : rows[nextRow];
     const nextBox = nextColumn < 0 ? undefined : options.boxes[nextColumn];
     // I en cell i CAGED-fliken följer formen med, så att valet blir cellen. Ett förminskat Ackord har ingen form.
-    const shape = nextChord && nextBox !== undefined ? nextChord.cells[nextColumn].caged : undefined;
+    const shape = nextRowChoice && nextBox !== undefined ? nextRowChoice.cells[nextColumn].caged : undefined;
     // Fokus följer med till det nya valet, som därför måste vara ritat först
     flushSync(() => {
-      choose({ chord: nextChord?.degree, box: nextBox, caged: shape });
+      choose({ ...CLEARED, ...nextRowChoice?.row, box: nextBox, caged: shape });
     });
     tableRef.current?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]')?.focus();
   }
@@ -367,6 +441,19 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
                 </select>
               </label>
             )}
+            {tab === "intervals" && (
+              <div className={styles.intervalStepper}>
+                <button type="button" aria-label="Previous pair" disabled={intervalPair === null} onClick={() => stepInterval(-1)}>
+                  ◀
+                </button>
+                <output aria-live="polite">
+                  {intervalPair === null ? "Choose a cell" : `${intervalPair.bass} – ${intervalPair.upper}, ${intervalPair.quality}`}
+                </output>
+                <button type="button" aria-label="Next pair" disabled={intervalPair === null} onClick={() => stepInterval(1)}>
+                  ▶
+                </button>
+              </div>
+            )}
             <table
               ref={tableRef}
               id="tab-panel"
@@ -395,19 +482,15 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
                 </tr>
               </thead>
               <tbody>
-                {tableRows.map(({ degree, numeral, name, cells }) => (
-                  <tr key={degree}>
-                    <th scope="row">
-                      <button {...tableButton({ chord: degree })}>
-                        {numeral} – {name}
-                      </button>
-                    </th>
+                {tableRows.map(({ row, header, headerSelects, cells }) => (
+                  <tr key={header}>
+                    <th scope="row">{headerSelects ? <button {...tableButton(row)}>{header}</button> : header}</th>
                     {cells.map(({ box: boxNumber, text, description, caged: cellShape }) => (
-                      // En cell utan form (i Penta- och Treklangsfliken eller för ett förminskat Ackord) väljer bara Ackordet och Boxen
+                      // En cell utan form (i Penta-, Treklangs- och Intervallfliken eller för ett förminskat Ackord) väljer bara raden och Boxen
                       <td key={boxNumber}>
                         <button
-                          aria-label={`${numeral} – ${name}, Box ${boxNumber}${description}`}
-                          {...tableButton({ chord: degree, box: boxNumber, caged: cellShape })}
+                          aria-label={`${header}, Box ${boxNumber}${description}`}
+                          {...tableButton({ ...row, box: boxNumber, caged: cellShape })}
                         >
                           {text ?? "–"}
                         </button>

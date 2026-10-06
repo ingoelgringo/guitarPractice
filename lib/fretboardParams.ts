@@ -2,10 +2,14 @@
 
 import { CAGED_SHAPES, type CagedShape, DEFAULT_LABEL_MODE, DEFAULT_STRING_SET, type FretboardSelection, FRETBOARD_TABS, type LabelMode, type ScaleId, STRING_SETS } from "./fretboard";
 
-/** Det man väljer på Greppbrädan och som ligger i adressen. Notnamnsläget sparas i webbläsaren i stället. */
-export type FretboardChoice = Required<Pick<FretboardSelection, "root" | "scale" | "labels">> & Pick<FretboardSelection, "chord" | "box" | "caged" | "tab" | "strings">;
+/**
+ * Det man väljer på Greppbrädan och som ligger i adressen, utom Tonparets steg som bara gäller tills
+ * man byter val. Notnamnsläget sparas i webbläsaren i stället.
+ */
+export type FretboardChoice = Required<Pick<FretboardSelection, "root" | "scale" | "labels">> &
+  Pick<FretboardSelection, "chord" | "box" | "caged" | "tab" | "strings" | "interval" | "intervalStep">;
 
-const DEFAULT_CHOICE: FretboardChoice = { root: 9, scale: "minorPentatonic", labels: DEFAULT_LABEL_MODE };
+const DEFAULT_CHOICE: FretboardChoice = { root: 0, scale: "major", labels: DEFAULT_LABEL_MODE };
 
 /** Grundtonen per tonklass i adressen: engelska namn, sänkta toner för de svarta tangenterna. */
 const ROOT_PARAMS = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
@@ -37,7 +41,7 @@ function keyOf<K extends string>(params: Record<K, string>, value: string | null
   return (Object.keys(params) as K[]).find((key) => params[key] === value);
 }
 
-/** En siffra 1–9 i adressen (Ackordets steg, Boxen), eller inget. Om det gäller för Skalan avgör `fretboardView`. */
+/** En siffra 1–9 i adressen (Ackordets steg, Boxen, Intervallet), eller inget. Om det gäller för Skalan avgör `fretboardView`. */
 function parseDigit(value: string | null): number | undefined {
   return value !== null && /^[1-9]$/.test(value) ? Number(value) : undefined;
 }
@@ -60,6 +64,7 @@ export function choiceFromParams(params: URLSearchParams): FretboardChoice {
     // Utan Flik gäller CAGED, så att bokmärken från före Penta-fliken fungerar
     tab: FRETBOARD_TABS.find((tab) => tab === params.get("tab")),
     strings: STRING_SETS.find((strings) => strings === params.get("strings")),
+    interval: parseDigit(params.get("interval")),
   };
 }
 
@@ -73,8 +78,18 @@ export function choiceToParams(choice: FretboardChoice): URLSearchParams {
   if (choice.chord !== undefined) params.set("chord", String(choice.chord));
   if (choice.box !== undefined) params.set("box", String(choice.box));
   if (choice.caged !== undefined) params.set("caged", choice.caged);
+  if (choice.interval !== undefined) params.set("interval", String(choice.interval));
   if (choice.tab !== undefined && choice.tab !== "caged") params.set("tab", choice.tab);
   // Strängsetet ligger kvar i adressen i alla Flikar, så att det finns kvar när man kommer tillbaka
   if (choice.strings !== undefined && choice.strings !== DEFAULT_STRING_SET) params.set("strings", choice.strings);
   return params;
+}
+
+/**
+ * Det senast valda, sparat som parametrar i webbläsaren, när adressen inte har något val. En adress
+ * med val (ett bokmärke, en delad länk) går före. `search` är adressens query-del, t.ex. `location.search`.
+ */
+export function restoredChoice(search: string, stored: string | null): FretboardChoice | null {
+  if (new URLSearchParams(search).size > 0 || !stored) return null;
+  return choiceFromParams(new URLSearchParams(stored));
 }

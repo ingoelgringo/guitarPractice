@@ -143,7 +143,7 @@ Hur en Prick visas på Greppbrädan: i Ackordets lager (orange: greppet, Penta-b
 _Avoid_: Betoning, färg, nivå
 
 **Flik** (`Tab`):
-Ett sätt att välja i Greppbrädans panel. Flikarna är *CAGED*, *Penta* och *Treklanger*, och senare kan en flik för fyrklanger komma.
+Ett sätt att välja i Greppbrädans panel. Flikarna är *CAGED*, *Penta*, *Treklanger* och *Intervall*, och senare kan en flik för fyrklanger komma.
 _Avoid_: Vy, läge, visningssätt
 
 **CAGED-tabellen**:
@@ -155,6 +155,17 @@ Penta-flikens tabell med samma rader och kolumner som CAGED-tabellen. Varje cell
 
 **Treklangstabellen**:
 Treklangsflikens tabell med samma rader och kolumner som CAGED-tabellen. Varje cell är det Treklangsgrepp för radens Ackord på det valda Strängsetet som ligger närmast kolumnens Box, angivet med Omvändningens lägsta ton (R, 3 eller 5).
+
+**Intervall** (`interval`):
+Avståndet i skalsteg mellan Tonparets två toner, från sekund (2) till oktav (8), räknat i Föräldraskalan. En sext är baston och tonen fem steg ovanför.
+_Avoid_: Avstånd, steg
+
+**Tonpar**:
+Två av Föräldraskalans toner i en Box med det valda Intervallet emellan: en baston och tonen ovanför. Intervallfliken visar ett Tonpar i taget, med början på Boxens lägsta Grundton, och man går ett skalsteg upp eller ner.
+_Avoid_: Dyad, intervallgrepp
+
+**Intervalltabellen**:
+Intervallflikens tabell med intervallen (sekund till oktav) som rader och Boxarna som kolumner. En cell väljer Intervall och Box och visar intervallet från Grundtonen, t.ex. M6.
 
 **Notnamnsläge** (`NoteNameMode`):
 Hur tonnamn skrivs: *svenskt* (H, och B för det som på engelska heter B♭) eller *engelskt*. I övrigt följer stavningen tonarten, så F-dur skrivs med B♭ och E-dur med D♯.

@@ -124,7 +124,7 @@
 .tabs button {
   font: inherit;
   font-weight: bold;
-  padding: 4px 12px;
+  padding: 4px 8px;
   border: none;
   border-bottom: 2px solid transparent;
   background: none;
@@ -178,6 +178,48 @@
 
 .chordTable td button {
   font-weight: bold;
+}
+
+/* Radrubrik utan knapp (i Intervallfliken), i linje med knapparnas text */
+.chordTable th[scope="row"]:not(:has(button)) {
+  padding: 1px 9px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* Tonparet i Intervallfliken med knappar för ett skalsteg ner och upp */
+.intervalStepper {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.intervalStepper output {
+  flex: 1;
+  text-align: center;
+  font-weight: bold;
+}
+
+.intervalStepper button {
+  font: inherit;
+  min-width: 36px;
+  min-height: 30px;
+  border: 1px solid var(--panel-divider);
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.intervalStepper button:disabled {
+  color: var(--neck-line);
+  cursor: default;
+}
+
+.intervalStepper button:focus-visible {
+  outline: 2px solid var(--dot-box);
+  outline-offset: 1px;
 }
 
 /* Det hovrade, som förhandsvisas på halsen */

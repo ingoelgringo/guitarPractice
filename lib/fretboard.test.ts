@@ -645,6 +645,92 @@ describe("Greppbräda", () => {
     });
   });
 
+  describe("Intervallfliken", () => {
+    /** Prickarna i Ackordets lager som [sträng, band]. */
+    function pairPlaces(selection: FretboardSelection): number[][] {
+      return fretboardView(selection)
+        .dots.filter((dot) => dot.layer === "chord")
+        .map(({ string, fret }) => [string, fret]);
+    }
+
+    const cMajorSixth: FretboardSelection = { root: C, scale: "major", tab: "intervals", interval: 6, box: 1, tuning: STANDARD_TUNING };
+
+    it("cell: sext i Box 1 av C-dur börjar på lägsta Grundtonen, C (band 8) och A (band 7 på sträng 4)", () => {
+      const view = fretboardView(cMajorSixth);
+
+      expect(pairPlaces(cMajorSixth)).toEqual(expect.arrayContaining([[6, 8], [4, 7]]));
+      expect(pairPlaces(cMajorSixth)).toHaveLength(2);
+      expect(view.intervalPair).toEqual({ bass: "C", upper: "A", quality: "M6" });
+      expect(view.selection.intervalStep).toBe(0);
+    });
+
+    it("cell: Boxens övriga toner ligger i Boxens lager", () => {
+      const boxDots = fretboardView(cMajorSixth).dots.filter((dot) => dot.layer === "box");
+      const onlyBox = fretboardView({ ...cMajorSixth, interval: undefined }).dots.filter((dot) => dot.layer === "box");
+
+      expect(boxDots).toHaveLength(onlyBox.length - 2);
+    });
+
+    it("höger går ett skalsteg upp: D och H", () => {
+      const selection = { ...cMajorSixth, intervalStep: 1 };
+
+      expect(pairPlaces(selection)).toEqual(expect.arrayContaining([[6, 10], [4, 9]]));
+      expect(fretboardView(selection).intervalPair).toEqual({ bass: "D", upper: "H", quality: "M6" });
+    });
+
+    it("Tonparet fortsätter in i nästa oktav, och det sista har Boxens högsta ton överst", () => {
+      // Box 1 har 16 toner från C på sträng 6 till D på sträng 1, alltså 11 sexter
+      expect(fretboardView({ ...cMajorSixth, intervalStep: 7 }).intervalPair).toEqual({ bass: "C", upper: "A", quality: "M6" });
+      expect(pairPlaces({ ...cMajorSixth, intervalStep: 10 })).toEqual(expect.arrayContaining([[3, 10], [1, 10]]));
+      expect(fretboardView({ ...cMajorSixth, intervalStep: 10 }).intervalPair).toEqual({ bass: "F", upper: "D", quality: "M6" });
+    });
+
+    it("stegen går runt: efter det sista kommer det första, och före det första det sista", () => {
+      expect(fretboardView({ ...cMajorSixth, intervalStep: 11 }).selection.intervalStep).toBe(0);
+      expect(fretboardView({ ...cMajorSixth, intervalStep: -1 }).selection.intervalStep).toBe(10);
+    });
+
+    it("intervallets namn följer skalan: ters från E i C-dur är liten, kvarten från F är överstigande", () => {
+      const third = { ...cMajorSixth, interval: 3 };
+
+      expect(fretboardView({ ...third, intervalStep: 2 }).intervalPair).toEqual({ bass: "E", upper: "G", quality: "m3" });
+      expect(fretboardView({ ...cMajorSixth, interval: 4, intervalStep: 3 }).intervalPair).toEqual({ bass: "F", upper: "H", quality: "A4" });
+      expect(fretboardView({ ...cMajorSixth, interval: 8 }).intervalPair).toEqual({ bass: "C", upper: "C", quality: "P8" });
+    });
+
+    it("pentatonik räknas i Föräldraskalan: sekund i Box 1 av A mollpentatonik är A och H, och H syns bara i Tonparet", () => {
+      const selection: FretboardSelection = { root: A, scale: "minorPentatonic", tab: "intervals", interval: 2, box: 1, tuning: STANDARD_TUNING };
+      const view = fretboardView(selection);
+
+      expect(pairPlaces(selection)).toEqual(expect.arrayContaining([[6, 5], [6, 7]]));
+      expect(view.dots.filter((dot) => dot.label === "2").map(({ string, fret }) => [string, fret])).toEqual([[6, 7]]);
+      expect(view.intervalPair).toEqual({ bass: "A", upper: "H", quality: "M2" });
+    });
+
+    it("Intervalltabellen har sekund till oktav som rader och intervallet från Grundtonen i varje cell", () => {
+      const { intervalTable } = fretboardView({ root: A, scale: "naturalMinor", tuning: STANDARD_TUNING }).options;
+
+      expect(intervalTable.map((row) => row.interval)).toEqual([2, 3, 4, 5, 6, 7, 8]);
+      expect(intervalTable.map((row) => row.cells[0].quality)).toEqual(["M2", "m3", "P4", "P5", "m6", "m7", "P8"]);
+      expect(intervalTable[0].cells.map((cell) => cell.box)).toEqual([1, 2, 3, 4, 5]);
+    });
+
+    it("utan Box visas inget Tonpar", () => {
+      const view = fretboardView({ ...cMajorSixth, box: undefined });
+
+      expect(view.intervalPair).toBeNull();
+      expect(view.dots.every((dot) => dot.layer === "scale")).toBe(true);
+    });
+
+    it("Ackordet släpps i Intervallfliken, och Intervallet i de andra Flikarna", () => {
+      expect(fretboardView({ ...cMajorSixth, chord: 2 }).selection.chord).toBeUndefined();
+      const caged = fretboardView({ ...cMajorSixth, tab: "caged" });
+      expect(caged.selection.interval).toBeUndefined();
+      expect(caged.intervalPair).toBeNull();
+      expect(fretboardView({ ...cMajorSixth, interval: 9 }).selection.interval).toBeUndefined();
+    });
+  });
+
   describe("Ackordets namn över Boxen", () => {
     const cMajor: FretboardSelection = { root: C, scale: "major", tuning: STANDARD_TUNING };
 

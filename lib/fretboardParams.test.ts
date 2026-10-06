@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { choiceFromParams, choiceToParams } from "./fretboardParams";
+import { choiceFromParams, choiceToParams, restoredChoice } from "./fretboardParams";
 
 describe("Greppbrädans val i adressen", () => {
-  it("utan parametrar blir valet A mollpentatonik", () => {
-    expect(choiceFromParams(new URLSearchParams())).toEqual({ root: 9, scale: "minorPentatonic", labels: "interval" });
+  it("utan parametrar blir valet C-dur", () => {
+    expect(choiceFromParams(new URLSearchParams())).toEqual({ root: 0, scale: "major", labels: "interval" });
   });
 
   it("läser Grundton och Skala", () => {
@@ -11,8 +11,8 @@ describe("Greppbrädans val i adressen", () => {
   });
 
   it("ogiltiga värden faller tillbaka var för sig", () => {
-    expect(choiceFromParams(new URLSearchParams("root=X&scale=major"))).toEqual({ root: 9, scale: "major", labels: "interval" });
-    expect(choiceFromParams(new URLSearchParams("root=C&scale=lydian"))).toEqual({ root: 0, scale: "minorPentatonic", labels: "interval" });
+    expect(choiceFromParams(new URLSearchParams("root=X&scale=blues"))).toEqual({ root: 0, scale: "blues", labels: "interval" });
+    expect(choiceFromParams(new URLSearchParams("root=Eb&scale=lydian"))).toEqual({ root: 3, scale: "major", labels: "interval" });
   });
 
   it("Grundtonen tolkas utan hänsyn till skiftläge och med korsförtecken", () => {
@@ -58,6 +58,16 @@ describe("Greppbrädans val i adressen", () => {
     expect(choiceToParams({ root: 0, scale: "major", labels: "interval" }).has("tab")).toBe(false);
   });
 
+  it("Intervallfliken ligger i adressen som tab=intervals med Intervallet, men inte steget", () => {
+    expect(choiceFromParams(new URLSearchParams("tab=intervals&interval=6"))).toMatchObject({ tab: "intervals", interval: 6 });
+    expect(choiceFromParams(new URLSearchParams("interval=x")).interval).toBeUndefined();
+    const params = choiceToParams({ root: 0, scale: "major", labels: "interval", tab: "intervals", interval: 6, intervalStep: 3 });
+    expect(params.get("tab")).toBe("intervals");
+    expect(params.get("interval")).toBe("6");
+    expect(params.has("intervalStep")).toBe(false);
+    expect(choiceToParams({ root: 0, scale: "major", labels: "interval" }).has("interval")).toBe(false);
+  });
+
   it("Treklangsfliken ligger i adressen som tab=triads", () => {
     expect(choiceFromParams(new URLSearchParams("tab=triads")).tab).toBe("triads");
     expect(choiceToParams({ root: 0, scale: "major", labels: "interval", tab: "triads" }).get("tab")).toBe("triads");
@@ -86,5 +96,26 @@ describe("Greppbrädans val i adressen", () => {
     expect(choiceFromParams(choiceToParams(penta))).toEqual(penta);
     const triads = { root: 6, scale: "majorPentatonic", labels: "noteName", chord: 4, box: 5, tab: "triads", strings: "421" } as const;
     expect(choiceFromParams(choiceToParams(triads))).toEqual(triads);
+  });
+});
+
+describe("Greppbrädans senaste val i webbläsaren", () => {
+  it("återställs när adressen saknar val", () => {
+    expect(restoredChoice("", "root=Eb&scale=blues&labels=notes&chord=4")).toEqual({
+      root: 3,
+      scale: "blues",
+      labels: "noteName",
+      chord: 4,
+    });
+    expect(restoredChoice("?", "root=G&scale=major&labels=intervals")?.root).toBe(7);
+  });
+
+  it("återställs inte när adressen har ett val, t.ex. ett bokmärke eller en delad länk", () => {
+    expect(restoredChoice("?root=D", "root=Eb&scale=blues")).toBeNull();
+  });
+
+  it("finns inte utan sparat val", () => {
+    expect(restoredChoice("", null)).toBeNull();
+    expect(restoredChoice("", "")).toBeNull();
   });
 });

@@ -6,7 +6,10 @@ export const metadata: Metadata = {
   title: "Fretboard · Guitar Practice",
 };
 
-/** Greppbrädan. Öppen för alla, och inget sparas. Valet ligger i adressen, t.ex. `?root=Eb&scale=blues`. */
+/**
+ * Greppbrädan. Öppen för alla. Valet ligger i adressen, t.ex. `?root=Eb&scale=blues`, och det senaste
+ * sparas i webbläsaren så att sidan utan val i adressen börjar där man slutade.
+ */
 export default async function FretboardPage(props: PageProps<"/fretboard">) {
   const searchParams = await props.searchParams;
   const params = new URLSearchParams();
