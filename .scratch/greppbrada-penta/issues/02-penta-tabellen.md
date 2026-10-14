@@ -4,7 +4,7 @@
 
 **Blocked by:** –
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Tester genom `fretboardView`: raden för I i C-dur är 1, 2, 3, 4, 5 och raden för ii – Dm är 5, 1, 2, 3, 4. Varje rad för dur- och mollackord har varje Penta-box exakt en gång för alla Skalor. Raden för vii° har inga.
 - [x] Tester genom `fretboardView`: en cell lägger Penta-boxen i Ackordets lager och Boxens övriga toner i Boxens lager, i varje kopia av Boxen. `caged` släpps i Penta-fliken.

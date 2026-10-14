@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Editor-kommandon finns för att sätta Notvärde, växla punktering, växla triol och lägga in paus, utvecklade med TDD.
 - [x] Tvåsiffriga band tolkas i Editorn (t.ex. "1" följt av "2" inom kort tid blir band 12), med tester för gränsfallen.

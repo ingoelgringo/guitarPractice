@@ -4,7 +4,7 @@
 
 **Blocked by:** 04
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Tester genom `fretboardView`: E-formen för A-dur har sin grundton på band 5 på sträng 6. Valet är gråat för B° i C-dur.
 - [x] CAGED-formen och en Box kan visas samtidigt.

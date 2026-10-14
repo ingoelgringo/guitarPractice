@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Kodrepot har en GitHub-remote (issue tracker förblir lokal markdown).
 - [x] GitHub Actions har ett test-jobb som kör alla Vitest-tester, och ett deploy-jobb som bara körs när testerna är gröna.

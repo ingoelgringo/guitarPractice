@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Tester genom `fretboardView`: F-dur i svenskt läge ger "B" för B♭ och engelskt läge ger "B♭". E-dur ger "D♯". H/B i svenskt läge.
 - [x] Grundtonsmenyn listar C, C♯/D♭, D, E♭, E, F, F♯/G♭, G, A♭, A, B♭, H/B enligt Notnamnsläget.

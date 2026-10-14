@@ -4,7 +4,7 @@
 
 **Blocked by:** 04
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Markeringen (start och slut över slag och Takter) är en del av editorstate och utökas med Shift + piltangenter (TDD).
 - [x] Kopiera, klistra in och ta bort markering finns som Editor-kommandon (TDD), inklusive inklistring som spiller över Takter och inklistring i slutet av Partituret.

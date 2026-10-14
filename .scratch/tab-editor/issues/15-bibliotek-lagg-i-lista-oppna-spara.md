@@ -4,7 +4,7 @@
 
 **Blocked by:** 07, 14
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] `pg` utan ORM och numrerade SQL-migreringar med ett migreringskommando. Postgres 18 i Docker för lokal utveckling och tester, och som service-container i CI.
 - [x] Tabellen för Partitur: id (uuid), titel, artist, dokument (`jsonb` i `.itab`-formatet), `schemaVersion`, revision, `created_at` och `updated_at`.

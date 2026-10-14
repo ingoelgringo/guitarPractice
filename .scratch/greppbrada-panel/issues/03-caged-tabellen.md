@@ -4,7 +4,7 @@
 
 **Blocked by:** 01, 02
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Tester genom `fretboardView`: raden för I i C-dur är E, D, C, A, G. Varje rad för dur- och mollackord har varje form exakt en gång. Raden för vii° i C-dur har inga former.
 - [x] Tabellen följer Skalan: A mollpentatonik har raderna i–VII från A naturlig moll.

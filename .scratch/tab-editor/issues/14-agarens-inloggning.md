@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Kontot läses från `OWNER_USERNAME` och `OWNER_PASSWORD_HASH` (bcrypt). Ett litet skript eller kommando genererar en hash.
 - [x] Lyckad inloggning ger en signerad httpOnly-, secure- och SameSite-sessionscookie (`SESSION_SECRET`) med lång livslängd. Utloggning rensar den.

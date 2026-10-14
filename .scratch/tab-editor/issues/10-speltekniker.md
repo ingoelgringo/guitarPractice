@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Teknikerna ingår i Partiturmodellen. Hammer-on, pull-off och slide gäller mellan två toner på samma sträng.
 - [x] Det finns Editor-kommandon (med kortkommandon) för att växla varje teknik på markörens ton (TDD). Det inkluderar ogiltiga fall, t.ex. hammer-on utan efterföljande ton på samma sträng.

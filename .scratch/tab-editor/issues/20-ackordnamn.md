@@ -10,7 +10,7 @@ Ackordnamnet tolkas inte, har inget diagram och påverkar inte uppspelningen.
 
 **Blocked by:** 12
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] `Beat` har det valfria fältet `chordName`, högst 16 tecken efter trim.
 - [x] Editor-kommandot `setBeatText` (field `chordName`) sätter eller tar bort Ackordnamnet på Markörens Slag (även en paus) och går att ångra. Ett oförändrat värde blir inget ångrasteg. Med en Markering ändras bara Markörens Slag.

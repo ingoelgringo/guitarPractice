@@ -4,7 +4,7 @@
 
 **Blocked by:** –
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Tester genom `fretboardView`: Tonparet för en cell, stegen och att de går runt, Föräldraskalan i pentatonik, och att Ackord och Intervall släpps i fel Flik.
 - [x] Tester för adressen: `tab=intervals` och `interval` läses och skrivs.

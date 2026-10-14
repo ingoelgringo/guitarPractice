@@ -4,7 +4,7 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Det finns Editor-kommandon för att sätta och ta bort ett taktartsbyte och ett tempobyte på markörens Takt (TDD).
 - [x] Valideringen av Takter och den automatiska nya Takten följer gällande taktart.

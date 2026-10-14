@@ -4,7 +4,7 @@
 
 **Blocked by:** 02, 15
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Det finns en checklista för att skapa databasen och användaren i `folkbibeln-postgres`.
 - [x] `.env` på servern har `DATABASE_URL`, `SESSION_SECRET`, `OWNER_USERNAME` och `OWNER_PASSWORD_HASH`.

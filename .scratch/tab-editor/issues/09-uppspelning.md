@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] alphaTabs synth är konfigurerad med en soundfont som serveras som statisk fil (med cachning via Nginx, se 02).
 - [x] Spela och pausa samt start från markörens position fungerar.

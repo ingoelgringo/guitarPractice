@@ -4,7 +4,7 @@
 
 **Blocked by:** 07
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Utkastet sparas (i `.itab`-formatet) efter ändringar och återställs när editorn startar.
 - [x] En diskret upplysning säger att Utkastet bara finns i den här webbläsaren och att man bör ladda ner en Partiturfil.

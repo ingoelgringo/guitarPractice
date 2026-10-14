@@ -4,7 +4,7 @@
 
 **Blocked by:** 05
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Det finns en utskriftsknapp i editorn.
 - [x] Print-CSS döljer verktygsfält, paneler och markör och ger A4 med sidbrytning per Sida.

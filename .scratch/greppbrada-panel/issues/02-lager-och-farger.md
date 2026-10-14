@@ -4,7 +4,7 @@
 
 **Blocked by:** –
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Tester genom `fretboardView` för varje rad i specens lagertabell: inget val, bara Box, bara Ackord, cell och cell med förminskat Ackord.
 - [x] Prickarna anger vilken grundton de är (Skalans, Ackordets eller ingen), och vid Ackord I vinner Ackordets.

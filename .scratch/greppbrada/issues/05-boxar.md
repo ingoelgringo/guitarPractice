@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Tester genom `fretboardView`: Box 1 i A mollpentatonik framhäver band 5–8 på alla strängar. En box som går utanför band 15 visas också en oktav ner om den får plats.
 - [x] Boxen kan kombineras med ett valt Ackord (04) utan att lagren krockar, om 04 är klar.

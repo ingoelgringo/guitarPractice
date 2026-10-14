@@ -4,7 +4,7 @@
 
 **Blocked by:** –
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Panelen ligger till höger på en 1280 px bred skärm, och halsen ryms utan skrollning.
 - [x] På telefonbredd ligger panelen under halsen, och halsen skrollar i sidled.

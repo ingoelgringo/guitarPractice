@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] `serialize(score)` och `parse(text)` är utvecklade med TDD. Rundturstester finns för alla notationselement som existerar när ticketen görs.
 - [x] Det finns en ram för kedjade migreringar (version N → N+1). En fixturfil för `schemaVersion` 1 läggs i repot och får aldrig ändras.

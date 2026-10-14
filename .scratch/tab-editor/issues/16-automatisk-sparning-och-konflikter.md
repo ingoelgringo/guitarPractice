@@ -4,7 +4,7 @@
 
 **Blocked by:** 08, 15
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Bibliotekssynken är en tillståndsmaskin (Sparat, Sparar, Ej sparat (offline), Konflikt) som testas utan DOM och utan riktigt nätverk (TDD).
 - [x] Debounce på 2 sekunder, sparning vid `visibilitychange`/`pagehide` och ny sparning vid `online`.

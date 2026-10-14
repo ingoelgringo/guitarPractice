@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Ett byte av Grundton eller Skala uppdaterar adressen utan en ny post i historiken per klick (eller enligt ett medvetet val).
 - [x] När man öppnar en adress med parametrar visas samma urval.

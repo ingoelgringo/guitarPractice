@@ -4,7 +4,7 @@
 
 **Blocked by:** –
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Tester genom `fretboardView`: varje cell är R, 3 eller 5 för alla Skalor, Ackord och Strängset. När en Omvändning ryms helt i Boxen ligger cellens grepp i Boxen, och annars sticker det ut.
 - [x] Tester genom `fretboardView`: en cell lägger en ton per sträng i Strängsetet i Ackordets lager, med cellens Omvändning lägst, i varje kopia av Boxen. Boxens övriga toner ligger i Boxens lager. Den överhoppade strängen i t.ex. 6-4-3 får ingen orange Prick. `caged` släpps och `mutedStrings` är tom.

@@ -4,7 +4,7 @@
 
 **Blocked by:** –
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Root och Scale står bredvid varandra med etiketterna ovanför.
 - [ ] Layouten håller i båda panellägena (höger om och under halsen).

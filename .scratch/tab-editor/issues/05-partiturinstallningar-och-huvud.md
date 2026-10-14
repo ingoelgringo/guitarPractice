@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Det finns en panel eller dialog för metadata, Stämning, Capo, tempo och taktart.
 - [x] Ändringarna går genom Editor-kommandon och kan ångras.

@@ -4,7 +4,7 @@
 
 **Blocked by:** 20
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] `Beat` har det valfria fältet `annotation`, högst 40 tecken efter trim.
 - [x] Editor-kommandot `setBeatText` (field `annotation`) sätter eller tar bort Anteckningen på Markörens Slag (även en paus) och går att ångra. Den följer Slaget vid kopiera, klistra in och ta bort.

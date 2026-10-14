@@ -4,7 +4,7 @@
 
 **Blocked by:** 06
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Score settings har ett fält "View" med de tre Vy-lägena, och det visar Partiturets nuvarande läge (även efter ångra).
 - [x] Knapparna för Vy-läge finns inte längre i verktygsraden.

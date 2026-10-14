@@ -4,7 +4,7 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Hovring ändrar halsen men inte adressen. Att lämna tabellen återställer det valda.
 - [x] Piltangenterna flyttar valet och skriver det i adressen, och stannar vid kanten.

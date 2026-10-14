@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Att skriva ett band på en annan sträng i ett slag som redan har toner bygger ett ackord (testat).
 - [x] Det finns kommandon för att ta bort en ton (markörens sträng) och ett helt slag (testat).

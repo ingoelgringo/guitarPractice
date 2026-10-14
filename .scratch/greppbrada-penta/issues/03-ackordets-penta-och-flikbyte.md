@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Tester genom `fretboardView`: en radrubrik i Penta-fliken lägger Ackordets penta i Ackordets lager över hela halsen, t.ex. F för iv – Dm i A mollpentatonik.
 - [ ] Flikbyte behåller Ackord och Box, och CAGED-cellen väljs vid byte från en Penta-cell. Adressen följer med.

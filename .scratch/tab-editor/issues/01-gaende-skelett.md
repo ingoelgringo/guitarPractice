@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Next.js 16-projekt (App Router, TypeScript) med Vitest. `npm test` kör testerna.
 - [x] Landningssidan har ett kort per Verktyg, definierat som data. Just nu finns bara Tab-editorn.

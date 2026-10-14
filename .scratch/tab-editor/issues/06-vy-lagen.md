@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Vy-läget ingår i Partiturmodellen och ändras via ett Editor-kommando som kan ångras.
 - [x] Översättaren tar varje Vy-läge till rätt inställningar för stavar och visning i alphaTab (testat för alla tre).

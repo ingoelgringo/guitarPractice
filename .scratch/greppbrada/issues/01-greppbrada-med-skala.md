@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Den rena sömmen `fretboardView(selection)` finns och tar Grundton, Skala och Stämning (MIDI per lös sträng, sträng 1 först). Den ger Prickar med sträng, band, etikett och om Prickan är Grundton.
 - [x] Tester först genom sömmen: A mollpentatonik på sträng 6 ger band 0, 3, 5, 8, 10, 12, 15. Band 5 är Grundton med "1" och band 8 har "♭3". Inga Prickar utanför band 0–15 eller utanför skalan. Blues innehåller ♭5.

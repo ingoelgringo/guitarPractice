@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Tester genom `fretboardView`: C-dur erbjuder I–vii° (C, Dm, Em, F, G, Am, B°). A mollpentatonik erbjuder ackorden i A naturlig moll.
 - [x] Prickarna får en betoning: ackordtoner framhävda och övriga skaltoner nedtonade.

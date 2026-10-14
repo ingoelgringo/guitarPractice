@@ -4,7 +4,7 @@
 
 **Blocked by:** 15
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Det finns API för att duplicera och ta bort, med tester mot riktig Postgres (TDD), inklusive 401 utan session.
 - [x] Biblioteksvyn har åtgärderna duplicera, ta bort (med bekräftelse) och ladda ner.
