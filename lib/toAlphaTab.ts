@@ -163,6 +163,8 @@ function toBeat(beat: Beat, stringCount: number, staff: model.Staff): model.Beat
     if (note.slide) alphaTabNote.slideOutType = model.SlideOutType.Shift;
     if (note.bend) addBend(alphaTabNote, note.bend);
     alphaTabNote.isPalmMute = note.palmMute === true;
+    // alphaTab hittar själv tonen före på samma sträng, även i föregående Takt, och spelar dem som en ton
+    alphaTabNote.isTieDestination = beat.tiedFromPrevious === true;
     result.addNote(alphaTabNote);
   }
   return result;

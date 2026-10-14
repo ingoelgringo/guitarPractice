@@ -403,6 +403,44 @@ describe("speltekniker i toAlphaTab", () => {
   });
 });
 
+describe("Bindebågar i toAlphaTab", () => {
+  /** En halvnot bunden till en fjärdedel i nästa Takt, följd av en fjärdedel med samma ton utan båge. */
+  function tiedScore(): Score {
+    const score = createEditor().score;
+    const note = { string: 1, fret: 3 };
+    score.tracks[0].bars = [
+      { beats: [{ duration: 2, dotted: true, notes: [{ string: 2, fret: 0 }] }, { duration: 4, notes: [note] }] },
+      {
+        beats: [
+          { duration: 4, notes: [note], tiedFromPrevious: true },
+          { duration: 4, notes: [note] },
+          { duration: 2, notes: [] },
+        ],
+      },
+    ];
+    return score;
+  }
+
+  it("tonerna i ett bundet slag blir bundna till tonen före, även över taktstrecket", () => {
+    const bars = toAlphaTab(tiedScore()).tracks[0].staves[0].bars;
+    const [, origin] = bars[0].voices[0].beats;
+    const [tied, untied] = bars[1].voices[0].beats;
+
+    expect(tied.notes[0].isTieDestination).toBe(true);
+    expect(tied.notes[0].tieOrigin).toBe(origin.notes[0]);
+    expect(untied.notes[0].isTieDestination).toBe(false);
+  });
+
+  it("en bunden ton slås an en gång och klingar vidare", () => {
+    const file = new midi.MidiFile();
+    new midi.MidiFileGenerator(toAlphaTab(tiedScore()), new Settings(), new midi.AlphaSynthMidiFileHandler(file)).generate();
+    const noteOns = file.tracks.flatMap((t) => t.events).filter((e) => e instanceof midi.NoteOnEvent);
+
+    // B3 på sträng 2, sedan G4 på sträng 1: bunden, och slagen igen utan båge
+    expect(noteOns.map((e) => (e as midi.NoteOnEvent).noteKey)).toEqual([59, 67, 67]);
+  });
+});
+
 describe("Ackordnamn och Anteckningar i toAlphaTab", () => {
   const score = () =>
     scoreWithBeats([

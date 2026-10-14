@@ -42,6 +42,12 @@ export interface Beat {
   chordName?: string;
   /** Anteckning vid slaget, t.ex. "let ring". Utelämnas när den saknas. */
   annotation?: string;
+  /**
+   * Bindebåge från föregående slag, även i föregående Takt: slaget fortsätter dess toner, så att
+   * de klingar som en ton. Se `withValidTies` för vad de bundna halvorna får ha. Utelämnas när
+   * det inte gäller.
+   */
+  tiedFromPrevious?: boolean;
 }
 
 /** Texterna som ett slag kan ha: Ackordnamn och Anteckning. */
@@ -261,6 +267,40 @@ export function withValidConnections(score: Score): Score {
         }
       }),
     );
+  }
+  return changed ? result : score;
+}
+
+/**
+ * Om Bindebågen till `beat` från `previous` håller: samma toner (sträng, band och palm mute),
+ * ingen bend eller förbindelse på första halvan och inget Ackordnamn eller Anteckning på andra.
+ */
+function isValidTie(previous: Beat | undefined, beat: Beat): boolean {
+  if (!previous || beat.notes.length === 0 || beat.notes.length !== previous.notes.length) return false;
+  if (beat.chordName !== undefined || beat.annotation !== undefined) return false;
+  return beat.notes.every((note, i) => {
+    const from = previous.notes[i];
+    const plain = from.bend === undefined && !CONNECTIONS.some((c) => from[c]);
+    return plain && from.string === note.string && from.fret === note.fret && !from.palmMute === !note.palmMute;
+  });
+}
+
+/**
+ * Partituret utan Bindebågar som inte håller, t.ex. efter ett nytt band på en av halvorna. Håller
+ * alla kommer samma Partitur tillbaka.
+ */
+export function withValidTies(score: Score): Score {
+  const result = structuredClone(score);
+  let changed = false;
+  for (const track of result.tracks) {
+    let previous: Beat | undefined;
+    for (const beat of track.bars.flatMap((bar) => bar.beats)) {
+      if (beat.tiedFromPrevious && !isValidTie(previous, beat)) {
+        delete beat.tiedFromPrevious;
+        changed = true;
+      }
+      previous = beat;
+    }
   }
   return changed ? result : score;
 }

@@ -23,6 +23,7 @@ import {
   type TimeSignature,
   type Track,
   withValidConnections,
+  withValidTies,
 } from "./score";
 
 // Partiturfilen (.itab, ADR 0002): samma dokument laddas ner som fil och lagras i databasen.
@@ -41,7 +42,7 @@ const FORMAT = "itab";
 export const FILE_EXTENSION = ".itab";
 
 /** Formatets nuvarande version. */
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 /** En migrering tar Partituret i ett dokument från en version till nästa. */
 export type Migration = (score: unknown) => unknown;
@@ -58,6 +59,8 @@ const MIGRATIONS: Readonly<Record<number, Migration>> = {
   3: (score) => score,
   // Version 5 lade till Tätheten på Partituret. Ett Partitur i version 4 får det förvalda avståndet.
   4: (score) => (isRecord(score) ? { ...score, spacing: 0 } : score),
+  // Version 6 lade till Bindebågar på slagen. Ett Partitur i version 5 har inga och är oförändrat.
+  5: (score) => score,
 };
 
 export type ParseError =
@@ -159,8 +162,10 @@ function readScore(data: unknown): Score {
     timeSignature: readTimeSignature(score.timeSignature),
     tracks,
   };
-  // Hammer-on, pull-off och slide måste leda till en ton med ett annat band, som i Editorn
+  // Hammer-on, pull-off och slide måste leda till en ton med ett annat band, och en Bindebåge
+  // binder samma toner, som i Editorn
   ensure(withValidConnections(result) === result);
+  ensure(withValidTies(result) === result);
   return result;
 }
 
@@ -218,6 +223,7 @@ function readBeat(data: unknown, stringCount: number): Beat {
     notes,
     ...(beat.chordName !== undefined && { chordName: readBeatText(beat.chordName, "chordName") }),
     ...(beat.annotation !== undefined && { annotation: readBeatText(beat.annotation, "annotation") }),
+    ...(readFlag(beat.tiedFromPrevious) && { tiedFromPrevious: true }),
   };
 }
 

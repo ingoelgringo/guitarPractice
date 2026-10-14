@@ -1,0 +1,39 @@
+{
+  "format": "itab",
+  "schemaVersion": 6,
+  "score": {
+    "metadata": {
+      "title": "Fixture",
+      "subtitle": "Version 6",
+      "artist": "Ingo",
+      "tabbedBy": "Claude"
+    },
+    "viewMode": "scoreAndTab",
+    "spacing": 0,
+    "tempo": 80,
+    "timeSignature": {
+      "beats": 4,
+      "beatValue": 4
+    },
+    "tracks": [
+      {
+        "tuning": [64, 59, 55, 50, 45, 40],
+        "capo": 0,
+        "bars": [
+          {
+            "beats": [
+              { "duration": 2, "notes": [{ "string": 1, "fret": 3 }] },
+              { "duration": 2, "notes": [{ "string": 1, "fret": 3 }], "tiedFromPrevious": true }
+            ]
+          },
+          {
+            "beats": [
+              { "duration": 4, "notes": [{ "string": 1, "fret": 3 }], "tiedFromPrevious": true },
+              { "duration": 2, "dotted": true, "notes": [] }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

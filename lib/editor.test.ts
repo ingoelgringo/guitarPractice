@@ -370,6 +370,52 @@ describe("Editor", () => {
   });
 });
 
+describe("Bindebåge", () => {
+  /** En fjärdedel på sträng 1, band 5, bunden till nästa fjärdedel, och markören på `beat`. */
+  function tied(beat: number): EditorState {
+    const state = createEditor();
+    state.score.tracks[0].bars[0].beats = [
+      { duration: 4, notes: [{ string: 1, fret: 5 }] },
+      { duration: 4, notes: [{ string: 1, fret: 5 }], tiedFromPrevious: true },
+    ];
+    return apply(state, at(0, beat));
+  }
+
+  function isTied(state: EditorState): boolean {
+    return state.score.tracks[0].bars.some((bar) => bar.beats.some((beat) => beat.tiedFromPrevious));
+  }
+
+  it.each<[string, Command]>([
+    ["ett nytt band", { type: "enterFret", fret: 7 }],
+    ["en borttagen ton", { type: "deleteNote" }],
+    ["ett längre Notvärde", { type: "setDuration", duration: 2 }],
+    ["ett kortare Notvärde", { type: "setDuration", duration: 8 }],
+    ["punktering", { type: "toggleDot" }],
+    ["triol", { type: "toggleTriplet" }],
+  ])("%s på någon av halvorna bryter Bindebågen", (_, command) => {
+    expect(isTied(apply(tied(0), command))).toBe(false);
+    expect(isTied(apply(tied(1), command))).toBe(false);
+  });
+
+  it("en ton på en annan sträng bryter Bindebågen", () => {
+    const state = run(tied(1), [{ type: "moveCursor", direction: "down" }, { type: "enterFret", fret: 5 }]);
+
+    expect(isTied(state)).toBe(false);
+  });
+
+  it("en bend på sista halvan och en Anteckning på första behåller Bindebågen", () => {
+    const state = run(tied(1), [{ type: "cycleBend" }, at(0, 0), { type: "setBeatText", field: "annotation", text: "let ring" }]);
+
+    expect(isTied(state)).toBe(true);
+  });
+
+  it("att bryta Bindebågen ångras tillsammans med ändringen", () => {
+    const state = run(tied(1), [{ type: "enterFret", fret: 7 }, { type: "undo" }]);
+
+    expect(state.score).toEqual(tied(1).score);
+  });
+});
+
 describe("tvåsiffriga band", () => {
   const fretAfter = (commands: Command[]) => {
     const state = run(createEditor(), commands);

@@ -4,9 +4,9 @@
 
 **Blocked by:** –
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `Beat` har det valfria fältet `tiedFromPrevious`. Tonerna är desamma som i föregående Slag. Palm mute finns på båda halvorna, bend och förbindelse bara på den sista, och Ackordnamn och Anteckning bara på den första.
-- [ ] `.itab` validerar fältet i nästa `schemaVersion`, samma version som ticket 02 om de levereras tillsammans.
-- [ ] `toAlphaTab` sätter `isTieDestination` på tonerna. Test i `toAlphaTab.test.ts`. Uppspelningen verifieras manuellt med en fixtur.
-- [ ] Editor-kommandon som ändrar band, ton eller Notvärde på en bunden halva tar bort bågen. Test genom `apply`.
+- [x] `Beat` har det valfria fältet `tiedFromPrevious`. Tonerna är desamma som i föregående Slag. Palm mute finns på båda halvorna, bend och förbindelse bara på den sista, och Ackordnamn och Anteckning bara på den första.
+- [x] `.itab` validerar fältet i nästa `schemaVersion`, samma version som ticket 02 om de levereras tillsammans.
+- [x] `toAlphaTab` sätter `isTieDestination` på tonerna. Test i `toAlphaTab.test.ts`. Uppspelningen verifieras manuellt med en fixtur.
+- [x] Editor-kommandon som ändrar band, ton eller Notvärde på en bunden halva tar bort bågen. Test genom `apply`.

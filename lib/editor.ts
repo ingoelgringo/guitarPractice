@@ -20,7 +20,7 @@ import {
   STANDARD_TUNING,
   tempoAt,
   TIME_SIGNATURE_BEAT_VALUES,
-  timeSignatureAt, type Bar, type BarChange, type Beat, type BeatText, type Connection, type Duration, type Metadata, type Note, type Score, SPACINGS, type Spacing, type TimeSignature, type Track, VIEW_MODES, type ViewMode, withValidConnections } from "./score";
+  timeSignatureAt, withValidTies, type Bar, type BarChange, type Beat, type BeatText, type Connection, type Duration, type Metadata, type Note, type Score, SPACINGS, type Spacing, type TimeSignature, type Track, VIEW_MODES, type ViewMode, withValidConnections } from "./score";
 
 export interface Cursor {
   track: number;
@@ -237,8 +237,9 @@ export function apply(previous: EditorState, command: Command): EditorState {
   if (command.type === "typeDigit") return typeDigit(state, command.digit, command.time);
   // Alla andra kommandon bryter ett påbörjat tvåsiffrigt band
   const next = applyCommand(state, command);
-  // Varje kommando som ändrar toner kan lämna en hammer-on, pull-off eller slide utan mål
-  return record(state, { ...next, score: withValidConnections(next.score), pendingDigit: null });
+  // Varje kommando som ändrar toner kan lämna en hammer-on, pull-off eller slide utan mål, eller
+  // en Bindebåge mellan olika toner
+  return record(state, { ...next, score: withValidTies(withValidConnections(next.score)), pendingDigit: null });
 }
 
 /**
@@ -493,18 +494,21 @@ function updateBeat(state: EditorState, change: (beat: Beat) => void): EditorSta
 /**
  * Ändrar Notvärdet för slaget under markören. Blir slaget kortare behåller det sina toner,
  * tekniker och texter, och resten av den gamla längden fylls med pauser enligt Pausregeln.
+ * Ett nytt Notvärde bryter Bindebågarna till och från slaget.
  */
 function changeDuration(state: EditorState, change: (beat: Beat) => void): EditorState {
   const { cursor } = state;
   const beats = barAt(state.score, cursor).beats;
   const changed = structuredClone(beats[cursor.beat]);
   change(changed);
+  delete changed.tiedFromPrevious;
   const freed = beatTicks(beats[cursor.beat]) - beatTicks(changed);
-  if (freed <= 0) return updateBeat(state, change);
   const start = barTicks({ beats: beats.slice(0, cursor.beat) });
-  const rests = restsFor(start + beatTicks(changed), freed);
+  const rests = freed > 0 ? restsFor(start + beatTicks(changed), freed) : [];
   if (!rests) return { ...state, notice: "The rest of the beat is too short to fill with rests." };
   return updateScore(state, (score) => {
+    const next = nextBeat(score.tracks[cursor.track].bars, cursor);
+    if (next) delete score.tracks[cursor.track].bars[next.bar].beats[next.beat].tiedFromPrevious;
     barAt(score, cursor).beats.splice(cursor.beat, 1, changed, ...rests);
   });
 }

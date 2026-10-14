@@ -81,6 +81,19 @@ describe("Partiturfil: rundtur", () => {
           { duration: 2, notes: [], annotation: "x2" },
         ]),
     ],
+    [
+      "Bindebågar, även över ett taktstreck",
+      (s) =>
+        (s.tracks[0].bars = [
+          {
+            beats: [
+              { duration: 2, notes: [{ string: 3, fret: 2, palmMute: true }], chordName: "D" },
+              { duration: 2, notes: [{ string: 3, fret: 2, palmMute: true }], tiedFromPrevious: true },
+            ],
+          },
+          { beats: [{ duration: 1, notes: [{ string: 3, fret: 2, palmMute: true, bend: 2 }], tiedFromPrevious: true }] },
+        ]),
+    ],
   ])("%s kommer tillbaka likadant", (_, change) => {
     const score = scoreWith(change);
 
@@ -170,6 +183,16 @@ describe("Partiturfil: trasigt Partitur", () => {
     ["ett tomt Ackordnamn", (s) => (s.tracks[0].bars[0].beats[0].chordName = " ")],
     ["en Anteckning som inte är text", (s) => (s.tracks[0].bars[0].beats[0].annotation = true)],
     ["en Anteckning över 40 tecken", (s) => (s.tracks[0].bars[0].beats[0].annotation = "x".repeat(41))],
+    ["en Bindebåge som inte är sant eller falskt", (s) => (s.tracks[0].bars[0].beats[0].tiedFromPrevious = 1)],
+    ["en Bindebåge från inget slag", (s) => (s.tracks[0].bars[0].beats[0] = { duration: 4, notes: [{ string: 1, fret: 0 }], tiedFromPrevious: true })],
+    [
+      "en Bindebåge mellan olika band",
+      (s) =>
+        (s.tracks[0].bars[0].beats = [
+          { duration: 4, notes: [{ string: 1, fret: 0 }] },
+          { duration: 4, notes: [{ string: 1, fret: 2 }], tiedFromPrevious: true },
+        ]),
+    ],
     [
       "två toner på samma sträng i ett slag",
       (s) => (s.tracks[0].bars[0].beats[0].notes = [{ string: 1, fret: 0 }, { string: 1, fret: 2 }]),
@@ -278,6 +301,18 @@ describe("Partiturfil: äldre versioner", () => {
     const result = parse(fixture(5));
 
     expect(result.ok && result.score.spacing).toBe(2);
+  });
+
+  it("en fil i version 6 går att öppna, med Bindebågar", () => {
+    const result = parse(fixture(6));
+
+    expect(result.ok && result.score.tracks[0].bars.map((bar) => bar.beats)).toEqual([
+      [
+        { duration: 2, notes: [{ string: 1, fret: 3 }] },
+        { duration: 2, notes: [{ string: 1, fret: 3 }], tiedFromPrevious: true },
+      ],
+      [{ duration: 4, notes: [{ string: 1, fret: 3 }], tiedFromPrevious: true }, { duration: 2, dotted: true, notes: [] }],
+    ]);
   });
 
   it("en äldre fil får dagens avstånd", () => {
