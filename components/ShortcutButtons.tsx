@@ -4,7 +4,8 @@ import { SHORTCUT_GROUPS, type KeyPress } from "@/lib/keyboard";
 import styles from "./TabEditor.module.css";
 
 /**
- * Tunt skal: kortkommandona som knappar, med kortkommandot bredvid. En knapp gör samma
+ * Tunt skal: kortkommandona som knappar, med kortkommandot bredvid när det inte redan står på
+ * knappen. Tooltipen visar alltid kortkommandot. En knapp gör samma
  * tangenttryck som kortkommandot via `onPress`, så att knappen och tangenten gör samma sak.
  */
 export function ShortcutButtons({ onPress }: { onPress: (press: KeyPress) => void }) {
@@ -20,7 +21,7 @@ export function ShortcutButtons({ onPress }: { onPress: (press: KeyPress) => voi
                 <button
                   type="button"
                   className={symbol ? styles.symbol : undefined}
-                  title={keys ? `${description} (${keys})` : description}
+                  title={`${description} (${keys ?? label})`}
                   aria-label={description}
                   // Fokus stannar där det var, så att tangentbordet fortsätter att styra editorn
                   onMouseDown={(e) => e.preventDefault()}

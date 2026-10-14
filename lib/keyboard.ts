@@ -106,7 +106,7 @@ export interface Shortcut {
   label: string;
   /** Om etiketten är ett notationstecken, som behöver ett typsnitt med musiksymbolerna. */
   symbol?: boolean;
-  /** Kortkommandot som det skrivs bredvid knappen. Utelämnas när det är etiketten, t.ex. siffrorna. */
+  /** Kortkommandot som det skrivs bredvid knappen. Utelämnas när det är etiketten, t.ex. siffrorna och pilarna. */
   keys?: string;
   description: string;
 }
@@ -121,10 +121,10 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
   {
     name: "Cursor",
     shortcuts: [
-      { press: { key: "ArrowLeft" }, label: "←", keys: "←", description: "Previous beat" },
-      { press: { key: "ArrowRight" }, label: "→", keys: "→", description: "Next beat" },
-      { press: { key: "ArrowUp" }, label: "↑", keys: "↑", description: "Higher string" },
-      { press: { key: "ArrowDown" }, label: "↓", keys: "↓", description: "Lower string" },
+      { press: { key: "ArrowLeft" }, label: "←", description: "Previous beat" },
+      { press: { key: "ArrowRight" }, label: "→", description: "Next beat" },
+      { press: { key: "ArrowUp" }, label: "↑", description: "Higher string" },
+      { press: { key: "ArrowDown" }, label: "↓", description: "Lower string" },
     ],
   },
   {

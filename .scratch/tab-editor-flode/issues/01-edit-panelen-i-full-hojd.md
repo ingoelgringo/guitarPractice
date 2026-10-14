@@ -4,10 +4,14 @@
 
 **Blocked by:** –
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Test: i `SHORTCUT_GROUPS` saknar en genväg `keys` när `keys` skulle vara samma som `label` (pilarna), och övriga genvägar har kvar sina.
-- [ ] `.help` är fäst mot högerkanten i full höjd. Partiturinställningarna är oförändrade.
-- [ ] Sidan döljs aldrig av den öppna panelen och centreras i ytan bredvid den. Den krymper i stället för att skrolla i sidled.
-- [ ] Sidan centreras i hela fönstret när panelen är ihopfälld.
-- [ ] Verifierat manuellt i appen, i brett och smalt fönster och i ljust och mörkt tema.
+- [x] Test: i `SHORTCUT_GROUPS` saknar en genväg `keys` när `keys` skulle vara samma som `label` (pilarna), och övriga genvägar har kvar sina.
+- [x] `.help` är fäst mot högerkanten i full höjd. Partiturinställningarna är oförändrade.
+- [x] Sidan döljs aldrig av den öppna panelen och centreras i ytan bredvid den. Den krymper i stället för att skrolla i sidled.
+- [x] Sidan centreras i hela fönstret när panelen är ihopfälld.
+- [x] Verifierat manuellt i appen, i brett och smalt fönster och i ljust och mörkt tema.
+
+## Comments
+
+**Implementerad.** Den öppna panelen ger editorns scrollyta en högermarginal med panelens bredd (`.editor:has(> .help[open])`), så Sidan centreras och krymper bredvid den och alphaTab bryter om raderna. Pilarna har inget kortkommando bredvid sig, men tooltipen visar alltid kortkommandot. Verifierat i appen i 1600 och 1000 px bredd, med panelen öppen och ihopfälld.

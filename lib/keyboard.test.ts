@@ -49,6 +49,21 @@ describe("knapparna för kortkommandona", () => {
     }
   });
 
+  it("kortkommandot skrivs inte bredvid knappen när det är samma tecken som på knappen", () => {
+    for (const shortcut of shortcuts) expect(shortcut.keys, shortcut.description).not.toBe(shortcut.label);
+    const arrows = shortcuts.filter((s) => s.press.key.startsWith("Arrow") && !s.press.shiftKey);
+    expect(arrows).toHaveLength(4);
+    for (const arrow of arrows) expect(arrow.keys).toBeUndefined();
+  });
+
+  it("andra knappar har kvar kortkommandot bredvid sig", () => {
+    const byKey = (key: string) => shortcuts.find((s) => s.press.key === key && !s.press.shiftKey && !s.press.ctrlKey);
+
+    expect(byKey("s")?.keys).toBe("S");
+    expect(byKey(".")?.keys).toBe(".");
+    expect(byKey("[")?.keys).toBe("[");
+  });
+
   it("alla tio siffror, alla Notvärden och ångra/gör om finns som knappar", () => {
     const keys = shortcuts.map((s) => s.press.key);
 

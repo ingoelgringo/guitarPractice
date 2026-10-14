@@ -1,9 +1,18 @@
 /* Editorn är egen scrollyta så att dokumentet aldrig scrollar */
 .editor {
+  --edit-panel-width: 300px;
   height: 100dvh;
   padding: 32px 16px;
   overflow: auto;
   background: color-mix(in srgb, var(--foreground) 8%, var(--background));
+}
+
+/*
+ * Den öppna Edit-panelen tar sin bredd från editorn, så att Sidan centreras och krymper i ytan
+ * bredvid den och aldrig hamnar under den. Editorns rullningslist hamnar då också till vänster om panelen.
+ */
+.editor:has(> .help[open]) {
+  margin-right: var(--edit-panel-width);
 }
 
 /*
@@ -108,21 +117,33 @@
   white-space: nowrap;
 }
 
-/* Knappar för kortkommandona, alltid nåbara i hörnet */
+/*
+ * Edit-panelen: knappar för kortkommandona i en sidopanel längs högerkanten, i hela höjden.
+ * Ihopfälld är den bara rubriken i hörnet.
+ */
 .help {
   position: fixed;
-  top: 16px;
-  right: 16px;
+  top: 0;
+  right: 0;
   z-index: 1;
-  max-width: 300px;
-  max-height: calc(100dvh - 32px);
+  width: var(--edit-panel-width);
+  max-height: 100dvh;
   overflow: auto;
   padding: 8px 12px;
-  border-radius: 6px;
+  border-bottom-left-radius: 6px;
   background: var(--background);
   color: var(--foreground);
   box-shadow: 0 2px 12px rgb(0 0 0 / 0.2);
   font-size: 13px;
+}
+
+.help[open] {
+  bottom: 0;
+  border-radius: 0;
+}
+
+.help:not([open]) {
+  width: auto;
 }
 
 .help summary {
@@ -503,6 +524,10 @@
   .editOnly {
     display: none;
   }
+
+  .editor:has(> .help[open]) {
+    margin-right: 0;
+  }
 }
 
 /*
@@ -510,8 +535,10 @@
  * Marginalerna och A4-formatet kommer från @page i globals.css.
  */
 @media print {
-  .editor {
+  .editor,
+  .editor:has(> .help[open]) {
     height: auto;
+    margin: 0;
     padding: 0;
     overflow: visible;
     background: none;
