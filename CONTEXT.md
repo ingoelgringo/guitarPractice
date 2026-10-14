@@ -15,7 +15,7 @@ En stämma för ett instrument i ett Partitur, med egen Stämning och Capo. Vers
 _Avoid_: Instrument, stämma
 
 **Takt** (`Bar`):
-En tidsenhet i ett Spår som avgränsas av taktstreck och har en taktart. Taktarten och tempot gäller från Partiturets start eller från det senaste Bytet före.
+En tidsenhet i ett Spår som avgränsas av taktstreck och har en taktart. Taktarten och tempot gäller från Partiturets start eller från det senaste Bytet före. När Slag Skjuts flödar de över taktstrecken, medan Byten och repriser sitter kvar på sin Takt.
 _Avoid_: Measure
 
 **Byte** (`BarChange`):
@@ -56,6 +56,14 @@ Det band som kapodastern sitter på. Bandnummer i tabben anges relativt capot.
 **Notvärde** (`Duration`):
 Hur länge en ton eller paus varar (fjärdedel, åttondel osv., eventuellt punkterad eller i triol). Varje ton har ett notvärde, även när bara tabulatur visas.
 
+**Skjuta**:
+Att alla Slag efter en viss tidpunkt i Spåret flyttas fram eller tillbaka i tiden, över taktstrecken och ända till Spårets slut. Det sker när ett Slag infogas eller tas bort, eller när ett Slags Notvärde ändras med Shift. En vanlig ändring av Notvärdet Skjuter inget: den delar Slaget i en ton och pauser, eller tar tid från de följande Slagen.
+_Avoid_: Flytta, förskjuta, ripple
+
+**Bindebåge** (`tie`):
+En båge mellan två Slag med samma Toner som gör att de klingar som en enda ton. Den uppstår när ett Slag med toner hamnar över ett taktstreck.
+_Avoid_: Legatobåge (det är en förbindelse mellan olika toner), överbindning
+
 **Speltekniker**:
 Hur en Ton spelas: hammer-on och pull-off, slide, bend med mål i halvtoner och palm mute. Hammer-on, pull-off och slide är *förbindelser* (`Connection`) från en Ton till Tonen på samma sträng i nästa Slag.
 _Avoid_: Effekter, artikulation
@@ -64,6 +72,10 @@ _Avoid_: Effekter, artikulation
 
 **Vy-läge** (`ViewMode`):
 Hur ett Partitur visas. Det är en egenskap hos partituret och styr både skärm och utskrift. Det finns tre lägen: *Noter + tabulatur*, *Bara noter* och *Rytmtab* (tabulatur med rytmskaft, utan notsystem).
+
+**Täthet** (`spacing`):
+Hur tätt Slagen står på raderna, och därmed hur många Takter som får plats på en rad. Det är en egenskap hos Partituret och styr både skärm och utskrift.
+_Avoid_: Zoom, skala, avstånd
 
 **Sida** (`Page`):
 En renderad A4-sida av ett Partitur. Den är ett resultat av layouten och sparas inte.
