@@ -304,3 +304,111 @@ export function withValidTies(score: Score): Score {
   }
   return changed ? result : score;
 }
+
+/**
+ * Skjutningen: Spår `track` där Slagen från Takt `fromBar` och framåt ersätts av `beats`, lagda i
+ * Takterna efter deras taktarter. Byten och repriser sitter kvar på sin Takt. Ett Slag över ett
+ * taktstreck delas: en paus enligt Pausregeln och en ton i bundna delar med samma indelning. Tid
+ * som blir över i sista Takten fylls med pauser, och Slag som inte ryms får nya Takter. En sista
+ * Takt med bara pauser som Skjutningen lämnar efter sig tas bort, om den inte är den enda.
+ */
+export function shiftBeats(score: Score, track: number, fromBar: number, beats: readonly Beat[]): Score | null {
+  const result = structuredClone(score);
+  const bars = result.tracks[track].bars;
+  const laid: Beat[][] = [[]];
+  const capacityOf = (i: number) => barCapacity(timeSignatureAt(result, track, Math.min(fromBar + i, bars.length - 1)));
+  let at = 0;
+  for (const beat of beats) {
+    let left = beatTicks(beat);
+    let part = 0;
+    while (left > 0) {
+      const room = capacityOf(laid.length - 1) - at;
+      if (room <= 0) {
+        laid.push([]);
+        at = 0;
+        continue;
+      }
+      // En triol kan inte delas av ett taktstreck
+      if (beat.triplet && left > room) return null;
+      if (left === beatTicks(beat) && left <= room) {
+        laid.at(-1)!.push(structuredClone(beat));
+        at += left;
+        break;
+      }
+      const ticks = Math.min(left, room);
+      const pieces = restsFor(at, ticks);
+      if (!pieces) return null;
+      for (const piece of pieces) {
+        left -= beatTicks(piece);
+        laid.at(-1)!.push(beat.notes.length ? partOf(beat, piece, part++, left === 0) : piece);
+      }
+      at += ticks;
+    }
+  }
+  laid.at(-1)!.push(...(restsFor(at, capacityOf(laid.length - 1) - at) ?? []));
+  // Takterna som Slagen inte längre når blir pauser
+  while (fromBar + laid.length < bars.length) laid.push(restsFor(0, capacityOf(laid.length)) ?? []);
+  // En sista Takt med bara pauser uppstod av Skjutningen om den är ny eller hade toner förut
+  const isEmpty = (i: number) => result.tracks.every((t, n) => (n === track ? laid[i - fromBar] : (t.bars[i]?.beats ?? [])).every((b) => b.notes.length === 0));
+  const arose = (i: number) => i >= bars.length || bars[i].beats.some((b) => b.notes.length > 0);
+  const plain = (i: number) => i >= bars.length || Object.keys(bars[i]).length === 1;
+  for (let last = fromBar + laid.length - 1; last > 0 && isEmpty(last) && arose(last) && plain(last); last--) {
+    laid.pop();
+    for (const t of result.tracks) t.bars.splice(last);
+  }
+  for (const [t, other] of result.tracks.entries()) {
+    for (let i = other.bars.length; i < fromBar + laid.length; i++) {
+      other.bars.push({ beats: t === track ? [] : (restsFor(0, capacityOf(i - fromBar)) ?? []) });
+    }
+  }
+  laid.forEach((barBeats, i) => (bars[fromBar + i].beats = mergeTies(barBeats)));
+  return result;
+}
+
+/** Takten med bundna halvor ihopslagna när summan är ett Notvärde, eventuellt punkterat. */
+function mergeTies(beats: Beat[]): Beat[] {
+  const merged: Beat[] = [];
+  for (const beat of beats) {
+    const previous = merged.at(-1);
+    const sum = previous && beat.tiedFromPrevious && !previous.triplet && !beat.triplet ? beatTicks(previous) + beatTicks(beat) : 0;
+    const value = regularValues().find((v) => beatTicks(v) === sum);
+    if (!previous || !value) {
+      merged.push(beat);
+      continue;
+    }
+    // Texterna står på första halvan, och bend och förbindelser på sista
+    const joined: Beat = { ...previous, duration: value.duration, notes: beat.notes };
+    delete joined.dotted;
+    if (value.dotted) joined.dotted = true;
+    merged[merged.length - 1] = joined;
+  }
+  return merged;
+}
+
+/** Alla Notvärden utan triol, med och utan punktering. */
+function regularValues(): Pick<Beat, "duration" | "dotted">[] {
+  return DURATIONS.flatMap((duration) => [{ duration }, { duration, dotted: true }]);
+}
+
+/**
+ * Del nummer `index` av ett Slag med toner som delas av ett taktstreck, med Notvärdet från `piece`.
+ * Texterna står på första delen, bend och förbindelser på sista, och palm mute på alla.
+ */
+function partOf(beat: Beat, piece: Beat, index: number, last: boolean): Beat {
+  const part: Beat = { ...structuredClone(beat), duration: piece.duration };
+  delete part.dotted;
+  delete part.triplet;
+  if (piece.dotted) part.dotted = true;
+  if (piece.triplet) part.triplet = true;
+  if (index > 0) {
+    for (const text of BEAT_TEXTS) delete part[text];
+    part.tiedFromPrevious = true;
+  }
+  if (!last) {
+    for (const note of part.notes) {
+      delete note.bend;
+      for (const connection of CONNECTIONS) delete note[connection];
+    }
+  }
+  return part;
+}

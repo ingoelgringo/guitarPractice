@@ -4,12 +4,12 @@
 
 **Blocked by:** 03, 04
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Skjutningen som en ren funktion i partiturmodellen, med tester: Slagen läggs om efter taktarterna. En paus över ett taktstreck delas enligt Pausregeln och en ton i bundna delar. Bundna halvor i samma Takt slås ihop när summan är ett Notvärde. Byten och repriser stannar på sin Takt.
-- [ ] Slutet av Spåret: vid flytt tillbaka fylls sista Takten med pauser, och vid flytt fram skapas nya Takter. En tom sista Takt som uppstår tas bort, om den inte är den enda.
-- [ ] En triolgrupp som skulle delas av ett taktstreck stoppar Skjutningen med en notis.
-- [ ] `insertBeat` (`I`, `Insert`), med en knapp i Edit-panelen. Markören står på det nya Slaget.
-- [ ] `deleteBeat` och borttagning av en Markering Skjuter tillbaka. Hela Takter i en Markering tas bort som idag.
-- [ ] `setDuration` med Shift för alla sex Notvärdena. `keyToCommand` skiljer Shift+bokstav från bokstav. Test i `keyboard.test.ts`.
-- [ ] Tester genom `apply`: Shift+S i åtta åttondelar, en infogad sextondel i fyra fjärdedelar (Bindebåge över taktstrecket) och samma par som slås ihop när det Skjuts tillbaka, och en Skjutning förbi ett byte till 3/4.
+- [x] Skjutningen som en ren funktion i partiturmodellen, med tester: Slagen läggs om efter taktarterna. En paus över ett taktstreck delas enligt Pausregeln och en ton i bundna delar. Bundna halvor i samma Takt slås ihop när summan är ett Notvärde. Byten och repriser stannar på sin Takt.
+- [x] Slutet av Spåret: vid flytt tillbaka fylls sista Takten med pauser, och vid flytt fram skapas nya Takter. En tom sista Takt som uppstår tas bort, om den inte är den enda.
+- [x] En triolgrupp som skulle delas av ett taktstreck stoppar Skjutningen med en notis.
+- [x] `insertBeat` (`I`, `Insert`), med en knapp i Edit-panelen. Markören står på det nya Slaget.
+- [x] `deleteBeat` och borttagning av en Markering Skjuter tillbaka. Hela Takter i en Markering tas bort som idag.
+- [x] `setDuration` med Shift för alla sex Notvärdena. `keyToCommand` skiljer Shift+bokstav från bokstav. Test i `keyboard.test.ts`.
+- [x] Tester genom `apply`: Shift+S i åtta åttondelar, en infogad sextondel i fyra fjärdedelar (Bindebåge över taktstrecket) och samma par som slås ihop när det Skjuts tillbaka, och en Skjutning förbi ett byte till 3/4.

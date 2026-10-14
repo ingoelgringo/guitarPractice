@@ -23,6 +23,30 @@ describe("textfälten för Ackordnamn och Anteckning", () => {
   });
 });
 
+describe("Notvärde och Skjutning", () => {
+  it("en Notvärdestangent sätter Notvärdet, och med Shift Skjuts allt efter", () => {
+    expect(keyToCommand(press("s"))).toEqual({ type: "setDuration", duration: 16 });
+    expect(keyToCommand(press("S", { shiftKey: true }))).toEqual({ type: "setDuration", duration: 16, shift: true });
+    expect(keyToCommand(press("W", { shiftKey: true }))).toEqual({ type: "setDuration", duration: 1, shift: true });
+  });
+
+  it("Caps Lock utan Shift Skjuter inget", () => {
+    expect(keyToCommand(press("Q"))).toEqual({ type: "setDuration", duration: 4 });
+  });
+
+  it("I och Insert infogar ett Slag", () => {
+    expect(keyToCommand(press("i"))).toEqual({ type: "insertBeat" });
+    expect(keyToCommand(press("I", { shiftKey: true }))).toEqual({ type: "insertBeat" });
+    expect(keyToCommand(press("Insert"))).toEqual({ type: "insertBeat" });
+  });
+
+  it("det finns en knapp för att infoga ett Slag", () => {
+    const shortcuts = SHORTCUT_GROUPS.flatMap((group) => group.shortcuts);
+
+    expect(shortcuts.map((s) => keyToCommand(press(s.press.key, s.press)))).toContainEqual({ type: "insertBeat" });
+  });
+});
+
 describe("knapparna för kortkommandona", () => {
   const shortcuts = SHORTCUT_GROUPS.flatMap((group) => group.shortcuts);
 

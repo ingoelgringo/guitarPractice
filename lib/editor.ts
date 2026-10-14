@@ -17,6 +17,7 @@ import {
   MIN_TEMPO,
   MIN_TIME_SIGNATURE_BEATS,
   restsFor,
+  shiftBeats,
   STANDARD_TUNING,
   tempoAt,
   TIME_SIGNATURE_BEAT_VALUES,
@@ -119,8 +120,8 @@ export type Command =
    */
   | { type: "paste" }
   /**
-   * Tar bort de markerade slagen. Helt markerade Takter tas bort, med samma regler som
-   * `deleteBar`. Utan markering händer ingenting.
+   * Tar bort de markerade slagen och Skjuter allt efter tillbaka. Helt markerade Takter tas bort,
+   * med samma regler som `deleteBar`. Utan markering händer ingenting.
    */
   | { type: "deleteSelection" }
   /**
@@ -134,7 +135,11 @@ export type Command =
    * taktart och sitt tempo, så ett Byte i Takten flyttas till nästa. Den enda Takten blir en paus.
    */
   | { type: "deleteBar" }
-  | { type: "setDuration"; duration: Duration }
+  /**
+   * Sätter Notvärdet för slaget under markören. Med `shift` ändras bara slaget, och skillnaden i
+   * längd Skjuter allt efter i Spåret.
+   */
+  | { type: "setDuration"; duration: Duration; shift?: boolean }
   | { type: "toggleDot" }
   | { type: "toggleTriplet" }
   /** Gör slaget under markören till en paus och går vidare till nästa slag. */
@@ -142,10 +147,15 @@ export type Command =
   /** Tar bort tonen på markörens sträng i slaget under markören. Med en markering tas den bort i stället. */
   | { type: "deleteNote" }
   /**
-   * Tar bort slaget under markören. En Takt behåller alltid minst ett slag. Med en markering tas
-   * den bort i stället.
+   * Tar bort slaget under markören och Skjuter allt efter tillbaka. Med en markering tas den bort
+   * i stället.
    */
   | { type: "deleteBeat" }
+  /**
+   * Infogar ett tomt slag med samma Notvärde som slaget under markören före det, och Skjuter allt
+   * efter fram. Markören står på det nya slaget.
+   */
+  | { type: "insertBeat" }
   /**
    * Växlar hammer-on/pull-off från tonen på markörens sträng till tonen på samma sträng i nästa
    * slag. Utan en sådan ton, eller om den har samma band, händer ingenting.
@@ -311,10 +321,12 @@ function applyCommand(
       return copy(state);
     case "paste":
       return paste(state);
-    case "setDuration":
-      return changeDuration(state, (beat) => {
+    case "setDuration": {
+      const change = (beat: Beat) => {
         beat.duration = command.duration;
-      });
+      };
+      return command.shift ? shiftDuration(state, change) : changeDuration(state, change);
+    }
     case "toggleDot":
       return changeDuration(state, (beat) => toggle(beat, "dotted"));
     case "toggleTriplet":
@@ -346,6 +358,8 @@ function applyCommand(
       });
     case "deleteBeat":
       return state.selection ? deleteSelection(state) : deleteBeat(state);
+    case "insertBeat":
+      return insertBeat(state);
     case "deleteSelection":
       return deleteSelection(state);
     case "insertBarBefore":
@@ -513,6 +527,44 @@ function changeDuration(state: EditorState, change: (beat: Beat) => void): Edito
   });
 }
 
+/**
+ * Ändrar Notvärdet för slaget under markören och Skjuter allt efter med skillnaden i längd. Ett nytt
+ * Notvärde bryter Bindebågarna till och från slaget.
+ */
+function shiftDuration(state: EditorState, change: (beat: Beat) => void): EditorState {
+  return shift(state, state.cursor.bar, (beats, index) => {
+    change(beats[index]);
+    delete beats[index].tiedFromPrevious;
+    if (beats[index + 1]) delete beats[index + 1].tiedFromPrevious;
+  });
+}
+
+/**
+ * Skjuter Slagen i markörens Spår från Takt `fromBar`: `edit` ändrar dem som en följd, där markörens
+ * slag har index `index` om markören står i Takten, och sedan läggs de om i Takterna. Markören står
+ * kvar på samma plats i Takten, eller på det sista slaget om den platsen eller Takten inte längre finns. Skulle
+ * en triol delas av ett taktstreck ändras ingenting och en notis visas.
+ */
+function shift(state: EditorState, fromBar: number, edit: (beats: Beat[], index: number) => void, score = state.score): EditorState {
+  const { cursor } = state;
+  const beats = structuredClone(score.tracks[cursor.track].bars.slice(fromBar).flatMap((bar) => bar.beats));
+  edit(beats, cursor.beat);
+  const shifted = shiftBeats(score, cursor.track, fromBar, beats);
+  if (!shifted) return { ...state, notice: "A triplet can't be split by a bar line." };
+  const bars = shifted.tracks[cursor.track].bars;
+  // Försvann markörens Takt står markören på slaget före
+  const bar = Math.min(cursor.bar, bars.length - 1);
+  const beat = bar < cursor.bar ? Infinity : cursor.beat;
+  return { ...state, score: shifted, cursor: { ...cursor, bar, beat: Math.min(beat, bars[bar].beats.length - 1) } };
+}
+
+function insertBeat(state: EditorState): EditorState {
+  return shift(state, state.cursor.bar, (beats, index) => {
+    const { duration, dotted, triplet } = beats[index];
+    beats.splice(index, 0, { duration, ...(dotted && { dotted }), ...(triplet && { triplet }), notes: [] });
+  });
+}
+
 /** Ändrar en kopia av tonen på markörens sträng. Saknas tonen händer ingenting. */
 function updateNote(state: EditorState, change: (note: Note) => void): EditorState {
   const { cursor } = state;
@@ -606,15 +658,7 @@ function enterFret(state: EditorState, fret: number): EditorState {
 }
 
 function deleteBeat(state: EditorState): EditorState {
-  const { cursor } = state;
-  const score = structuredClone(state.score);
-  const beats = barAt(score, cursor).beats;
-  if (beats.length === 1) {
-    beats[0] = emptyBeatLike(beats[0]);
-    return { ...state, score };
-  }
-  beats.splice(cursor.beat, 1);
-  return { ...state, score, cursor: { ...cursor, beat: Math.min(cursor.beat, beats.length - 1) } };
+  return shift(state, state.cursor.bar, (beats, index) => beats.splice(index, 1));
 }
 
 function moveCursor(state: EditorState, direction: Direction): EditorState {
@@ -819,7 +863,13 @@ function deleteSelection(state: EditorState): EditorState {
   const remaining = result.tracks[cursor.track].bars;
   const bar = Math.min(start.bar, remaining.length - 1);
   const beat = wholeBars.has(start.bar) ? 0 : Math.min(start.beat, remaining[bar].beats.length - 1);
-  return { ...state, score: result, cursor: { ...cursor, bar, beat } };
+  // Takter som bara delvis var markerade Skjuts ihop, men inte när bara hela Takter togs bort
+  const partly = end.bar - start.bar + 1 > wholeBars.size;
+  if (!partly) return { ...state, score: result, cursor: { ...cursor, bar, beat } };
+  // Markören hamnar på slaget som Skjuts dit där markeringen började
+  const at = { ...cursor, bar, beat: wholeBars.has(start.bar) ? 0 : start.beat };
+  const shifted = shift({ ...state, cursor: at }, bar, () => {}, result);
+  return shifted.notice ? { ...state, notice: shifted.notice } : shifted;
 }
 
 /**

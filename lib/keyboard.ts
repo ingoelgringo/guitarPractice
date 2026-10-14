@@ -14,7 +14,10 @@ const SIDE_KEYS: Record<string, Side> = {
   ArrowRight: "right",
 };
 
-/** Tangent, Notvärde och namn på knapparna. Tangenterna gäller oavsett skiftläge. */
+/**
+ * Tangent, Notvärde och namn på knapparna. Tangenterna gäller oavsett skiftläge, men med Shift
+ * ändras bara slaget och allt efter Skjuts.
+ */
 const DURATION_KEYS: readonly { key: string; duration: Duration; name: string; symbol: string }[] = [
   { key: "w", duration: 1, name: "Whole note", symbol: "\u{1D15D}" },
   { key: "h", duration: 2, name: "Half note", symbol: "\u{1D15E}" },
@@ -57,15 +60,18 @@ export function keyToCommand(press: KeyPress): Command | null {
     return { type: "extendSelection", direction: SIDE_KEYS[key], unit: "beat" };
   }
   if (key === "Delete" || key === "Backspace") return { type: press.shiftKey ? "deleteBeat" : "deleteNote" };
+  if (key === "Insert") return { type: "insertBeat" };
   if (Object.hasOwn(ARROW_KEYS, key)) return { type: "moveCursor", direction: ARROW_KEYS[key] };
   if (/^[0-9]$/.test(key)) return { type: "typeDigit", digit: Number(key), time: press.timeStamp };
   const symbol = symbolToCommand(key);
   if (symbol) return symbol;
   const lower = key.toLowerCase();
   if (lower === "r") return { type: "insertRest" };
+  if (lower === "i") return { type: "insertBeat" };
   if (Object.hasOwn(TECHNIQUE_KEYS, lower)) return { type: TECHNIQUE_KEYS[lower].command };
   const duration = DURATION_KEYS.find((d) => d.key === lower);
-  return duration ? { type: "setDuration", duration: duration.duration } : null;
+  if (!duration) return null;
+  return press.shiftKey ? { type: "setDuration", duration: duration.duration, shift: true } : { type: "setDuration", duration: duration.duration };
 }
 
 /** Tangent, etikett och namn för textfälten på slaget. Tangenterna gäller oavsett skiftläge. */
@@ -136,7 +142,7 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
     })),
   },
   {
-    name: "Duration",
+    name: "Duration (with Shift: push or pull the rest)",
     shortcuts: DURATION_KEYS.map(({ key, name, symbol }) => ({
       press: { key },
       label: symbol,
@@ -215,11 +221,12 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
         keys: "Delete",
         description: "Delete selection, or the note on the cursor's string",
       },
+      { press: { key: "i" }, label: "Insert beat", keys: "I / Insert", description: "Insert an empty beat before the cursor and push the rest forward" },
       {
         press: { key: "Delete", shiftKey: true },
         label: "Delete beat",
         keys: "Shift+Delete",
-        description: "Delete selection, or the beat",
+        description: "Delete selection, or the beat, and pull the rest back",
       },
       { press: { key: "z", ctrlKey: true }, label: "↶", keys: "Ctrl+Z", description: "Undo" },
       { press: { key: "y", ctrlKey: true }, label: "↷", keys: "Ctrl+Y / Ctrl+Shift+Z", description: "Redo" },
