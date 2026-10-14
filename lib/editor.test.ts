@@ -87,21 +87,21 @@ describe("Editor", () => {
     it("att sätta Notvärde ändrar slaget under markören", () => {
       const state = run(createEditor(), [
         { type: "enterFret", fret: 3 },
-        { type: "setDuration", duration: 8 },
+        { type: "setDuration", duration: 2 },
       ]);
 
-      expect(beatsOf(state)).toEqual([{ duration: 8, notes: [{ string: 1, fret: 3 }] }]);
+      expect(beatsOf(state)).toEqual([{ duration: 2, notes: [{ string: 1, fret: 3 }] }]);
     });
 
     it("nya slag får samma Notvärde som slaget före", () => {
       const state = run(createEditor(), [
-        { type: "setDuration", duration: 16 },
+        { type: "setDuration", duration: 2 },
         { type: "enterFret", fret: 3 },
         { type: "moveCursor", direction: "right" },
         { type: "enterFret", fret: 5 },
       ]);
 
-      expect(beatsOf(state).map((b) => b.duration)).toEqual([16, 16]);
+      expect(beatsOf(state).map((b) => b.duration)).toEqual([2, 2]);
     });
 
     it("punktering växlas av och på", () => {
@@ -120,16 +120,125 @@ describe("Editor", () => {
       expect(beatsOf(off)[0].triplet).toBeFalsy();
     });
 
-    it("punktering och triol behålls när Notvärdet byts och följer med till nya slag", () => {
-      const state = run(createEditor(), [
-        { type: "toggleDot" },
-        { type: "toggleTriplet" },
-        { type: "setDuration", duration: 8 },
-        { type: "enterFret", fret: 0 },
-        { type: "moveCursor", direction: "right" },
-      ]);
+    it("punktering och triol behålls när Notvärdet byts", () => {
+      const state = run(createEditor(), [{ type: "toggleDot" }, { type: "toggleTriplet" }, { type: "setDuration", duration: 8 }]);
+
+      expect(beatsOf(state)[0]).toEqual({ duration: 8, dotted: true, triplet: true, notes: [] });
+    });
+
+    it("punktering och triol följer med till nya slag", () => {
+      const start = createEditor();
+      start.score.tracks[0].bars[0].beats = [{ duration: 8, dotted: true, triplet: true, notes: [{ string: 1, fret: 0 }] }];
+      const state = apply(start, { type: "moveCursor", direction: "right" });
 
       expect(beatsOf(state)[1]).toEqual({ duration: 8, dotted: true, triplet: true, notes: [] });
+    });
+  });
+
+  describe("kortare Notvärde delar Slaget", () => {
+    it("en fjärdedel med ton som blir sextondel får en sextondelspaus och en åttondelspaus efter sig", () => {
+      const state = run(createEditor(), [
+        { type: "enterFret", fret: 3 },
+        { type: "setDuration", duration: 16 },
+      ]);
+
+      expect(beatsOf(state)).toEqual([
+        { duration: 16, notes: [{ string: 1, fret: 3 }] },
+        { duration: 16, notes: [] },
+        { duration: 8, notes: [] },
+      ]);
+      expect(state.cursor.beat).toBe(0);
+    });
+
+    it("mitt i en Takt börjar pauserna på jämna platser räknat från Taktens början, och resten står kvar", () => {
+      const state = run(filled(1), [at(0, 1), { type: "setDuration", duration: 16 }]);
+
+      expect(beatsOf(state).map((b) => [b.duration, b.notes[0]?.fret])).toEqual([
+        [4, 0],
+        [16, 1],
+        [16, undefined],
+        [8, undefined],
+        [4, 2],
+        [4, 3],
+      ]);
+      expect(state.cursor).toMatchObject({ bar: 0, beat: 1 });
+    });
+
+    it("Slaget behåller sina tekniker, sitt Ackordnamn och sin Anteckning, och pauserna får inga", () => {
+      const state = run(createEditor(), [
+        { type: "enterFret", fret: 5 },
+        { type: "togglePalmMute" },
+        { type: "cycleBend" },
+        { type: "setBeatText", field: "chordName", text: "Am" },
+        { type: "setBeatText", field: "annotation", text: "let ring" },
+        { type: "setDuration", duration: 8 },
+      ]);
+
+      expect(beatsOf(state)).toEqual([
+        { duration: 8, notes: [{ string: 1, fret: 5, palmMute: true, bend: 1 }], chordName: "Am", annotation: "let ring" },
+        { duration: 8, notes: [] },
+      ]);
+    });
+
+    it("en paus som blir kortare delas i pauser", () => {
+      const state = apply(createEditor(), { type: "setDuration", duration: 8 });
+
+      expect(beatsOf(state)).toEqual([
+        { duration: 8, notes: [] },
+        { duration: 8, notes: [] },
+      ]);
+    });
+
+    it("att ta bort punkteringen fyller resten med en paus", () => {
+      const state = run(createEditor(), [{ type: "toggleDot" }, { type: "enterFret", fret: 0 }, { type: "toggleDot" }]);
+
+      expect(beatsOf(state)).toEqual([
+        { duration: 4, notes: [{ string: 1, fret: 0 }] },
+        { duration: 8, notes: [] },
+      ]);
+    });
+
+    it("att göra Slaget till triol fyller resten med en triolpaus", () => {
+      const state = run(createEditor(), [{ type: "enterFret", fret: 0 }, { type: "toggleTriplet" }]);
+
+      expect(beatsOf(state)).toEqual([
+        { duration: 4, triplet: true, notes: [{ string: 1, fret: 0 }] },
+        { duration: 8, triplet: true, notes: [] },
+      ]);
+    });
+
+    it("delningen är en ändring som ångras i ett steg", () => {
+      const before = apply(createEditor(), { type: "enterFret", fret: 3 });
+      const state = run(before, [{ type: "setDuration", duration: 16 }, { type: "undo" }]);
+
+      expect(state.score).toEqual(before.score);
+    });
+  });
+
+  describe("notisen", () => {
+    // Punkterad trettiotvåondel till triol lämnar mindre tid än den kortaste pausen
+    const tooShort = run(createEditor(), [{ type: "setDuration", duration: 32 }, { type: "toggleDot" }]);
+
+    it("ett kommando som inte går lämnar Partituret och historiken orörda och säger varför", () => {
+      const state = apply(tooShort, { type: "toggleTriplet" });
+
+      expect(state.score).toBe(tooShort.score);
+      expect(state.history).toBe(tooShort.history);
+      expect(state.notice).toMatch(/rest/i);
+    });
+
+    it("finns inte från början och försvinner vid nästa kommando", () => {
+      const state = run(tooShort, [{ type: "toggleTriplet" }, { type: "moveCursor", direction: "down" }]);
+
+      expect(createEditor().notice).toBeNull();
+      expect(tooShort.notice).toBeNull();
+      expect(state.notice).toBeNull();
+    });
+
+    it("försvinner vid ångra", () => {
+      const state = run(tooShort, [{ type: "toggleTriplet" }, { type: "undo" }]);
+
+      expect(state.notice).toBeNull();
     });
   });
 
@@ -400,7 +509,7 @@ describe("ta bort", () => {
       { type: "deleteNote" },
     ]);
 
-    expect(beatsOf(state)).toEqual([{ duration: 8, dotted: true, notes: [] }]);
+    expect(beatsOf(state)[0]).toEqual({ duration: 8, dotted: true, notes: [] });
   });
 
   it("att ta bort ett slag flyttar de följande slagen bakåt, och markören hamnar på nästa slag", () => {

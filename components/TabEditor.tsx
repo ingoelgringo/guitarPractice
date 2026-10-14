@@ -4,7 +4,7 @@ import type { AlphaTabApi } from "@coderline/alphatab";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
 import { browserStorage, loadDraft, saveDraft, type Draft } from "@/lib/draft";
-import { apply, createEditor, neighbourBeat, type Cursor, type Side } from "@/lib/editor";
+import { apply, createEditor, neighbourBeat, type Cursor, type EditorState, type Side } from "@/lib/editor";
 import { keyToBeatText, keyToCommand, type KeyPress } from "@/lib/keyboard";
 import { addToLibrary, loadFromLibrary, saveToLibrary, type LibraryFailure } from "@/lib/libraryClient";
 import { LibrarySync } from "@/lib/librarySync";
@@ -13,6 +13,7 @@ import { serialize } from "@/lib/scoreFile";
 import { invalidBars } from "@/lib/validation";
 import { BarButtons } from "./BarButtons";
 import { BeatTextField } from "./BeatTextField";
+import { CursorNotice, NOTICE_MS } from "./CursorNotice";
 import { EditorPanel } from "./EditorPanel";
 import { LibraryButtons } from "./LibraryButtons";
 import { DEFAULT_PLAYBACK_OPTIONS, PlaybackControls, playNoteAt } from "./PlaybackControls";
@@ -224,6 +225,20 @@ export function TabEditor({ owner, fromLibrary }: { owner: boolean; fromLibrary?
     if (api && playbackOptions.soundOnInput) playNoteAt(api, state.cursor);
   }, [state, api, playbackOptions.soundOnInput]);
 
+  // Läget vars notis har tagits bort. Varje kommando ger ett nytt läge, och därmed en ny notis.
+  const [noticeDismissedIn, setNoticeDismissedIn] = useState<EditorState | null>(null);
+  const notice = noticeDismissedIn === state ? null : state.notice;
+  useEffect(() => {
+    if (!state.notice) return;
+    const dismiss = () => setNoticeDismissedIn(state);
+    const timer = setTimeout(dismiss, NOTICE_MS);
+    window.addEventListener("keydown", dismiss);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("keydown", dismiss);
+    };
+  }, [state]);
+
   // Textfältet för Ackordnamnet eller Anteckningen på slaget under markören, när det är öppet
   const [openTextField, setOpenTextField] = useState<BeatText | null>(null);
 
@@ -333,19 +348,24 @@ export function TabEditor({ owner, fromLibrary }: { owner: boolean; fromLibrary?
         onApiChange={setApi}
         onPositionClick={onPositionClick}
         cursorOverlay={
-          openTextField
+          openTextField || notice
             ? (box) => {
                 const { track, bar, beat } = state.cursor;
                 return (
-                  <BeatTextField
-                    // Ett nytt fält för varje slag, med slagets text
-                    key={`${openTextField}-${bar}-${beat}`}
-                    field={openTextField}
-                    value={state.score.tracks[track].bars[bar].beats[beat][openTextField] ?? ""}
-                    cursorBox={box}
-                    onCommit={(text, move) => commitBeatText(openTextField, text, move)}
-                    onCancel={() => setOpenTextField(null)}
-                  />
+                  <>
+                    {openTextField && (
+                      <BeatTextField
+                        // Ett nytt fält för varje slag, med slagets text
+                        key={`${openTextField}-${bar}-${beat}`}
+                        field={openTextField}
+                        value={state.score.tracks[track].bars[bar].beats[beat][openTextField] ?? ""}
+                        cursorBox={box}
+                        onCommit={(text, move) => commitBeatText(openTextField, text, move)}
+                        onCancel={() => setOpenTextField(null)}
+                      />
+                    )}
+                    {notice && <CursorNotice text={notice} cursorBox={box} />}
+                  </>
                 );
               }
             : undefined

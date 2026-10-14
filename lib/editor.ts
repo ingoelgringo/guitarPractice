@@ -16,6 +16,7 @@ import {
   MIN_REPEAT_COUNT,
   MIN_TEMPO,
   MIN_TIME_SIGNATURE_BEATS,
+  restsFor,
   STANDARD_TUNING,
   tempoAt,
   TIME_SIGNATURE_BEAT_VALUES,
@@ -57,6 +58,11 @@ export interface EditorState {
    */
   pendingDigit: { digit: number; time: number; recorded: boolean } | null;
   history: History;
+  /**
+   * Varför det senaste kommandot inte gick, eller `null`. Ett sådant kommando lämnar Partituret
+   * orört, och meddelandet försvinner vid nästa kommando.
+   */
+  notice: string | null;
 }
 
 /** Ett läge att återvända till med ångra eller gör om. */
@@ -218,10 +224,13 @@ function editorFor(score: Score): EditorState {
     clipboard: null,
     pendingDigit: null,
     history: { undo: [], redo: [] },
+    notice: null,
   };
 }
 
-export function apply(state: EditorState, command: Command): EditorState {
+export function apply(previous: EditorState, command: Command): EditorState {
+  // Notisen gäller bara kommandot som gav den
+  const state = { ...previous, notice: null };
   if (command.type === "undo") return undo(state);
   if (command.type === "redo") return redo(state);
   if (command.type === "openScore") return { ...editorFor(command.score), clipboard: state.clipboard };
@@ -302,13 +311,13 @@ function applyCommand(
     case "paste":
       return paste(state);
     case "setDuration":
-      return updateBeat(state, (beat) => {
+      return changeDuration(state, (beat) => {
         beat.duration = command.duration;
       });
     case "toggleDot":
-      return updateBeat(state, (beat) => toggle(beat, "dotted"));
+      return changeDuration(state, (beat) => toggle(beat, "dotted"));
     case "toggleTriplet":
-      return updateBeat(state, (beat) => toggle(beat, "triplet"));
+      return changeDuration(state, (beat) => toggle(beat, "triplet"));
     case "toggleHammerPull":
       return toggleConnection(state, "hammerPull");
     case "toggleSlide":
@@ -479,6 +488,25 @@ function updateBeat(state: EditorState, change: (beat: Beat) => void): EditorSta
   const score = structuredClone(state.score);
   change(barAt(score, cursor).beats[cursor.beat]);
   return { ...state, score };
+}
+
+/**
+ * Ändrar Notvärdet för slaget under markören. Blir slaget kortare behåller det sina toner,
+ * tekniker och texter, och resten av den gamla längden fylls med pauser enligt Pausregeln.
+ */
+function changeDuration(state: EditorState, change: (beat: Beat) => void): EditorState {
+  const { cursor } = state;
+  const beats = barAt(state.score, cursor).beats;
+  const changed = structuredClone(beats[cursor.beat]);
+  change(changed);
+  const freed = beatTicks(beats[cursor.beat]) - beatTicks(changed);
+  if (freed <= 0) return updateBeat(state, change);
+  const start = barTicks({ beats: beats.slice(0, cursor.beat) });
+  const rests = restsFor(start + beatTicks(changed), freed);
+  if (!rests) return { ...state, notice: "The rest of the beat is too short to fill with rests." };
+  return updateScore(state, (score) => {
+    barAt(score, cursor).beats.splice(cursor.beat, 1, changed, ...rests);
+  });
 }
 
 /** Ändrar en kopia av tonen på markörens sträng. Saknas tonen händer ingenting. */

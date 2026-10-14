@@ -162,6 +162,31 @@ export function beatTicks(beat: Pick<Beat, "duration" | "dotted" | "triplet">): 
   return ticks;
 }
 
+/**
+ * Pausregeln: pauserna som fyller `ticks` ticks från `start` ticks efter Taktens början. Varje
+ * paus är det största Notvärde som ryms och som börjar på en jämn multipel av sitt eget värde,
+ * utan punktering. Räcker inga vanliga Notvärden till, t.ex. efter en triol, blir det triolpauser
+ * på samma sätt. Börjar ingen paus på en jämn plats blir det den största som ryms, vanlig före triol. `null` om
+ * tiden inte går att fylla med pauser.
+ */
+export function restsFor(start: number, ticks: number): Beat[] | null {
+  const candidates: Beat[] = [
+    ...DURATIONS.map((duration) => ({ duration, notes: [] })),
+    ...DURATIONS.map((duration) => ({ duration, triplet: true, notes: [] })),
+  ];
+  const rests: Beat[] = [];
+  for (let at = start, left = ticks; left > 0; ) {
+    const fitting = candidates.filter((r) => beatTicks(r) <= left);
+    // Efter t.ex. en punkterad trettiotvåondel börjar ingen paus på en jämn plats
+    const rest = fitting.find((r) => at % beatTicks(r) === 0) ?? fitting[0];
+    if (!rest) return null;
+    rests.push(structuredClone(rest));
+    at += beatTicks(rest);
+    left -= beatTicks(rest);
+  }
+  return rests;
+}
+
 /** Hur många ticks en Takt rymmer i taktarten. */
 export function barCapacity(timeSignature: TimeSignature): number {
   return (timeSignature.beats * WHOLE_NOTE_TICKS) / timeSignature.beatValue;

@@ -46,6 +46,20 @@
   background: #fff;
 }
 
+/* Notisen när ett kommando inte gick. Klick går igenom till notbilden under den. */
+.cursorNotice {
+  position: absolute;
+  z-index: 1;
+  max-width: 20em;
+  margin: 0;
+  padding: 4px 8px;
+  pointer-events: none;
+  font-size: 0.85rem;
+  border-radius: 3px;
+  background: #333;
+  color: #fff;
+}
+
 .cursor {
   position: absolute;
   pointer-events: none;
