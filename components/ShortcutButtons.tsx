@@ -4,14 +4,13 @@ import { SHORTCUT_GROUPS, type KeyPress } from "@/lib/keyboard";
 import styles from "./TabEditor.module.css";
 
 /**
- * Tunt skal: kortkommandona som knappar, med kortkommandot bredvid när det inte redan står på
- * knappen. Tooltipen visar alltid kortkommandot. En knapp gör samma
- * tangenttryck som kortkommandot via `onPress`, så att knappen och tangenten gör samma sak.
+ * Tunt skal: Edit-flikens kortkommandon som knappar, med kortkommandot bredvid när det inte redan
+ * står på knappen. Tooltipen visar alltid kortkommandot. En knapp gör samma tangenttryck som
+ * kortkommandot via `onPress`, så att knappen och tangenten gör samma sak.
  */
 export function ShortcutButtons({ onPress }: { onPress: (press: KeyPress) => void }) {
   return (
-    <details className={styles.help} open>
-      <summary>Edit</summary>
+    <>
       {SHORTCUT_GROUPS.map(({ name, shortcuts }) => (
         <section key={name} className={styles.shortcutGroup} aria-label={name}>
           <h3>{name}</h3>
@@ -37,6 +36,6 @@ export function ShortcutButtons({ onPress }: { onPress: (press: KeyPress) => voi
           </div>
         </section>
       ))}
-    </details>
+    </>
   );
 }

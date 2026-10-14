@@ -13,6 +13,7 @@ import { serialize } from "@/lib/scoreFile";
 import { invalidBars } from "@/lib/validation";
 import { BarButtons } from "./BarButtons";
 import { BeatTextField } from "./BeatTextField";
+import { EditorPanel } from "./EditorPanel";
 import { LibraryButtons } from "./LibraryButtons";
 import { DEFAULT_PLAYBACK_OPTIONS, PlaybackControls, playNoteAt } from "./PlaybackControls";
 import { ScoreFileButtons, type ReplacedBy } from "./ScoreFileButtons";
@@ -276,8 +277,10 @@ export function TabEditor({ owner, fromLibrary }: { owner: boolean; fromLibrary?
 
   return (
     <div className={styles.editor}>
-      <ScoreSettings score={state.score} cursor={state.cursor} dispatch={dispatch} />
-      <ShortcutButtons onPress={onPress} />
+      <EditorPanel
+        edit={<ShortcutButtons onPress={onPress} />}
+        settings={<ScoreSettings score={state.score} cursor={state.cursor} dispatch={dispatch} />}
+      />
       <div className={styles.toolbar}>
         <nav className={styles.buttonGroup} aria-label="Site">
           <Link href="/">← Guitar Practice</Link>

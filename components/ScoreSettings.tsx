@@ -33,8 +33,8 @@ const METADATA_FIELDS: readonly { field: keyof Metadata; label: string }[] = [
 const PITCHES = Array.from({ length: 49 }, (_, i) => 28 + i);
 
 /**
- * Tunt skal: panel för Vy-läge, metadata, Stämning, Capo, starttempo och starttaktart, samt byten och
- * repriser på markörens Takt. Varje ändring blir ett Editor-kommando och går därför att ångra.
+ * Tunt skal: fliken Score settings med Vy-läge, metadata, Stämning, Capo, starttempo och starttaktart,
+ * samt byten och repriser på markörens Takt. Varje ändring blir ett Editor-kommando och går därför att ångra.
  */
 export function ScoreSettings({
   score,
@@ -56,79 +56,76 @@ export function ScoreSettings({
   }
 
   return (
-    <details className={styles.settings}>
-      <summary>Score settings</summary>
-      <div className={styles.settingsGrid}>
-        <ViewModePicker viewMode={score.viewMode} dispatch={dispatch} />
-        {METADATA_FIELDS.map(({ field, label }) => (
-          <label key={field}>
-            <span>{label}</span>
-            <CommitInput
-              value={score.metadata[field]}
-              onCommit={(value) => dispatch({ type: "setMetadata", metadata: { [field]: value } })}
-            />
+    <div className={styles.settingsGrid}>
+      <ViewModePicker viewMode={score.viewMode} dispatch={dispatch} />
+      {METADATA_FIELDS.map(({ field, label }) => (
+        <label key={field}>
+          <span>{label}</span>
+          <CommitInput
+            value={score.metadata[field]}
+            onCommit={(value) => dispatch({ type: "setMetadata", metadata: { [field]: value } })}
+          />
+        </label>
+      ))}
+
+      <label>
+        <span>Tuning</span>
+        <select
+          value={preset?.name ?? ""}
+          onChange={(e) => {
+            const chosen = TUNING_PRESETS.find((p) => p.name === e.target.value);
+            if (chosen) dispatch({ type: "setTuning", tuning: [...chosen.tuning] });
+          }}
+        >
+          {TUNING_PRESETS.map((p) => (
+            <option key={p.name} value={p.name}>
+              {p.name}
+            </option>
+          ))}
+          <option value="" disabled>
+            Custom
+          </option>
+        </select>
+      </label>
+      <fieldset className={styles.strings}>
+        <legend>Strings (1 = highest)</legend>
+        {track.tuning.map((pitch, i) => (
+          <label key={i}>
+            <span>{i + 1}</span>
+            <select value={pitch} onChange={(e) => setString(i, Number(e.target.value))}>
+              {PITCHES.map((p) => (
+                <option key={p} value={p}>
+                  {noteName(p)}
+                </option>
+              ))}
+            </select>
           </label>
         ))}
+      </fieldset>
 
-        <label>
-          <span>Tuning</span>
-          <select
-            value={preset?.name ?? ""}
-            onChange={(e) => {
-              const chosen = TUNING_PRESETS.find((p) => p.name === e.target.value);
-              if (chosen) dispatch({ type: "setTuning", tuning: [...chosen.tuning] });
-            }}
-          >
-            {TUNING_PRESETS.map((p) => (
-              <option key={p.name} value={p.name}>
-                {p.name}
-              </option>
-            ))}
-            <option value="" disabled>
-              Custom
-            </option>
-          </select>
-        </label>
-        <fieldset className={styles.strings}>
-          <legend>Strings (1 = highest)</legend>
-          {track.tuning.map((pitch, i) => (
-            <label key={i}>
-              <span>{i + 1}</span>
-              <select value={pitch} onChange={(e) => setString(i, Number(e.target.value))}>
-                {PITCHES.map((p) => (
-                  <option key={p} value={p}>
-                    {noteName(p)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ))}
-        </fieldset>
+      <label>
+        <span>Capo</span>
+        <NumberInput min={0} max={MAX_FRET} value={track.capo} onCommit={(capo) => dispatch({ type: "setCapo", capo })} />
+      </label>
+      <label>
+        <span>Tempo (BPM)</span>
+        <NumberInput
+          min={MIN_TEMPO}
+          max={MAX_TEMPO}
+          value={score.tempo}
+          onCommit={(tempo) => dispatch({ type: "setTempo", tempo })}
+        />
+      </label>
+      <label>
+        <span>Time signature</span>
+        <TimeSignatureInput
+          value={score.timeSignature}
+          onChange={(timeSignature) => dispatch({ type: "setTimeSignature", timeSignature })}
+        />
+      </label>
 
-        <label>
-          <span>Capo</span>
-          <NumberInput min={0} max={MAX_FRET} value={track.capo} onCommit={(capo) => dispatch({ type: "setCapo", capo })} />
-        </label>
-        <label>
-          <span>Tempo (BPM)</span>
-          <NumberInput
-            min={MIN_TEMPO}
-            max={MAX_TEMPO}
-            value={score.tempo}
-            onCommit={(tempo) => dispatch({ type: "setTempo", tempo })}
-          />
-        </label>
-        <label>
-          <span>Time signature</span>
-          <TimeSignatureInput
-            value={score.timeSignature}
-            onChange={(timeSignature) => dispatch({ type: "setTimeSignature", timeSignature })}
-          />
-        </label>
-
-        <BarSettings score={score} cursor={cursor} dispatch={dispatch} />
-      </div>
-    </details>
+      <BarSettings score={score} cursor={cursor} dispatch={dispatch} />
+    </div>
   );
 }
 

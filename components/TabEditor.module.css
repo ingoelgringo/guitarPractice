@@ -1,6 +1,6 @@
 /* Editorn är egen scrollyta så att dokumentet aldrig scrollar */
 .editor {
-  --edit-panel-width: 300px;
+  --panel-width: 300px;
   height: 100dvh;
   padding: 32px 16px;
   overflow: auto;
@@ -8,11 +8,11 @@
 }
 
 /*
- * Den öppna Edit-panelen tar sin bredd från editorn, så att Sidan centreras och krymper i ytan
+ * Den öppna sidopanelen tar sin bredd från editorn, så att Sidan centreras och krymper i ytan
  * bredvid den och aldrig hamnar under den. Editorns rullningslist hamnar då också till vänster om panelen.
  */
-.editor:has(> .help[open]) {
-  margin-right: var(--edit-panel-width);
+.editor:has(> .panel[data-open]) {
+  margin-right: var(--panel-width);
 }
 
 /*
@@ -118,18 +118,16 @@
 }
 
 /*
- * Edit-panelen: knappar för kortkommandona i en sidopanel längs högerkanten, i hela höjden.
- * Ihopfälld är den bara rubriken i hörnet.
+ * Sidopanelen längs högerkanten, i hela höjden, med flikarna Edit och Score settings överst.
+ * Ihopfälld är den bara flikarna i hörnet.
  */
-.help {
+.panel {
   position: fixed;
   top: 0;
   right: 0;
   z-index: 1;
-  width: var(--edit-panel-width);
-  max-height: 100dvh;
-  overflow: auto;
-  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
   border-bottom-left-radius: 6px;
   background: var(--background);
   color: var(--foreground);
@@ -137,18 +135,57 @@
   font-size: 13px;
 }
 
-.help[open] {
+.panel[data-open] {
   bottom: 0;
+  width: var(--panel-width);
   border-radius: 0;
 }
 
-.help:not([open]) {
-  width: auto;
+.panelHeader {
+  display: flex;
+  align-items: center;
+  padding: 4px 4px 0 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground) 15%, transparent);
 }
 
-.help summary {
-  cursor: pointer;
+.panelTabs {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+}
+
+.panelTabs button,
+.panelClose {
+  padding: 6px 8px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: color-mix(in srgb, var(--foreground) 65%, transparent);
+  font: inherit;
   font-weight: bold;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.panelTabs button[aria-selected="true"] {
+  color: var(--foreground);
+  border-bottom-color: #1e6fd9;
+}
+
+.panelTabs button:hover,
+.panelClose:hover {
+  color: var(--foreground);
+}
+
+.panelClose {
+  font-size: 1.2em;
+  line-height: 1;
+}
+
+.panelContent {
+  flex: 1;
+  overflow: auto;
+  padding: 0 12px 12px;
 }
 
 .shortcutGroup h3 {
@@ -192,7 +229,7 @@
   background: color-mix(in srgb, #1e6fd9 25%, var(--background));
 }
 
-.help kbd {
+.shortcut kbd {
   font-family: ui-monospace, monospace;
   font-size: 11px;
   opacity: 0.75;
@@ -205,28 +242,6 @@
   font-size: 1.15em;
   line-height: 1.2;
   white-space: nowrap;
-}
-
-/* Partiturinställningar, i hörnet mittemot hjälprutan */
-.settings {
-  position: fixed;
-  top: 16px;
-  left: 16px;
-  z-index: 1;
-  max-width: 300px;
-  max-height: calc(100dvh - 32px);
-  overflow: auto;
-  padding: 8px 12px;
-  border-radius: 6px;
-  background: var(--background);
-  color: var(--foreground);
-  box-shadow: 0 2px 12px rgb(0 0 0 / 0.2);
-  font-size: 13px;
-}
-
-.settings summary {
-  cursor: pointer;
-  font-weight: bold;
 }
 
 .settingsGrid {
@@ -518,14 +533,13 @@
  * redigera det. Partiturfilen och utskriften finns kvar. Samma fråga som VIEW_ONLY_MEDIA i TabEditor.tsx.
  */
 @media (max-width: 640px), (pointer: coarse) {
-  .settings,
-  .help,
+  .panel,
   .editTools,
   .editOnly {
     display: none;
   }
 
-  .editor:has(> .help[open]) {
+  .editor:has(> .panel[data-open]) {
     margin-right: 0;
   }
 }
@@ -536,7 +550,7 @@
  */
 @media print {
   .editor,
-  .editor:has(> .help[open]) {
+  .editor:has(> .panel[data-open]) {
     height: auto;
     margin: 0;
     padding: 0;

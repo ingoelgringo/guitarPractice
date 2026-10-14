@@ -15,3 +15,5 @@
 ## Comments
 
 **Implementerad.** Den öppna panelen ger editorns scrollyta en högermarginal med panelens bredd (`.editor:has(> .help[open])`), så Sidan centreras och krymper bredvid den och alphaTab bryter om raderna. Pilarna har inget kortkommando bredvid sig, men tooltipen visar alltid kortkommandot. Verifierat i appen i 1600 och 1000 px bredd, med panelen öppen och ihopfälld.
+
+**Tillägg (Ägarens önskemål):** Score settings ligger nu i samma sidopanel, med flikarna *Edit* och *Score settings* överst (`EditorPanel`). Knappen » fäller ihop panelen till bara flikarna, och en flik öppnar den igen. Båda flikarna står kvar i DOM:en och den inaktiva döljs, så att ett textfält som inte är klart inte försvinner vid flikbyte. Flikknapparna tar inte fokus, så tangentbordet styr fortfarande editorn.
