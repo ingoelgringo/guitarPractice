@@ -19,7 +19,7 @@ import {
   STANDARD_TUNING,
   tempoAt,
   TIME_SIGNATURE_BEAT_VALUES,
-  timeSignatureAt, type Bar, type BarChange, type Beat, type BeatText, type Connection, type Duration, type Metadata, type Note, type Score, type TimeSignature, type Track, VIEW_MODES, type ViewMode, withValidConnections } from "./score";
+  timeSignatureAt, type Bar, type BarChange, type Beat, type BeatText, type Connection, type Duration, type Metadata, type Note, type Score, SPACINGS, type Spacing, type TimeSignature, type Track, VIEW_MODES, type ViewMode, withValidConnections } from "./score";
 
 export interface Cursor {
   track: number;
@@ -185,6 +185,8 @@ export type Command =
   | { type: "setRepeatCount"; count: number }
   /** Byter Vy-läge. Inmatningen är tab-först i alla lägen. */
   | { type: "setViewMode"; viewMode: ViewMode }
+  /** Sätter Tätheten. */
+  | { type: "setSpacing"; spacing: Spacing }
   /** Byter Partituret i Editorn mot ett annat, t.ex. en öppnad Partiturfil. Historiken börjar om. */
   | { type: "openScore"; score: Score }
   | { type: "undo" }
@@ -194,6 +196,7 @@ export function createEditor(): EditorState {
   return editorFor({
     metadata: { title: "", subtitle: "", artist: "", tabbedBy: "" },
     viewMode: "scoreAndTab",
+    spacing: 0,
     tempo: 120,
     timeSignature: { beats: 4, beatValue: 4 },
     tracks: [
@@ -399,6 +402,10 @@ function applyCommand(
     case "setViewMode":
       return updateScore(state, (score) => {
         if ((VIEW_MODES as readonly string[]).includes(command.viewMode)) score.viewMode = command.viewMode;
+      });
+    case "setSpacing":
+      return updateScore(state, (score) => {
+        if ((SPACINGS as readonly number[]).includes(command.spacing)) score.spacing = command.spacing;
       });
   }
 }

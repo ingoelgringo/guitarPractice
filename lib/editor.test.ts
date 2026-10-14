@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { apply, createEditor, neighbourBeat, TWO_DIGIT_WINDOW_MS, type Command, type EditorState, type SelectionUnit, type Side } from "./editor";
-import { MAX_BEAT_TEXT_LENGTH, type BeatText, type TimeSignature, type ViewMode } from "./score";
+import { MAX_BEAT_TEXT_LENGTH, type BeatText, type Spacing, type TimeSignature, type ViewMode } from "./score";
 import { invalidBars } from "./validation";
 
 describe("Editor", () => {
@@ -778,6 +778,29 @@ describe("Vy-läge", () => {
       expect(state.cursor).toEqual({ track: 0, bar: 0, beat: 1, string: 2 });
     },
   );
+});
+
+describe("Täthet", () => {
+  it("ett nytt Partitur har dagens avstånd", () => {
+    expect(createEditor().score.spacing).toBe(0);
+  });
+
+  it("Tätheten sätts med ett kommando som kan ångras och göras om", () => {
+    const state = apply(createEditor(), { type: "setSpacing", spacing: 2 });
+
+    expect(state.score.spacing).toBe(2);
+    const undone = apply(state, { type: "undo" });
+    expect(undone.score.spacing).toBe(0);
+    expect(apply(undone, { type: "redo" }).score.spacing).toBe(2);
+  });
+
+  it.each([-1, 4, 1.5])("en Täthet utanför 0–3 (%s) avvisas", (spacing) => {
+    const start = createEditor();
+
+    const state = apply(start, { type: "setSpacing", spacing: spacing as Spacing });
+
+    expect(state.score).toBe(start.score);
+  });
 });
 
 describe("speltekniker", () => {

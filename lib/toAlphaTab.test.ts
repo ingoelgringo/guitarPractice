@@ -1,8 +1,8 @@
 import { midi, model, Settings, StaveProfile, TabRhythmMode } from "@coderline/alphatab";
 import { describe, expect, it } from "vitest";
 import { createEditor } from "./editor";
-import type { Beat, BendTarget, Score, ViewMode } from "./score";
-import { beatAt, configureStaves, noteAt, toAlphaTab } from "./toAlphaTab";
+import { SPACINGS, type Beat, type BendTarget, type Score, type ViewMode } from "./score";
+import { beatAt, configureStaves, noteAt, stretchForce, toAlphaTab } from "./toAlphaTab";
 
 describe("toAlphaTab", () => {
   it("ett tomt Partitur blir ett Spår med 6 strängar och en Takt med en fjärdedelspaus", () => {
@@ -508,5 +508,18 @@ describe("takt- och tempobyten samt repriser i toAlphaTab", () => {
     score.tracks[0].bars[1].repeatEnd = 2;
 
     expect(playback(score).map((p) => p.bar)).toEqual([0, 1, 0, 1, 2]);
+  });
+});
+
+describe("Täthet", () => {
+  it("Täthet 0 är alphaTabs förvalda avstånd", () => {
+    expect(stretchForce(0)).toBe(new Settings().display.stretchForce);
+  });
+
+  it("varje steg i Tätheten ger ett mindre avstånd än det förra", () => {
+    const forces = SPACINGS.map(stretchForce);
+
+    forces.slice(1).forEach((force, i) => expect(force).toBeLessThan(forces[i]));
+    expect(forces.at(-1)).toBeGreaterThan(0);
   });
 });

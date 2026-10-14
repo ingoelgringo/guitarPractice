@@ -11,6 +11,7 @@ import {
   MIN_REPEAT_COUNT,
   MIN_TEMPO,
   MIN_TIME_SIGNATURE_BEATS,
+  SPACINGS,
   TIME_SIGNATURE_BEAT_VALUES,
   VIEW_MODES,
   type Bar,
@@ -40,7 +41,7 @@ const FORMAT = "itab";
 export const FILE_EXTENSION = ".itab";
 
 /** Formatets nuvarande version. */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 /** En migrering tar Partituret i ett dokument från en version till nästa. */
 export type Migration = (score: unknown) => unknown;
@@ -55,6 +56,8 @@ const MIGRATIONS: Readonly<Record<number, Migration>> = {
   // Version 4 lade till Ackordnamn och Anteckningar på slagen. Ett Partitur i version 3 har inga
   // och är oförändrat.
   3: (score) => score,
+  // Version 5 lade till Tätheten på Partituret. Ett Partitur i version 4 får det förvalda avståndet.
+  4: (score) => (isRecord(score) ? { ...score, spacing: 0 } : score),
 };
 
 export type ParseError =
@@ -151,6 +154,7 @@ function readScore(data: unknown): Score {
   const result = {
     metadata: readMetadata(score.metadata),
     viewMode: readOneOf(score.viewMode, VIEW_MODES),
+    spacing: readOneOf(score.spacing, SPACINGS),
     tempo: readInteger(score.tempo, MIN_TEMPO, MAX_TEMPO),
     timeSignature: readTimeSignature(score.timeSignature),
     tracks,

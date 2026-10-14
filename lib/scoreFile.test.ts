@@ -14,6 +14,7 @@ describe("Partiturfil: rundtur", () => {
   it.each<[string, (score: Score) => void]>([
     ["metadata", (s) => (s.metadata = { title: "Blackbird", subtitle: "Live", artist: "The Beatles", tabbedBy: "Ingo" })],
     ["Vy-läge", (s) => (s.viewMode = "rhythmTab")],
+    ["Täthet", (s) => (s.spacing = 3)],
     ["tempo", (s) => (s.tempo = 93)],
     ["taktart", (s) => (s.timeSignature = { beats: 6, beatValue: 8 })],
     ["Stämning", (s) => (s.tracks[0].tuning = [62, 57, 55, 50, 45, 38])],
@@ -120,6 +121,9 @@ describe("Partiturfil: trasigt Partitur", () => {
     ["metadata saknas", (s) => delete s.metadata],
     ["en titel som inte är text", (s) => (s.metadata.title = 5)],
     ["ett okänt Vy-läge", (s) => (s.viewMode = "lyrics")],
+    ["Täthet saknas", (s) => delete s.spacing],
+    ["en Täthet utanför 0–3", (s) => (s.spacing = 4)],
+    ["en Täthet som inte är ett heltal", (s) => (s.spacing = 1.5)],
     ["ett tempo utanför 20–400", (s) => (s.tempo = 1000)],
     ["en taktart med ett ogiltigt Notvärde", (s) => (s.timeSignature = { beats: 4, beatValue: 3 })],
     ["inga Spår", (s) => (s.tracks = [])],
@@ -210,6 +214,7 @@ describe("Partiturfil: äldre versioner", () => {
       score: {
         metadata: { title: "Fixture", subtitle: "Version 1", artist: "Ingo", tabbedBy: "Claude" },
         viewMode: "scoreAndTab",
+        spacing: 0,
         tempo: 96,
         timeSignature: { beats: 3, beatValue: 4 },
         tracks: [
@@ -267,6 +272,18 @@ describe("Partiturfil: äldre versioner", () => {
       { duration: 2, notes: [], chordName: "Em", annotation: "let ring" },
       { duration: 2, notes: [{ string: 6, fret: 0 }], chordName: "C/G" },
     ]);
+  });
+
+  it("en fil i version 5 går att öppna, med Täthet", () => {
+    const result = parse(fixture(5));
+
+    expect(result.ok && result.score.spacing).toBe(2);
+  });
+
+  it("en äldre fil får dagens avstånd", () => {
+    const result = parse(fixture(4));
+
+    expect(result.ok && result.score.spacing).toBe(0);
   });
 
   it("migreringar kedjas från en äldre version till den nuvarande, en version i taget", () => {

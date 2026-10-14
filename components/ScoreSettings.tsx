@@ -10,12 +10,14 @@ import {
   MIN_REPEAT_COUNT,
   MIN_TEMPO,
   MIN_TIME_SIGNATURE_BEATS,
+  SPACINGS,
   tempoAt,
   TIME_SIGNATURE_BEAT_VALUES,
   timeSignatureAt,
   type Duration,
   type Metadata,
   type Score,
+  type Spacing,
   type TimeSignature,
 } from "@/lib/score";
 import { findTuningPreset, noteName, TUNING_PRESETS } from "@/lib/tuning";
@@ -33,7 +35,7 @@ const METADATA_FIELDS: readonly { field: keyof Metadata; label: string }[] = [
 const PITCHES = Array.from({ length: 49 }, (_, i) => 28 + i);
 
 /**
- * Tunt skal: fliken Score settings med Vy-läge, metadata, Stämning, Capo, starttempo och starttaktart,
+ * Tunt skal: fliken Score settings med Vy-läge, Täthet, metadata, Stämning, Capo, starttempo och starttaktart,
  * samt byten och repriser på markörens Takt. Varje ändring blir ett Editor-kommando och går därför att ångra.
  */
 export function ScoreSettings({
@@ -58,6 +60,19 @@ export function ScoreSettings({
   return (
     <div className={styles.settingsGrid}>
       <ViewModePicker viewMode={score.viewMode} dispatch={dispatch} />
+      <label>
+        <span>Density</span>
+        <input
+          type="range"
+          min={SPACINGS[0]}
+          max={SPACINGS.at(-1)}
+          step={1}
+          value={score.spacing}
+          onChange={(e) => dispatch({ type: "setSpacing", spacing: Number(e.target.value) as Spacing })}
+          // Som Vy-läget: piltangenterna ska sedan styra editorn och inte reglaget
+          onPointerUp={(e) => e.currentTarget.blur()}
+        />
+      </label>
       {METADATA_FIELDS.map(({ field, label }) => (
         <label key={field}>
           <span>{label}</span>

@@ -1,6 +1,6 @@
 import { model, platform, Settings, StaveProfile, TabRhythmMode } from "@coderline/alphatab";
 import type { Cursor } from "./editor";
-import type { Beat, BendTarget, Duration, Score, Track, ViewMode } from "./score";
+import type { Beat, BendTarget, Duration, Score, Spacing, Track, ViewMode } from "./score";
 import { findTuningPreset, STANDARD_TUNING_NAME } from "./tuning";
 
 // Översätter Partiturmodellen till alphaTabs modell för rendering och uppspelning (ADR 0001).
@@ -42,6 +42,17 @@ function channel(n: number): number {
 export function configureStaves(settings: Settings): void {
   settings.display.staveProfile = StaveProfile.Default;
   settings.notation.rhythmMode = TabRhythmMode.Automatic;
+}
+
+/**
+ * alphaTabs `stretchForce` för varje steg i Tätheten. 1 är alphaTabs förval, och en svagare
+ * kraft ger smalare Takter, så att fler får plats på en rad i sidlayouten.
+ */
+const STRETCH_FORCES: Record<Spacing, number> = { 0: 1, 1: 0.8, 2: 0.6, 3: 0.45 };
+
+/** alphaTabs avstånd (`display.stretchForce`) för Tätheten. */
+export function stretchForce(spacing: Spacing): number {
+  return STRETCH_FORCES[spacing];
 }
 
 export function toAlphaTab(score: Score): model.Score {

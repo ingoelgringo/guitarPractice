@@ -11,7 +11,7 @@ import {
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { selectionRange, type Cursor, type Selection } from "@/lib/editor";
 import type { Score } from "@/lib/score";
-import { beatAt, configureStaves, toAlphaTab } from "@/lib/toAlphaTab";
+import { beatAt, configureStaves, stretchForce, toAlphaTab } from "@/lib/toAlphaTab";
 import type { InvalidBar } from "@/lib/validation";
 import styles from "./TabEditor.module.css";
 
@@ -131,7 +131,15 @@ export function ScoreView({
   useEffect(() => {
     const rendered = toAlphaTab(score);
     renderedRef.current = rendered;
-    apiRef.current?.renderScore(rendered);
+    const api = apiRef.current;
+    if (!api) return;
+    // Tätheten är en inställning i alphaTab och inte en del av dess modell
+    const force = stretchForce(score.spacing);
+    if (api.settings.display.stretchForce !== force) {
+      api.settings.display.stretchForce = force;
+      api.updateSettings();
+    }
+    api.renderScore(rendered);
   }, [score]);
 
   useEffect(() => {

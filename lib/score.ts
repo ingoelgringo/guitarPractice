@@ -101,9 +101,18 @@ export const VIEW_MODES = ["scoreAndTab", "scoreOnly", "rhythmTab"] as const;
 
 export type ViewMode = (typeof VIEW_MODES)[number];
 
+/**
+ * Täthet: hur tätt Slagen står på raderna, och därmed hur många Takter som får plats på en rad.
+ * 0 är det förvalda avståndet och högre värden är tätare. Gäller skärm och utskrift.
+ */
+export const SPACINGS = [0, 1, 2, 3] as const;
+
+export type Spacing = (typeof SPACINGS)[number];
+
 export interface Score {
   metadata: Metadata;
   viewMode: ViewMode;
+  spacing: Spacing;
   /** Starttempo i slag (fjärdedelar) per minut. Byten ligger på Takterna. */
   tempo: number;
   /** Starttaktart. Byten ligger på Takterna. */
