@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { apply, createEditor, neighbourBeat, TWO_DIGIT_WINDOW_MS, type Command, type EditorState, type SelectionUnit, type Side } from "./editor";
-import { MAX_BEAT_TEXT_LENGTH, type BeatText, type Spacing, type TimeSignature, type ViewMode } from "./score";
+import { MAX_BEAT_TEXT_LENGTH, type Beat, type BeatText, type Duration, type Note, type Spacing, type TimeSignature, type ViewMode } from "./score";
 import { invalidBars } from "./validation";
 
 describe("Editor", () => {
@@ -215,9 +215,102 @@ describe("Editor", () => {
     });
   });
 
+  describe("längre Notvärde tar tid från följande Slag", () => {
+    const C = { string: 1, fret: 5 };
+    const D = { string: 1, fret: 7 };
+
+    /** En Editor med Takterna `bars` och markören på första slaget. */
+    function withBars(...bars: Beat[][]): EditorState {
+      const state = createEditor();
+      state.score.tracks[0].bars = bars.map((beats) => ({ beats }));
+      return state;
+    }
+
+    function n(duration: Duration, note: Note, extra: Partial<Beat> = {}): Beat {
+      return { duration, notes: [note], ...extra };
+    }
+
+    function r(duration: Duration, extra: Partial<Beat> = {}): Beat {
+      return { duration, notes: [], ...extra };
+    }
+
+    const eighth: Command = { type: "setDuration", duration: 8 };
+
+    it("sextondel C och sextondelspaus ger åttondel C", () => {
+      const state = apply(withBars([n(16, C), r(16), r(8), n(4, D), n(2, D)]), eighth);
+
+      expect(beatsOf(state)).toEqual([n(8, C), r(8), n(4, D), n(2, D)]);
+      expect(state.cursor).toMatchObject({ bar: 0, beat: 0 });
+    });
+
+    it("sextondel C och sextondel C ger åttondel C med det förstas tekniker och texter", () => {
+      const first = n(16, { ...C, palmMute: true }, { chordName: "C" });
+      const state = apply(withBars([first, n(16, { ...C, bend: 1 }), r(8), n(4, D), n(2, D)]), eighth);
+
+      expect(beatsOf(state)).toEqual([{ ...first, duration: 8 }, r(8), n(4, D), n(2, D)]);
+    });
+
+    it("resten av en paus som bara delvis tas fylls med Pausregeln, och följande Slag står kvar", () => {
+      const state = apply(withBars([n(16, C), r(4), r(16), r(8), n(2, D)]), eighth);
+
+      expect(beatsOf(state)).toEqual([n(8, C), r(8), r(16), r(16), r(8), n(2, D)]);
+    });
+
+    it("ett Slag med samma ton som bara delvis tas kortas så att det slutar på samma tidpunkt", () => {
+      const state = apply(withBars([n(16, C), n(4, C), r(16), r(8), n(2, D)]), eighth);
+
+      expect(beatsOf(state)).toEqual([n(8, C), n(8, C, { dotted: true }), r(16), r(8), n(2, D)]);
+    });
+
+    it("ett Slag med en annan ton stoppar ändringen med en notis", () => {
+      const start = withBars([n(16, C), n(16, D), r(8), r(4), r(2)]);
+      const state = apply(start, eighth);
+
+      expect(state.score).toBe(start.score);
+      expect(state.notice).toMatch(/different note/i);
+    });
+
+    it("ett senare Slag med eget Ackordnamn eller egen Anteckning stoppar ändringen med en egen notis", () => {
+      for (const text of [{ chordName: "G" }, { annotation: "x" }]) {
+        const start = withBars([n(16, C), r(16), r(16, text), r(16), r(4), r(2)]);
+        const state = apply(start, { type: "setDuration", duration: 4 });
+
+        expect(state.score).toBe(start.score);
+        expect(state.notice).toMatch(/chord name or annotation/i);
+      }
+    });
+
+    it("den sista sextondelen i en Takt tar från nästa Takt och delas med en Bindebåge", () => {
+      const start = apply(withBars([r(2), r(4), r(8), r(16), n(16, C)], [r(8), r(8), n(4, D), n(2, D)]), at(0, 4));
+      const state = apply(start, eighth);
+
+      expect(beatsOf(state, 0)).toEqual([r(2), r(4), r(8), r(16), n(16, C)]);
+      expect(beatsOf(state, 1)).toEqual([n(16, C, { tiedFromPrevious: true }), r(16), r(8), n(4, D), n(2, D)]);
+    });
+
+    it("punktering på tar tid på samma sätt", () => {
+      const state = apply(withBars([n(4, C), r(8), r(8), n(2, D)]), { type: "toggleDot" });
+
+      expect(beatsOf(state)).toEqual([n(4, C, { dotted: true }), r(8), n(2, D)]);
+    });
+
+    it("triol av tar tid på samma sätt", () => {
+      const state = apply(withBars([n(4, C, { triplet: true }), r(8, { triplet: true }), r(4), n(2, D)]), { type: "toggleTriplet" });
+
+      expect(beatsOf(state)).toEqual([n(4, C), r(4), n(2, D)]);
+    });
+
+    it("efter Spårets sista Slag finns det tid att ta, och Takten fylls inte ut", () => {
+      const state = apply(withBars([n(4, C)]), { type: "setDuration", duration: 2 });
+
+      expect(beatsOf(state)).toEqual([n(2, C)]);
+    });
+  });
+
   describe("notisen", () => {
     // Punkterad trettiotvåondel till triol lämnar mindre tid än den kortaste pausen
-    const tooShort = run(createEditor(), [{ type: "setDuration", duration: 32 }, { type: "toggleDot" }]);
+    const tooShort = createEditor();
+    tooShort.score.tracks[0].bars[0].beats = [{ duration: 32, dotted: true, notes: [] }];
 
     it("ett kommando som inte går lämnar Partituret och historiken orörda och säger varför", () => {
       const state = apply(tooShort, { type: "toggleTriplet" });
@@ -321,15 +414,15 @@ describe("Editor", () => {
       expect(state.score.tracks[0].bars).toHaveLength(1);
     });
 
-    it("att byta Notvärde så att Takten blir för lång rättas inte tyst", () => {
+    it("ett längre Notvärde som skulle ta en annan ton gör inte Takten för lång", () => {
       const state = run(createEditor(), [
         ...quarters(4),
         { type: "moveCursor", direction: "left" },
         { type: "setDuration", duration: 2 },
       ]);
 
-      expect(beatsOf(state, 0).map((b) => b.duration)).toEqual([4, 4, 2, 4]);
-      expect(state.score.tracks[0].bars).toHaveLength(1);
+      expect(beatsOf(state, 0).map((b) => b.duration)).toEqual([4, 4, 4, 4]);
+      expect(state.notice).not.toBeNull();
     });
   });
 

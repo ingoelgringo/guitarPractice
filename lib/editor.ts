@@ -506,9 +506,10 @@ function updateBeat(state: EditorState, change: (beat: Beat) => void): EditorSta
 }
 
 /**
- * Ändrar Notvärdet för slaget under markören. Blir slaget kortare behåller det sina toner,
- * tekniker och texter, och resten av den gamla längden fylls med pauser enligt Pausregeln.
- * Ett nytt Notvärde bryter Bindebågarna till och från slaget.
+ * Ändrar Notvärdet för slaget under markören utan att något Skjuts. Blir slaget kortare behåller
+ * det sina toner, tekniker och texter, och resten av den gamla längden fylls med pauser enligt
+ * Pausregeln. Blir det längre tas tiden från de följande slagen (se `takeTime`). Ett nytt Notvärde
+ * bryter Bindebågarna till och från slaget.
  */
 function changeDuration(state: EditorState, change: (beat: Beat) => void): EditorState {
   const { cursor } = state;
@@ -517,14 +518,82 @@ function changeDuration(state: EditorState, change: (beat: Beat) => void): Edito
   change(changed);
   delete changed.tiedFromPrevious;
   const freed = beatTicks(beats[cursor.beat]) - beatTicks(changed);
+  if (freed < 0) return takeTime(state, changed, -freed);
   const start = barTicks({ beats: beats.slice(0, cursor.beat) });
   const rests = freed > 0 ? restsFor(start + beatTicks(changed), freed) : [];
-  if (!rests) return { ...state, notice: "The rest of the beat is too short to fill with rests." };
+  if (!rests) return { ...state, notice: TOO_SHORT_FOR_RESTS };
   return updateScore(state, (score) => {
     const next = nextBeat(score.tracks[cursor.track].bars, cursor);
     if (next) delete score.tracks[cursor.track].bars[next.bar].beats[next.beat].tiedFromPrevious;
     barAt(score, cursor).beats.splice(cursor.beat, 1, changed, ...rests);
   });
+}
+
+const TOO_SHORT_FOR_RESTS = "The rest of the beat is too short to fill with rests.";
+
+/**
+ * Ersätter slaget under markören med det längre `changed` och tar de `needed` ticks det behöver
+ * från de följande slagen, även över taktstreck. Varje slag som tas måste vara en paus eller ha
+ * samma (sträng, band) som slaget, och får inte ha ett eget Ackordnamn eller en egen Anteckning.
+ * Efter Spårets sista slag finns det tid att ta. Det sista slaget som tas får kortas: en paus fylls
+ * med Pausregeln och ett slag med samma toner delas på samma sätt, så att det som kommer efter står
+ * kvar på samma tidpunkt. Går det inte ändras ingenting och en notis säger varför.
+ */
+function takeTime(state: EditorState, changed: Beat, needed: number): EditorState {
+  const { cursor } = state;
+  const bars = state.score.tracks[cursor.track].bars;
+  const original = bars[cursor.bar].beats[cursor.beat];
+  const sameNotes = (beat: Beat) => pitches(beat) === pitches(original);
+  let notice: string | null = null;
+  const shifted = shift(state, cursor.bar, (beats, index) => {
+    let taken = 0;
+    let end = index + 1;
+    for (; taken < needed && end < beats.length; end++) {
+      const beat = beats[end];
+      if (beat.notes.length > 0 && !sameNotes(beat)) notice = "The next beat has a different note.";
+      else if (beat.chordName !== undefined || beat.annotation !== undefined) notice = "A following beat has its own chord name or annotation.";
+      if (notice) return;
+      taken += beatTicks(beat);
+    }
+    const left = Math.max(taken - needed, 0);
+    let remainder: Beat[] = [];
+    if (left > 0) {
+      const last = beats[end - 1];
+      const pieces = restsFor(positionInBar(state.score, cursor, beatTicks(changed)), left);
+      if (!pieces) return void (notice = TOO_SHORT_FOR_RESTS);
+      // Bundna delar som Skjutningen slår ihop när de blir ett Notvärde. Bend och förbindelser hör
+      // till sista delen.
+      const plain = last.notes.map(({ string, fret, palmMute }) => ({ string, fret, ...(palmMute && { palmMute }) }));
+      remainder = last.notes.length
+        ? pieces.map((piece, i) => ({
+            ...piece,
+            notes: structuredClone(i === pieces.length - 1 ? last.notes : plain),
+            ...(i > 0 && { tiedFromPrevious: true }),
+          }))
+        : pieces;
+    }
+    if (beats[end]) delete beats[end].tiedFromPrevious;
+    beats.splice(index, end - index, changed, ...remainder);
+    // Tid efter Spårets sista slag är inget som behöver fyllas
+    return taken >= needed;
+  });
+  return notice ? { ...state, notice } : shifted;
+}
+
+/** Slagets toner som (sträng, band), för att jämföra om två slag har samma toner. */
+function pitches(beat: Beat): string {
+  return beat.notes.map((n) => `${n.string}:${n.fret}`).join(" ");
+}
+
+/**
+ * Var i sin Takt tidpunkten `ticks` efter markörens slag hamnar, räknat som om Takterna från
+ * markörens är fulla, som de blir när slagen läggs om.
+ */
+function positionInBar(score: Score, cursor: Cursor, ticks: number): number {
+  let bar = cursor.bar;
+  let at = barTicks({ beats: barAt(score, cursor).beats.slice(0, cursor.beat) }) + ticks;
+  for (let capacity; at >= (capacity = barCapacity(timeSignatureAt(score, cursor.track, bar))); bar++) at -= capacity;
+  return at;
 }
 
 /**
@@ -541,15 +610,21 @@ function shiftDuration(state: EditorState, change: (beat: Beat) => void): Editor
 
 /**
  * Skjuter Slagen i markörens Spår från Takt `fromBar`: `edit` ändrar dem som en följd, där markörens
- * slag har index `index` om markören står i Takten, och sedan läggs de om i Takterna. Markören står
+ * slag har index `index` om markören står i Takten, och sedan läggs de om i Takterna. Sista Takten
+ * fylls med pauser, utom när `edit` ger `false`. Markören står
  * kvar på samma plats i Takten, eller på det sista slaget om den platsen eller Takten inte längre finns. Skulle
  * en triol delas av ett taktstreck ändras ingenting och en notis visas.
  */
-function shift(state: EditorState, fromBar: number, edit: (beats: Beat[], index: number) => void, score = state.score): EditorState {
+function shift(
+  state: EditorState,
+  fromBar: number,
+  edit: (beats: Beat[], index: number) => boolean | void,
+  score = state.score,
+): EditorState {
   const { cursor } = state;
   const beats = structuredClone(score.tracks[cursor.track].bars.slice(fromBar).flatMap((bar) => bar.beats));
-  edit(beats, cursor.beat);
-  const shifted = shiftBeats(score, cursor.track, fromBar, beats);
+  const fill = edit(beats, cursor.beat) ?? true;
+  const shifted = shiftBeats(score, cursor.track, fromBar, beats, { fill });
   if (!shifted) return { ...state, notice: "A triplet can't be split by a bar line." };
   const bars = shifted.tracks[cursor.track].bars;
   // Försvann markörens Takt står markören på slaget före
@@ -658,7 +733,9 @@ function enterFret(state: EditorState, fret: number): EditorState {
 }
 
 function deleteBeat(state: EditorState): EditorState {
-  return shift(state, state.cursor.bar, (beats, index) => beats.splice(index, 1));
+  return shift(state, state.cursor.bar, (beats, index) => {
+    beats.splice(index, 1);
+  });
 }
 
 function moveCursor(state: EditorState, direction: Direction): EditorState {

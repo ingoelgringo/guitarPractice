@@ -309,10 +309,17 @@ export function withValidTies(score: Score): Score {
  * Skjutningen: Spår `track` där Slagen från Takt `fromBar` och framåt ersätts av `beats`, lagda i
  * Takterna efter deras taktarter. Byten och repriser sitter kvar på sin Takt. Ett Slag över ett
  * taktstreck delas: en paus enligt Pausregeln och en ton i bundna delar med samma indelning. Tid
- * som blir över i sista Takten fylls med pauser, och Slag som inte ryms får nya Takter. En sista
+ * som blir över i sista Takten fylls med pauser om `fill` är satt, och Slag som inte ryms får nya
+ * Takter. En sista
  * Takt med bara pauser som Skjutningen lämnar efter sig tas bort, om den inte är den enda.
  */
-export function shiftBeats(score: Score, track: number, fromBar: number, beats: readonly Beat[]): Score | null {
+export function shiftBeats(
+  score: Score,
+  track: number,
+  fromBar: number,
+  beats: readonly Beat[],
+  { fill }: { fill: boolean } = { fill: true },
+): Score | null {
   const result = structuredClone(score);
   const bars = result.tracks[track].bars;
   const laid: Beat[][] = [[]];
@@ -345,7 +352,7 @@ export function shiftBeats(score: Score, track: number, fromBar: number, beats: 
       at += ticks;
     }
   }
-  laid.at(-1)!.push(...(restsFor(at, capacityOf(laid.length - 1) - at) ?? []));
+  if (fill) laid.at(-1)!.push(...(restsFor(at, capacityOf(laid.length - 1) - at) ?? []));
   // Takterna som Slagen inte längre når blir pauser
   while (fromBar + laid.length < bars.length) laid.push(restsFor(0, capacityOf(laid.length)) ?? []);
   // En sista Takt med bara pauser uppstod av Skjutningen om den är ny eller hade toner förut

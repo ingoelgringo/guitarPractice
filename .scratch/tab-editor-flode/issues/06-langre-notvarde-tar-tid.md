@@ -4,13 +4,13 @@
 
 **Blocked by:** 05
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Sextondel C och sextondelspaus, E ger åttondel C.
-- [ ] Sextondel C och sextondel C, E ger åttondel C med det förstas tekniker och texter.
-- [ ] Sextondel C och fjärdedelspaus, E ger åttondel C, och resten av pausen fylls med Pausregeln så att följande Slag står kvar.
-- [ ] Sextondel C och fjärdedel C, E kortar fjärdedelen så att den slutar på samma tidpunkt.
-- [ ] Sextondel C och sextondel D stoppas med notisen "nästa Slag har en annan ton". Ett senare Slag med eget Ackordnamn eller egen Anteckning stoppas med en egen notis.
-- [ ] Den sista sextondelen i en Takt som blir åttondel tar från nästa Takt, och det förlängda Slaget delas med en Bindebåge över taktstrecket.
-- [ ] Punktering på och triol av följer samma regler.
-- [ ] Alla tester genom `apply`.
+- [x] Sextondel C och sextondelspaus, E ger åttondel C.
+- [x] Sextondel C och sextondel C, E ger åttondel C med det förstas tekniker och texter.
+- [x] Sextondel C och fjärdedelspaus, E ger åttondel C, och resten av pausen fylls med Pausregeln så att följande Slag står kvar.
+- [x] Sextondel C och fjärdedel C, E kortar fjärdedelen så att den slutar på samma tidpunkt.
+- [x] Sextondel C och sextondel D stoppas med notisen "nästa Slag har en annan ton". Ett senare Slag med eget Ackordnamn eller egen Anteckning stoppas med en egen notis.
+- [x] Den sista sextondelen i en Takt som blir åttondel tar från nästa Takt, och det förlängda Slaget delas med en Bindebåge över taktstrecket.
+- [x] Punktering på och triol av följer samma regler.
+- [x] Alla tester genom `apply`.
