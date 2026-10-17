@@ -3,6 +3,8 @@ export interface Tool {
   href: string;
   title: string;
   description: string;
+  /** Ligger utanför Next-appen (ett statiskt projekt som Nginx serverar), så kortet blir en vanlig länk. */
+  external?: boolean;
 }
 
 export const TOOLS: Tool[] = [
@@ -15,5 +17,12 @@ export const TOOLS: Tool[] = [
     href: "/fretboard",
     title: "Fretboard",
     description: "See scales on the guitar neck.",
+  },
+  // Tillfälligt här tills hemsidan bryts ut ur guitarPractice (stenhagenGame/docs/PLAN-hemsida.md).
+  {
+    href: "/stenhagen/",
+    title: "Spring i Stenhagen",
+    description: "A side-scrolling game for kids: run through Stenhagen and dodge cats and snakes. In Swedish.",
+    external: true,
   },
 ];

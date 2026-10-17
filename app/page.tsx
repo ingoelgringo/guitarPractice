@@ -11,14 +11,27 @@ export default async function Home() {
       <h1>Guitar Practice</h1>
       <p>Tools for guitarists: write tabs with notation, and see scales on the fretboard.</p>
       <ul className={styles.tools}>
-        {TOOLS.map((tool) => (
-          <li key={tool.href}>
-            <Link href={tool.href} className={styles.card}>
+        {TOOLS.map((tool) => {
+          const content = (
+            <>
               <h2>{tool.title}</h2>
               <p>{tool.description}</p>
-            </Link>
-          </li>
-        ))}
+            </>
+          );
+          return (
+            <li key={tool.href}>
+              {tool.external ? (
+                <a href={tool.href} className={styles.card}>
+                  {content}
+                </a>
+              ) : (
+                <Link href={tool.href} className={styles.card}>
+                  {content}
+                </Link>
+              )}
+            </li>
+          );
+        })}
       </ul>
       {/* Diskret länk för Ägaren. Det finns ingen registrering. */}
       <footer className={styles.footer}>
