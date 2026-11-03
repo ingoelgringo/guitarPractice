@@ -40,6 +40,10 @@
   opacity: 0.7;
 }
 
+.flag {
+  vertical-align: -2px;
+}
+
 .language:hover,
 .language:focus-visible {
   opacity: 1;

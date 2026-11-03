@@ -8,8 +8,7 @@ const en = {
   siteTitle: "Guitar",
   siteDescription: "Tools for guitarists: write tabs with notation, play them back and print them.",
 
-  // Headern. Flaggan visar språket man byter till.
-  switchLanguageFlag: "🇸🇪",
+  // Headern. Flaggan (components/Flag.tsx) visar språket man byter till.
   switchLanguage: "På svenska",
   toggleTheme: "Toggle light/dark theme",
 
@@ -55,7 +54,6 @@ const sv: Messages = {
   siteTitle: "Gitarr",
   siteDescription: "Verktyg för gitarrister: skriv tabulatur med noter, spela upp och skriv ut.",
 
-  switchLanguageFlag: "🇬🇧",
   switchLanguage: "In English",
   toggleTheme: "Växla mellan ljust och mörkt tema",
 

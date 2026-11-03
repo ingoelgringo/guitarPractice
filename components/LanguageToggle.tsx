@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { MESSAGES } from "@/lib/messages";
 import { languageCookie, otherLanguage, type SiteLanguage } from "@/lib/siteLanguage";
+import { Flag } from "./Flag";
 import styles from "./SiteHeader.module.css";
 
 /**
@@ -20,7 +21,7 @@ export function LanguageToggle({ language }: { language: SiteLanguage }) {
 
   return (
     <button type="button" className={styles.language} onClick={toggle} lang={otherLanguage(language)}>
-      <span aria-hidden="true">{messages.switchLanguageFlag}</span> {messages.switchLanguage}
+      <Flag language={otherLanguage(language)} /> {messages.switchLanguage}
     </button>
   );
 }
