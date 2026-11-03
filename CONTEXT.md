@@ -119,7 +119,7 @@ En Grundton och ett mönster av intervall, t.ex. A mollpentatonik eller C-dur.
 Den sjutoniga skala som en pentatonisk skala eller en bluesskala hämtar sina Ackord från, t.ex. A naturlig moll för A mollpentatonik.
 
 **Ackord** (`Chord`):
-En treklang byggd på ett steg i en Skala (eller i dess Föräldraskala), angiven med steg och namn, t.ex. "ii – Dm".
+En dur-, moll- eller förminskad treklang på en Grundton, t.ex. "Am". I Greppbrädan byggs den på ett steg i en Skala (eller i dess Föräldraskala) och anges med steg och namn, t.ex. "ii – Dm".
 _Avoid_: Ackordnamn (fri text i editorn)
 
 **Box** (`Box`):
@@ -180,7 +180,17 @@ _Avoid_: Dyad, intervallgrepp
 Intervallflikens tabell med intervallen (sekund till oktav) som rader och Boxarna som kolumner. En cell väljer Intervall och Box och visar intervallet från Grundtonen, t.ex. M6.
 
 **Notnamnsläge** (`NoteNameMode`):
-Hur tonnamn skrivs: *svenskt* (H, och B för det som på engelska heter B♭) eller *engelskt*. I övrigt följer stavningen tonarten, så F-dur skrivs med B♭ och E-dur med D♯.
+Hur tonnamn skrivs: *svenskt* (H, och B för det som på engelska heter B♭) eller *engelskt*. Det är ett val för hela sajten och är engelskt tills man väljer något annat. I Greppbrädan följer stavningen tonarten, så F-dur skrivs med B♭ och E-dur med D♯.
+
+### Ackordföljder
+
+**Tonnetz**:
+En oändlig yta av trianglar som man drar runt i. Hörnen är toner: kvinter ligger vågrätt, stora terser längs den ena diagonalen och små terser längs den andra. Varje triangel är ett dur- eller mollackord, och samma ton och samma ackord förekommer på många ställen. En ton stavas likadant överallt.
+_Avoid_: Tonnätet, tonnetz table, rutnät
+
+**Kvintcirkel**:
+De tolv durackorden i kvintordning med det parallella mollackordet innanför varje durackord, sammanlagt 24 ackord. Varje ackord i Kvintcirkeln motsvarar en sorts triangel i Tonnetzen.
+_Avoid_: Kvintcykel, circle of fifths
 
 ### Sajt
 
