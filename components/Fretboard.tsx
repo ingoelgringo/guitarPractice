@@ -326,7 +326,7 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
   return (
     <main className={styles.page}>
       <nav aria-label="Site">
-        <Link href="/">← Guitar Practice</Link>
+        <Link href="/">← Guitar</Link>
       </nav>
       <h1>Fretboard</h1>
       <div className={styles.layout}>

@@ -24,13 +24,23 @@
   border-radius: 8px;
 }
 
-.card:hover {
+a.card:hover {
   border-color: var(--foreground);
 }
 
 .card h2 {
   font-size: 1.25rem;
   margin-bottom: 8px;
+}
+
+.comingSoon {
+  opacity: 0.5;
+}
+
+.badge {
+  margin-top: 12px;
+  font-size: 0.875rem;
+  font-style: italic;
 }
 
 .narrow {

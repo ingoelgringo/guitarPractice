@@ -3,7 +3,7 @@ import { Fretboard } from "@/components/Fretboard";
 import { choiceFromParams } from "@/lib/fretboardParams";
 
 export const metadata: Metadata = {
-  title: "Fretboard · Guitar Practice",
+  title: "Fretboard · Guitar",
 };
 
 /**

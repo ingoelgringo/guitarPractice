@@ -4,8 +4,8 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Test: listan med Verktyg innehåller de tre korten, och Chord Progressions har ingen länk.
-- [ ] Gitarrsidan visar korten, och det nedtonade kortet går inte att klicka på eller tabba till.
-- [ ] Inget kvar som säger "Guitar Practice" i gränssnittet.
+- [x] Test: listan med Verktyg innehåller de tre korten, och Chord Progressions har ingen länk.
+- [x] Gitarrsidan visar korten, och det nedtonade kortet går inte att klicka på eller tabba till.
+- [x] Inget kvar som säger "Guitar Practice" i gränssnittet.

@@ -1,10 +1,9 @@
-/** Ett Verktyg på sajten, visat som ett kort på landningssidan. */
+/** Ett Verktyg i gitarrdelen, visat som ett kort på Gitarrsidan. */
 export interface Tool {
-  href: string;
+  /** Saknas för ett Verktyg som inte finns än; kortet visas då nedtonat med "Coming soon". */
+  href?: string;
   title: string;
   description: string;
-  /** Ligger utanför Next-appen (ett statiskt projekt som Nginx serverar), så kortet blir en vanlig länk. */
-  external?: boolean;
 }
 
 export const TOOLS: Tool[] = [
@@ -15,14 +14,11 @@ export const TOOLS: Tool[] = [
   },
   {
     href: "/fretboard",
-    title: "Fretboard",
+    title: "Fretboard Practice",
     description: "See scales on the guitar neck.",
   },
-  // Tillfälligt här tills hemsidan bryts ut ur guitarPractice (stenhagenGame/docs/PLAN-hemsida.md).
   {
-    href: "/stenhagen/",
-    title: "Spring i Stenhagen",
-    description: "A side-scrolling game for kids: run through Stenhagen and dodge cats and snakes. In Swedish.",
-    external: true,
+    title: "Chord Progressions",
+    description: "Practice common chord progressions.",
   },
 ];

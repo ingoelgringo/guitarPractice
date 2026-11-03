@@ -6,7 +6,7 @@ import { isOwnerInPage } from "@/lib/auth";
 import { loadScore } from "@/lib/library";
 
 export const metadata: Metadata = {
-  title: "Tab Editor · Guitar Practice",
+  title: "Tab Editor · Guitar",
 };
 
 /** Editorn. Ägaren öppnar ett Partitur från Biblioteket med `?score=<id>`. */

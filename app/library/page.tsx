@@ -8,7 +8,7 @@ import { listScores, type LibraryEntry } from "@/lib/library";
 import styles from "../page.module.css";
 
 export const metadata: Metadata = {
-  title: "Library · Guitar Practice",
+  title: "Library · Guitar",
   robots: { index: false },
 };
 

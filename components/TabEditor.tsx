@@ -299,7 +299,7 @@ export function TabEditor({ owner, fromLibrary }: { owner: boolean; fromLibrary?
       />
       <div className={styles.toolbar}>
         <nav className={styles.buttonGroup} aria-label="Site">
-          <Link href="/">← Guitar Practice</Link>
+          <Link href="/">← Guitar</Link>
         </nav>
         <ScoreFileButtons
           score={state.score}

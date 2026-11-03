@@ -4,7 +4,7 @@ import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Guitar Practice",
+  title: "Guitar",
   description: "Tools for guitarists: write tabs with notation, play them back and print them.",
 };
 

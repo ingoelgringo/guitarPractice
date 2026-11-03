@@ -5,7 +5,7 @@ import { LoginForm } from "./LoginForm";
 import styles from "../page.module.css";
 
 export const metadata: Metadata = {
-  title: "Log in · Guitar Practice",
+  title: "Log in · Guitar",
   robots: { index: false },
 };
 

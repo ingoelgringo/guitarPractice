@@ -9,7 +9,7 @@ export default async function Home() {
 
   return (
     <main className={styles.main}>
-      <h1>Guitar Practice</h1>
+      <h1>Guitar</h1>
       <p>Tools for guitarists: write tabs with notation, and see scales on the fretboard.</p>
       <ul className={styles.tools}>
         {TOOLS.map((tool) => {
@@ -20,15 +20,17 @@ export default async function Home() {
             </>
           );
           return (
-            <li key={tool.href}>
-              {tool.external ? (
-                <a href={tool.href} className={styles.card}>
-                  {content}
-                </a>
-              ) : (
+            <li key={tool.title}>
+              {tool.href ? (
                 <Link href={tool.href} className={styles.card}>
                   {content}
                 </Link>
+              ) : (
+                // Ingen länk än: kortet går varken att klicka på eller tabba till.
+                <div className={`${styles.card} ${styles.comingSoon}`}>
+                  {content}
+                  <p className={styles.badge}>Coming soon</p>
+                </div>
               )}
             </li>
           );
