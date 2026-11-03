@@ -3,9 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { withBasePath } from "@/lib/basePath";
+import { MESSAGES, type Messages } from "@/lib/messages";
+import type { SiteLanguage } from "@/lib/siteLanguage";
 import styles from "../page.module.css";
 
-export function LoginForm() {
+export function LoginForm({ language }: { language: SiteLanguage }) {
+  const messages = MESSAGES[language];
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -26,9 +29,9 @@ export function LoginForm() {
         router.refresh();
         return;
       }
-      setError(await errorMessage(response));
+      setError(errorMessage(response.status, messages));
     } catch {
-      setError("Could not reach the server.");
+      setError(messages.loginUnreachable);
     }
     setPending(false);
   }
@@ -36,11 +39,11 @@ export function LoginForm() {
   return (
     <form className={styles.loginForm} onSubmit={submit}>
       <label>
-        Username
+        {messages.username}
         <input name="username" autoComplete="username" required autoFocus />
       </label>
       <label>
-        Password
+        {messages.password}
         <input name="password" type="password" autoComplete="current-password" required />
       </label>
       {error && (
@@ -49,20 +52,25 @@ export function LoginForm() {
         </p>
       )}
       <button type="submit" disabled={pending}>
-        {pending ? "Logging in…" : "Log in"}
+        {pending ? messages.loggingIn : messages.logIn}
       </button>
     </form>
   );
 }
 
-async function errorMessage(response: Response): Promise<string> {
-  // Nginx svarar 429 med en egen HTML-sida, så meddelandet kan saknas.
-  if (response.status === 429) return "Too many failed attempts. Try again later.";
-  try {
-    const body = (await response.json()) as { error?: string };
-    if (body.error) return body.error;
-  } catch {
-    // Inget JSON-svar.
+/**
+ * Meddelandet på Sajtspråket utifrån svarets status. API:ets egna meddelanden är på engelska, och
+ * Nginx svarar 429 med en egen HTML-sida. Ett serverfel får det allmänna meddelandet.
+ */
+function errorMessage(status: number, messages: Messages): string {
+  switch (status) {
+    case 400:
+      return messages.loginMissingFields;
+    case 401:
+      return messages.loginWrongCredentials;
+    case 429:
+      return messages.loginTooManyAttempts;
+    default:
+      return messages.loginFailed;
   }
-  return "Login failed.";
 }

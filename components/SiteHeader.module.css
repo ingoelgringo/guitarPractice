@@ -1,0 +1,52 @@
+/* En rad i höjden --header-height (globals.css), som editorn räknar bort från sin höjd */
+.header {
+  flex: none;
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.home {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.7;
+}
+
+.home:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.language {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.language:hover,
+.language:focus-visible {
+  opacity: 1;
+}
+
+@media print {
+  .header {
+    display: none;
+  }
+}

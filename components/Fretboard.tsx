@@ -324,7 +324,8 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
   }
 
   return (
-    <main className={styles.page}>
+    // Verktygen är bara på engelska, även när Sajtspråket är svenska
+    <main className={styles.page} lang="en">
       <nav aria-label="Site">
         <Link href="/">← Guitar</Link>
       </nav>

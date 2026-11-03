@@ -10,19 +10,21 @@ import {
   scoreFileFromLibrary,
   type LibraryFailure,
 } from "@/lib/libraryClient";
+import { MESSAGES, type Messages } from "@/lib/messages";
 import { fileName } from "@/lib/scoreFile";
+import type { SiteLanguage } from "@/lib/siteLanguage";
 import styles from "@/app/page.module.css";
 
 /** Ett begripligt meddelande när en åtgärd i Biblioteket inte gick att göra. */
-function errorMessage(failure: LibraryFailure): string {
+function errorMessage(failure: LibraryFailure, messages: Messages): string {
   switch (failure.reason) {
     case "unauthorized":
-      return "You have been logged out. Log in again to use the library.";
+      return messages.libraryLoggedOut;
     case "notFound":
-      return "This score is no longer in the library.";
+      return messages.libraryNotFound;
     case "conflict":
     case "failed":
-      return "The library couldn't be reached. Check your connection and try again.";
+      return messages.libraryUnreachable;
   }
 }
 
@@ -31,7 +33,8 @@ function errorMessage(failure: LibraryFailure): string {
  * den är klar. Ladda ner hämtar Partiturfilen, som saknar id och revision, så en återöppnad fil
  * blir alltid ett nytt Partitur.
  */
-export function LibraryActions({ id, title }: { id: string; title: string }) {
+export function LibraryActions({ id, title, language }: { id: string; title: string; language: SiteLanguage }) {
+  const messages = MESSAGES[language];
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +45,7 @@ export function LibraryActions({ id, title }: { id: string; title: string }) {
     const result = await action();
     setPending(false);
     if (!result.ok) {
-      setError(errorMessage(result));
+      setError(errorMessage(result, messages));
       // Ett Partitur som redan är borttaget ska försvinna ur listan
       if (result.reason === "notFound") router.refresh();
       return;
@@ -52,7 +55,7 @@ export function LibraryActions({ id, title }: { id: string; title: string }) {
   }
 
   function remove() {
-    if (!confirm(`Delete "${title}" from the library? This can't be undone.`)) return;
+    if (!confirm(messages.confirmDelete(title))) return;
     void run(
       () => deleteFromLibrary(id),
       () => {
@@ -68,7 +71,7 @@ export function LibraryActions({ id, title }: { id: string; title: string }) {
   return (
     <div className={styles.libraryActions}>
       <button type="button" disabled={pending} onClick={() => void run(() => duplicateInLibrary(id))}>
-        Duplicate
+        {messages.duplicate}
       </button>
       <button
         type="button"
@@ -80,10 +83,10 @@ export function LibraryActions({ id, title }: { id: string; title: string }) {
           )
         }
       >
-        Download
+        {messages.download}
       </button>
       <button type="button" disabled={pending} onClick={remove}>
-        Delete
+        {messages.delete}
       </button>
       {error && (
         <span className={styles.error} role="alert">

@@ -1,6 +1,8 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Headerns höjd, som editorn räknar bort från sin */
+  --header-height: 32px;
 }
 
 /* Mörkt när man valt det, eller när systemet vill ha mörkt och man inte valt ljust. Se lib/theme.ts. */

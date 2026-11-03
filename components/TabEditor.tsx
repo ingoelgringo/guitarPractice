@@ -292,7 +292,8 @@ export function TabEditor({ owner, fromLibrary }: { owner: boolean; fromLibrary?
   const onPositionClick = useCallback((position: Cursor) => dispatch({ type: "moveCursorTo", position }), []);
 
   return (
-    <div className={styles.editor}>
+    // Verktygen är bara på engelska, även när Sajtspråket är svenska
+    <div className={styles.editor} lang="en">
       <EditorPanel
         edit={<ShortcutButtons onPress={onPress} />}
         settings={<ScoreSettings score={state.score} cursor={state.cursor} dispatch={dispatch} />}

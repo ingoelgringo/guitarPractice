@@ -1,24 +1,35 @@
-/** Ett Verktyg i gitarrdelen, visat som ett kort på Gitarrsidan. */
+import type { SiteLanguage } from "./siteLanguage";
+
+/** Ett Verktyg i gitarrdelen, visat som ett kort på Gitarrsidan. Namnet översätts inte. */
 export interface Tool {
   /** Saknas för ett Verktyg som inte finns än; kortet visas då nedtonat med "Coming soon". */
   href?: string;
   title: string;
-  description: string;
+  description: Record<SiteLanguage, string>;
 }
 
 export const TOOLS: Tool[] = [
   {
     href: "/tab-editor",
     title: "Tab Editor",
-    description: "Write guitar tablature with standard notation, play it back and print it.",
+    description: {
+      en: "Write guitar tablature with standard notation, play it back and print it.",
+      sv: "Skriv gitarrtabulatur med noter, spela upp den och skriv ut den.",
+    },
   },
   {
     href: "/fretboard",
     title: "Fretboard Practice",
-    description: "See scales on the guitar neck.",
+    description: {
+      en: "See scales on the guitar neck.",
+      sv: "Se skalor på gitarrens hals.",
+    },
   },
   {
     title: "Chord Progressions",
-    description: "Practice common chord progressions.",
+    description: {
+      en: "Practice common chord progressions.",
+      sv: "Öva vanliga ackordföljder.",
+    },
   },
 ];

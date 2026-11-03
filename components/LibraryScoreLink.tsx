@@ -8,7 +8,18 @@ import { browserStorage, loadDraft, replacingLosesWork } from "@/lib/draft";
  * Länken från Bibliotekets lista till editorn. Partituret ersätter Utkastet, så har Utkastet
  * ändringar som varken är nedladdade eller sparade frågar den först.
  */
-export function LibraryScoreLink({ id, revision, children }: { id: string; revision: number; children: ReactNode }) {
+export function LibraryScoreLink({
+  id,
+  revision,
+  confirmMessage,
+  children,
+}: {
+  id: string;
+  revision: number;
+  /** Frågan på Sajtspråket när Utkastet har osparade ändringar. */
+  confirmMessage: string;
+  children: ReactNode;
+}) {
   return (
     // Vanlig länk: editorn läser Utkastet när sidan laddas
     <a
@@ -17,7 +28,7 @@ export function LibraryScoreLink({ id, revision, children }: { id: string; revis
         const draft = loadDraft(browserStorage());
         if (
           replacingLosesWork(draft, { id, revision }) &&
-          !confirm("The score in the editor has changes that haven't been saved or downloaded. Open this score anyway?")
+          !confirm(confirmMessage)
         ) {
           event.preventDefault();
         }

@@ -4,10 +4,10 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Tester för språkvalet: giltig cookie, ogiltig cookie, `Accept-Language` med `sv` först, med `sv` längre bak och utan svenska.
-- [ ] Test: varje text finns på båda språken.
-- [ ] Servern renderar rätt språk direkt, utan att engelska blinkar fram först.
-- [ ] Headern tar inte plats från editorns verktygsrad på en smal skärm.
-- [ ] `<html lang>` följer Sajtspråket.
+- [x] Tester för språkvalet: giltig cookie, ogiltig cookie, `Accept-Language` med `sv` först, med `sv` längre bak och utan svenska.
+- [x] Test: varje text finns på båda språken.
+- [x] Servern renderar rätt språk direkt, utan att engelska blinkar fram först (curl mot dev-servern med cookie och `Accept-Language`).
+- [ ] Headern tar inte plats från editorns verktygsrad på en smal skärm. Headern är en rad på `--header-height` (32px), och editorn och sidopanelen räknar bort den, men det är inte prövat i en webbläsare. Det gäller också flaggans klick (`router.refresh()`).
+- [x] `<html lang>` följer Sajtspråket. Verktygens innehåll har `lang="en"`.

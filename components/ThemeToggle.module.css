@@ -1,11 +1,7 @@
-/* Nere i hörnet, där den inte krockar med Tabbeditorns paneler upptill */
+/* I headern, till höger om flaggan */
 .toggle {
-  position: fixed;
-  right: 16px;
-  bottom: 16px;
-  z-index: 2;
-  width: 36px;
-  height: 36px;
+  width: 26px;
+  height: 26px;
   display: grid;
   place-items: center;
   padding: 0;
@@ -23,8 +19,8 @@
 }
 
 .toggle svg {
-  width: 18px;
-  height: 18px;
+  width: 15px;
+  height: 15px;
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
@@ -52,11 +48,5 @@
 
   :global(:root:not([data-theme="light"])) .sun {
     display: block;
-  }
-}
-
-@media print {
-  .toggle {
-    display: none;
   }
 }
