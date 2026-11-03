@@ -99,7 +99,7 @@ jobs:
           pm2 startOrRestart ecosystem.config.cjs --update-env
           ok=
           for i in $(seq 1 30); do
-            if curl -sf http://127.0.0.1:3004/ > /dev/null; then ok=1; break; fi
+            if curl -sf http://127.0.0.1:3004/guitar > /dev/null; then ok=1; break; fi
             sleep 1
           done
           if [ -z "$ok" ]; then

@@ -185,8 +185,28 @@ Hur tonnamn skrivs: *svenskt* (H, och B för det som på engelska heter B♭) el
 ### Sajt
 
 **Verktyg** (`Tool`):
-En fristående funktion på sajten som nås från landningssidan, t.ex. Tab-editorn och Greppbrädan.
+En fristående gitarrfunktion som nås från Gitarrsidan, t.ex. Tab-editorn och Greppbrädan.
 _Avoid_: Modul, app, sida
+
+**Gitarrsidan**:
+Startsidan för gitarrdelen, med ett kort per Verktyg. Den nås från Landningssidan.
+_Avoid_: Startsidan, Guitar Practice
+
+**Landningssida**:
+Sajtens startsida med en introduktion och ett kort per Avdelning. Den hör inte till gitarrdelen.
+_Avoid_: Hemsida, portfolio
+
+**Avdelning**:
+En ingång från Landningssidan, t.ex. Guitar (Gitarrsidan) och Various Projects (en lista med Projekt).
+_Avoid_: Kategori, sektion
+
+**Projekt**:
+Något fristående som listas under Various Projects, t.ex. spelet Spring i Stenhagen. Ett Projekt är inget Verktyg.
+_Avoid_: App, verktyg
+
+**Sajtspråk** (`lang`):
+Språket i sajtens texter, engelska eller svenska, som väljs med flaggan i headern och gäller på hela sajten. Det styr inte hur tonnamn skrivs, det gör Notnamnsläget.
+_Avoid_: Locale, språkläge
 
 ### Användare
 

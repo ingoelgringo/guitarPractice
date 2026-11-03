@@ -9,6 +9,7 @@ import {
   type model,
 } from "@coderline/alphatab";
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { withBasePath } from "@/lib/basePath";
 import { selectionRange, type Cursor, type Selection } from "@/lib/editor";
 import type { Score } from "@/lib/score";
 import { beatAt, configureStaves, stretchForce, toAlphaTab } from "@/lib/toAlphaTab";
@@ -43,13 +44,13 @@ const PROBLEM_LABELS: Record<InvalidBar["problem"], string> = {
 };
 
 /** Soundfonten för uppspelningen, kopierad till public/ av scripts/copy-alphatab-assets.mjs. */
-const SOUND_FONT = "/alphatab/soundfont/sonivox.sf2";
+const SOUND_FONT = withBasePath("/alphatab/soundfont/sonivox.sf2");
 
 /**
  * alphaTabs eget skript, kopierat till public/. Spelaren startar synthen i en worker och
  * ljudet i en AudioWorklet från det skriptet, och alphaTab hittar det inte självt i bundlen.
  */
-const SCRIPT_FILE = "/alphatab/alphaTab.js";
+const SCRIPT_FILE = withBasePath("/alphatab/alphaTab.js");
 
 /** Utrymmet (px) överst i editorn som den fästa uppspelningsraden (`.playback`) täcker. */
 const PLAYBACK_BAR_SPACE = 64;
@@ -89,7 +90,7 @@ export function ScoreView({
 
   useEffect(() => {
     const settings = new Settings();
-    settings.core.fontDirectory = "/alphatab/font/";
+    settings.core.fontDirectory = withBasePath("/alphatab/font/");
     settings.core.useWorkers = false;
     settings.core.engine = "svg";
     settings.display.layoutMode = LayoutMode.Page;

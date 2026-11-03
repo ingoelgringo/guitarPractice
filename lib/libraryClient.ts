@@ -1,3 +1,4 @@
+import { withBasePath } from "./basePath";
 import type { ExpectedRevision } from "./library";
 import type { Score } from "./score";
 import { parse, serialize } from "./scoreFile";
@@ -64,7 +65,7 @@ export async function scoreFileFromLibrary(id: string): Promise<LibraryResult<{ 
   let response: Response;
   let text: string;
   try {
-    response = await fetch(`/api/library/${encodeURIComponent(id)}/file`);
+    response = await fetch(withBasePath(`/api/library/${encodeURIComponent(id)}/file`));
     text = await response.text();
   } catch {
     return { ok: false, reason: "failed" };
@@ -87,7 +88,7 @@ async function send<T>(url: string, method: string, body?: string): Promise<Libr
   let data: Record<string, unknown>;
   try {
     const keepalive = body !== undefined && new Blob([body]).size < KEEPALIVE_LIMIT_BYTES;
-    response = await fetch(url, { method, body, keepalive, headers: { "content-type": "application/json" } });
+    response = await fetch(withBasePath(url), { method, body, keepalive, headers: { "content-type": "application/json" } });
     // 204 har ingen kropp
     data = response.status === 204 ? {} : await response.json();
   } catch {

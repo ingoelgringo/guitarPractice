@@ -4,6 +4,7 @@ import type { AlphaTabApi } from "@coderline/alphatab";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
 import { browserStorage, loadDraft, saveDraft, type Draft } from "@/lib/draft";
+import { withBasePath } from "@/lib/basePath";
 import { apply, createEditor, neighbourBeat, type Cursor, type EditorState, type Side } from "@/lib/editor";
 import { keyToBeatText, keyToCommand, type KeyPress } from "@/lib/keyboard";
 import { addToLibrary, loadFromLibrary, saveToLibrary, type LibraryFailure } from "@/lib/libraryClient";
@@ -110,7 +111,7 @@ export function TabEditor({ owner, fromLibrary }: { owner: boolean; fromLibrary?
   useEffect(() => {
     // En omladdning ska inte öppna Partituret från Biblioteket igen och ersätta ändringarna i
     // Utkastet. Partituret och dess id finns redan i Utkastet.
-    if (fromLibrary) window.history.replaceState(null, "", "/tab-editor");
+    if (fromLibrary) window.history.replaceState(null, "", withBasePath("/tab-editor"));
   }, [fromLibrary]);
 
   useEffect(() => {

@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
+import { BASE_PATH } from "./basePath";
 
 /**
  * Ägarens inloggning. Det finns exakt ett konto, definierat i miljövariabler
@@ -13,12 +14,15 @@ import { cookies } from "next/headers";
 export const SESSION_COOKIE = "session";
 export const SESSION_MAX_AGE_SECONDS = 180 * 24 * 60 * 60;
 
-/** Attributen för sessionscookien. Utloggningen sätter samma med livslängd 0. */
+/**
+ * Attributen för sessionscookien. Utloggningen sätter samma med livslängd 0. Cookien gäller bara
+ * gitarrdelen, inte resten av sajten.
+ */
 export const SESSION_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: true,
   sameSite: "lax",
-  path: "/",
+  path: BASE_PATH,
 } as const;
 
 // En giltig bcrypt-hash som jämförs mot när användarnamnet är fel, så att svarstiden

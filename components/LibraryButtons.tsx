@@ -1,5 +1,6 @@
 "use client";
 
+import { withBasePath } from "@/lib/basePath";
 import type { SyncState, SyncStatus } from "@/lib/librarySync";
 import styles from "./TabEditor.module.css";
 
@@ -52,7 +53,7 @@ export function LibraryButtons({
     <>
       <div className={styles.buttonGroup} role="group" aria-label="Library">
         {/* Vanlig länk, så att webbläsaren varnar om ändringar som inte är sparade */}
-        <a href="/library">Library</a>
+        <a href={withBasePath("/library")}>Library</a>
         {sync ? (
           <span className={styles.syncStatus} role="status" data-status={sync.status}>
             {STATUS_TEXT[sync.status]}

@@ -68,6 +68,12 @@ describe("Inloggning", () => {
     expect(maxAge).toBeGreaterThanOrEqual(90 * 24 * 60 * 60);
   });
 
+  it("sessionscookien gäller bara gitarrdelen", async () => {
+    const response = await login(loginRequest("ingo", PASSWORD));
+
+    expect(sessionSetCookie(response)).toMatch(/Path=\/guitar(;|$)/i);
+  });
+
   it("fel lösenord ger 401 och ingen cookie", async () => {
     const response = await login(loginRequest("ingo", "fel"));
 
@@ -179,11 +185,11 @@ describe("Begränsning av inloggningsförsök", () => {
 });
 
 describe("Utloggning", () => {
-  it("utloggning rensar sessionscookien", async () => {
+  it("utloggning rensar sessionscookien och går till Gitarrsidan", async () => {
     const response = await logout();
 
     expect(response.status).toBe(303);
-    expect(response.headers.get("location")).toBe("/");
+    expect(response.headers.get("location")).toBe("/guitar");
     const header = sessionSetCookie(response)!;
     expect(header).toMatch(/Max-Age=0|Expires=Thu, 01 Jan 1970/i);
     expect(isOwner(requestWithCookie(sessionCookieFrom(response)))).toBe(false);

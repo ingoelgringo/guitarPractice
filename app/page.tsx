@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { isOwnerInPage } from "@/lib/auth";
+import { withBasePath } from "@/lib/basePath";
 import { TOOLS } from "@/lib/tools";
 import styles from "./page.module.css";
 
@@ -40,7 +41,7 @@ export default async function Home() {
             <Link href="/library" className={styles.authLink}>
               Library
             </Link>
-            <form action="/api/logout" method="post">
+            <form action={withBasePath("/api/logout")} method="post">
               <button type="submit" className={styles.authLink}>
                 Log out
               </button>

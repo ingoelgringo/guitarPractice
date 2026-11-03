@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { withBasePath } from "@/lib/basePath";
 import styles from "../page.module.css";
 
 export function LoginForm() {
@@ -15,7 +16,7 @@ export function LoginForm() {
     setPending(true);
     setError(null);
     try {
-      const response = await fetch("/api/login", {
+      const response = await fetch(withBasePath("/api/login"), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ username: form.get("username"), password: form.get("password") }),
