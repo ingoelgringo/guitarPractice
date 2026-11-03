@@ -1,5 +1,5 @@
 .page {
-  /* Det markerade Ackordet är grönt, i Kvintcirkeln och (senare) i Tonnetzen */
+  /* Det markerade Ackordet är grönt, i Kvintcirkeln och i Tonnetzen */
   --chord-highlight: #2e8b4f;
   --chord-highlight-text: #ffffff;
   --chord-major: color-mix(in srgb, var(--foreground) 6%, var(--background));
@@ -42,12 +42,74 @@
   }
 }
 
-.circle {
-  flex: 0 1 480px;
+.tonnetz {
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-width: 480px;
+}
+
+/* Rutan har fast höjd, och ytan i den dras utan att sidan scrollar */
+.tonnetzBox {
+  height: 420px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--foreground) 20%, transparent);
+  border-radius: 8px;
+}
+
+.tonnetzSvg {
+  display: block;
+  user-select: none;
+  touch-action: none;
+  cursor: grab;
+}
+
+.tonnetzSvg.dragging {
+  cursor: grabbing;
+}
+
+.triangle {
+  stroke: color-mix(in srgb, var(--foreground) 30%, transparent);
+  stroke-width: 1;
+}
+
+.major .triangle {
+  fill: var(--chord-major);
+}
+
+.minor .triangle {
+  fill: var(--chord-minor);
+}
+
+.triangleLabel {
+  fill: var(--foreground);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.major .triangleLabel {
+  font-weight: bold;
+}
+
+.vertex circle {
+  fill: var(--background);
+  stroke: color-mix(in srgb, var(--foreground) 45%, transparent);
+  stroke-width: 1.5;
+}
+
+.vertex text {
+  fill: var(--foreground);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.circle {
+  flex: 0 1 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 420px;
   width: 100%;
 }
 

@@ -6,8 +6,12 @@
 
 **Status:** ready-for-agent
 
-- [ ] Tester för gittret: tonklassen för ett hörn, dur- och molltrianglarna (C-dur och grannen Em), att de synliga trianglarna täcker rutan med C-dur i mitten vid förskjutning 0 och att en hel period ger samma Ackord.
-- [ ] Tester för skillnaden mellan klick och dragning (tröskel cirka 5 px).
-- [ ] Tonnetzen som SVG med Pointer Events för mus och pekskärm. Sidan scrollar inte medan man drar.
-- [ ] Notnamnsläget styr tonnamnen och ackordnamnen.
-- [ ] Layouten: bredvid varandra på bred skärm, Tonnetz överst på smal.
+- [x] Tester för gittret: tonklassen för ett hörn, dur- och molltrianglarna (C-dur och grannen Em), att de synliga trianglarna täcker rutan med C-dur i mitten vid förskjutning 0 och att en hel period ger samma Ackord.
+- [x] Tester för skillnaden mellan klick och dragning (tröskel cirka 5 px).
+- [x] Tonnetzen som SVG med Pointer Events för mus och pekskärm. Sidan scrollar inte medan man drar.
+- [x] Notnamnsläget styr tonnamnen och ackordnamnen.
+- [x] Layouten: bredvid varandra på bred skärm, Tonnetz överst på smal.
+
+## Comments
+
+**2026-11-03:** Byggt. Gittret, de synliga trianglarna och hörnen samt `isDrag` ligger i `lib/chordProgressions.ts`, och komponenten är `components/Tonnetz.tsx`. Pekaren fångas först när rörelsen gått över tröskeln, så att ett klick i ticket 03 når triangeln under pekaren. Klicket efter en dragning stoppas, så att en dragning inte släpper ett låst Ackord. Kvar: dragning med mus och finger och layouten i webbläsaren.

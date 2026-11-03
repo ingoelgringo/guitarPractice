@@ -5,9 +5,20 @@ import {
   chordName,
   circleLabel,
   clickedChord,
+  isDrag,
+  majorTriangle,
+  minorTriangle,
+  noteNameOf,
+  type Point,
   sameChord,
   shownChord,
   stepInCircle,
+  triangleCenter,
+  vertexPitch,
+  vertexPosition,
+  type VisibleTriangle,
+  visibleTriangles,
+  visibleVertices,
 } from "./chordProgressions";
 
 const C = 0;
@@ -106,5 +117,126 @@ describe("tangentbordet i Kvintcirkeln", () => {
 
   it("andra tangenter flyttar inte", () => {
     expect(stepInCircle(major(C), "a")).toBeNull();
+  });
+});
+
+describe("Tonnetzens gitter", () => {
+  it("hörnet (0,0) är C, (1,0) G, (0,1) E och (-1,1) A", () => {
+    expect(vertexPitch(0, 0)).toBe(0);
+    expect(vertexPitch(1, 0)).toBe(7);
+    expect(vertexPitch(0, 1)).toBe(4);
+    expect(vertexPitch(-1, 1)).toBe(9);
+  });
+
+  it("kvinter ligger vågrätt och terserna uppåt längs diagonalerna", () => {
+    const c = vertexPosition(0, 0, 10);
+    const g = vertexPosition(1, 0, 10);
+    const e = vertexPosition(0, 1, 10);
+    expect(g.y).toBeCloseTo(c.y);
+    expect(g.x - c.x).toBeCloseTo(10);
+    expect(e.x - c.x).toBeCloseTo(5);
+    // Uppåt på skärmen är mindre y
+    expect(e.y - c.y).toBeCloseTo(-10 * Math.sqrt(3) / 2);
+  });
+
+  it("durtriangeln på (0,0) är C-dur, C E G", () => {
+    const triangle = majorTriangle(0, 0);
+    expect(triangle.chord).toEqual(major(C));
+    expect(triangle.vertices.map(([i, j]) => vertexPitch(i, j)).sort((a, b) => a - b)).toEqual([0, 4, 7]);
+  });
+
+  it("C-durs granne är Em, E G B", () => {
+    const triangle = minorTriangle(0, 0);
+    expect(triangle.chord).toEqual(minor(4));
+    expect(triangle.vertices.map(([i, j]) => vertexPitch(i, j)).sort((a, b) => a - b)).toEqual([4, 7, 11]);
+  });
+
+  it("tonnamnen stavas fast och följer Notnamnsläget", () => {
+    expect(noteNameOf(1, "english")).toBe("D♭");
+    expect(noteNameOf(10, "english")).toBe("B♭");
+    expect(noteNameOf(10, "swedish")).toBe("B");
+    expect(noteNameOf(11, "swedish")).toBe("H");
+  });
+});
+
+describe("Tonnetzens synliga trianglar", () => {
+  const view = { offset: { x: 0, y: 0 }, width: 640, height: 400, edge: 72 };
+
+  const centroid = triangleCenter;
+
+  /** Om punkten ligger i triangeln, med kanterna inräknade. */
+  function contains(triangle: VisibleTriangle, x: number, y: number): boolean {
+    const [a, b, c] = triangle.points;
+    const side = (p: Point, q: Point) => (q.x - p.x) * (y - p.y) - (q.y - p.y) * (x - p.x);
+    const d = [side(a, b), side(b, c), side(c, a)];
+    return d.every((v) => v >= -1e-6) || d.every((v) => v <= 1e-6);
+  }
+
+  it("täcker hela rutan", () => {
+    const triangles = visibleTriangles(view);
+    for (let x = 0; x <= view.width; x += 20) {
+      for (let y = 0; y <= view.height; y += 20) {
+        expect(triangles.some((triangle) => contains(triangle, x, y)), `${x},${y}`).toBe(true);
+      }
+    }
+  });
+
+  it("har C-dur mitt i rutan vid förskjutning 0", () => {
+    const center = visibleTriangles(view).find((triangle) => contains(triangle, view.width / 2, view.height / 2));
+    expect(center?.chord).toEqual(major(C));
+    const middle = centroid(center!);
+    expect(middle.x).toBeCloseTo(view.width / 2);
+    expect(middle.y).toBeCloseTo(view.height / 2);
+  });
+
+  it("följer förskjutningen", () => {
+    const moved = visibleTriangles({ ...view, offset: { x: 30, y: -20 } });
+    const c = moved.find((triangle) => triangle.i === 0 && triangle.j === 0 && triangle.chord.quality === "major")!;
+    expect(centroid(c).x).toBeCloseTo(view.width / 2 + 30);
+    expect(centroid(c).y).toBeCloseTo(view.height / 2 - 20);
+  });
+
+  it("en förskjutning med en hel period ger samma Ackord på samma ställen", () => {
+    const placed = (triangles: VisibleTriangle[]) =>
+      triangles
+        .filter((triangle) => {
+          const { x, y } = centroid(triangle);
+          return x >= 0 && x <= view.width && y >= 0 && y <= view.height;
+        })
+        .map((triangle) => {
+          const { x, y } = centroid(triangle);
+          return `${triangle.chord.root}${triangle.chord.quality}@${Math.round(x)},${Math.round(y)}`;
+        })
+        .sort();
+    const periods = [
+      { x: 12 * view.edge, y: 0 },
+      { x: 1.5 * view.edge, y: (-3 * view.edge * Math.sqrt(3)) / 2 },
+    ];
+    for (const offset of periods) {
+      expect(placed(visibleTriangles({ ...view, offset }))).toEqual(placed(visibleTriangles(view)));
+    }
+  });
+
+  it("hörnen finns för varje synlig triangel, med tonklass", () => {
+    const vertices = visibleVertices(view);
+    const c = vertices.find((vertex) => vertex.i === 0 && vertex.j === 0);
+    expect(c?.pitch).toBe(0);
+    for (const triangle of visibleTriangles(view)) {
+      for (const [i, j] of triangle.vertices) {
+        expect(vertices.some((vertex) => vertex.i === i && vertex.j === j), `${i},${j}`).toBe(true);
+      }
+    }
+  });
+});
+
+describe("klick eller dragning", () => {
+  it("en rörelse på högst 5 px är ett klick", () => {
+    expect(isDrag({ x: 0, y: 0 }, { x: 0, y: 0 })).toBe(false);
+    expect(isDrag({ x: 10, y: 10 }, { x: 13, y: 14 })).toBe(false);
+  });
+
+  it("en längre rörelse är en dragning", () => {
+    expect(isDrag({ x: 0, y: 0 }, { x: 6, y: 0 })).toBe(true);
+    expect(isDrag({ x: 0, y: 0 }, { x: -4, y: 4 })).toBe(true);
   });
 });

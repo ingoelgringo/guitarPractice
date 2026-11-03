@@ -7,6 +7,7 @@ import type { NoteNameMode } from "@/lib/noteNameMode";
 import type { SiteLanguage } from "@/lib/siteLanguage";
 import styles from "./ChordProgressions.module.css";
 import { CHORD_ATTRIBUTE, CircleOfFifths } from "./CircleOfFifths";
+import { Tonnetz } from "./Tonnetz";
 import { useNoteNameMode } from "./useNoteNameMode";
 
 /**
@@ -35,6 +36,10 @@ export function ChordProgressions({ language }: { language: SiteLanguage }) {
       <h1>Chord Progressions</h1>
       <p>{messages.chordProgressionsIntro}</p>
       <div className={styles.layout}>
+        <section className={styles.tonnetz}>
+          <Tonnetz noteNames={noteNames} label={messages.tonnetz} />
+          <p className={styles.help}>{messages.tonnetzHelp}</p>
+        </section>
         <section className={styles.circle}>
           <CircleOfFifths
             noteNames={noteNames}

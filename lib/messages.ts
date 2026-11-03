@@ -50,6 +50,8 @@ const en = {
 
   // Ackordföljder
   chordProgressionsIntro: "Hover a chord to highlight it, and click or tap to keep it highlighted.",
+  tonnetz: "Tonnetz",
+  tonnetzHelp: "Drag in any direction with the mouse or a finger.",
   circleOfFifths: "Circle of fifths",
   circleOfFifthsHelp: "Left and right move by fifths, up and down switch between major and minor, Enter locks and Esc releases.",
   noteNames: "Note names",
@@ -100,6 +102,8 @@ const sv: Messages = {
   libraryUnreachable: "Biblioteket gick inte att nå. Kontrollera anslutningen och försök igen.",
 
   chordProgressionsIntro: "Hovra över ett ackord för att markera det, och klicka eller tryck för att låsa markeringen.",
+  tonnetz: "Tonnetz",
+  tonnetzHelp: "Dra åt vilket håll som helst med musen eller fingret.",
   circleOfFifths: "Kvintcirkel",
   circleOfFifthsHelp: "Vänster och höger går i kvinter, upp och ner byter mellan dur och moll, Enter låser och Esc släpper.",
   noteNames: "Notnamn",
