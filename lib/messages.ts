@@ -1,8 +1,9 @@
 import type { SiteLanguage } from "./siteLanguage";
 
 /**
- * Texterna i headern, på Gitarrsidan, login-sidan och Library-sidan på båda Sajtspråken. Verktygen
- * är bara på engelska tills vidare.
+ * Texterna i headern, på Gitarrsidan, login-sidan, Library-sidan och Ackordföljder på båda
+ * Sajtspråken. Tab-editorn och Greppbrädan är bara på engelska tills vidare. Verktygens namn och
+ * tonnamnen översätts inte: tonnamnen följer Notnamnsläget.
  */
 const en = {
   siteTitle: "Guitar",
@@ -46,6 +47,15 @@ const en = {
   libraryLoggedOut: "You have been logged out. Log in again to use the library.",
   libraryNotFound: "This score is no longer in the library.",
   libraryUnreachable: "The library couldn't be reached. Check your connection and try again.",
+
+  // Ackordföljder
+  chordProgressionsIntro: "Hover a chord to highlight it, and click or tap to keep it highlighted.",
+  circleOfFifths: "Circle of fifths",
+  circleOfFifthsHelp: "Left and right move by fifths, up and down switch between major and minor, Enter locks and Esc releases.",
+  noteNames: "Note names",
+  noteNamesSwedish: "Swedish (H, B)",
+  noteNamesEnglish: "English (B, B♭)",
+  highlightedChord: (chord: string) => `${chord} highlighted`,
 };
 
 export type Messages = typeof en;
@@ -88,6 +98,14 @@ const sv: Messages = {
   libraryLoggedOut: "Du har blivit utloggad. Logga in igen för att använda biblioteket.",
   libraryNotFound: "Det här partituret finns inte längre i biblioteket.",
   libraryUnreachable: "Biblioteket gick inte att nå. Kontrollera anslutningen och försök igen.",
+
+  chordProgressionsIntro: "Hovra över ett ackord för att markera det, och klicka eller tryck för att låsa markeringen.",
+  circleOfFifths: "Kvintcirkel",
+  circleOfFifthsHelp: "Vänster och höger går i kvinter, upp och ner byter mellan dur och moll, Enter låser och Esc släpper.",
+  noteNames: "Notnamn",
+  noteNamesSwedish: "Svenska (H, B)",
+  noteNamesEnglish: "Engelska (B, B♭)",
+  highlightedChord: (chord: string) => `${chord} markerat`,
 };
 
 export const MESSAGES: Record<SiteLanguage, Messages> = { en, sv };

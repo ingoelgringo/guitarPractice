@@ -26,6 +26,7 @@ export const TOOLS: Tool[] = [
     },
   },
   {
+    href: "/chord-progressions",
     title: "Chord Progressions",
     description: {
       en: "Practice common chord progressions.",

@@ -1,6 +1,9 @@
 /** Greppbrädan: vilka Prickar halsen visar för ett urval. Ren modul utan React. */
 
+import { DEFAULT_NOTE_NAME_MODE, type NoteNameMode } from "./noteNameMode";
 import { STANDARD_TUNING } from "./score";
+
+export { DEFAULT_NOTE_NAME_MODE, type NoteNameMode };
 
 /** Antal band som visas utöver lös sträng. */
 export const FRET_COUNT = 15;
@@ -13,11 +16,7 @@ export type ScaleId = "major" | "naturalMinor" | "majorPentatonic" | "minorPenta
 /** Vad Prickarnas etiketter visar. */
 export type LabelMode = "interval" | "noteName";
 
-/** Notnamnsläge: svenskt (H, och B för B♭) eller engelskt. */
-export type NoteNameMode = "swedish" | "english";
-
 export const DEFAULT_LABEL_MODE: LabelMode = "interval";
-export const DEFAULT_NOTE_NAME_MODE: NoteNameMode = "swedish";
 
 /** Ett skalsteg: stegnummer 1–7 och avstånd i halvtoner från Grundtonen. */
 interface Step {

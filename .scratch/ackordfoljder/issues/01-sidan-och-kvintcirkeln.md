@@ -6,8 +6,12 @@
 
 **Status:** ready-for-agent
 
-- [ ] Den rena modulen (t.ex. `lib/chordProgressions.ts`) med tester: Kvintcirkelns 24 platser, ackordnamn i båda Notnamnslägena (enligt specens stavning) och nivåerna låst/hovrat.
-- [ ] Notnamnsläget: en gemensam nyckel i webbläsaren, `DEFAULT_NOTE_NAME_MODE = "english"` och fallback till Greppbrädans gamla nyckel, med tester. Greppbrädan använder samma lagring.
-- [ ] `href` på kortet i `lib/tools.ts`, med uppdaterat test.
-- [ ] Sidan med Kvintcirkeln som SVG, den gröna färgtoken (ljust och mörkt tema), dropdownen och texter på båda Sajtspråken.
-- [ ] Tangentbordet i Kvintcirkeln.
+- [x] Den rena modulen (t.ex. `lib/chordProgressions.ts`) med tester: Kvintcirkelns 24 platser, ackordnamn i båda Notnamnslägena (enligt specens stavning) och nivåerna låst/hovrat.
+- [x] Notnamnsläget: en gemensam nyckel i webbläsaren, `DEFAULT_NOTE_NAME_MODE = "english"` och fallback till Greppbrädans gamla nyckel, med tester. Greppbrädan använder samma lagring.
+- [x] `href` på kortet i `lib/tools.ts`, med uppdaterat test.
+- [x] Sidan med Kvintcirkeln som SVG, den gröna färgtoken (ljust och mörkt tema), dropdownen och texter på båda Sajtspråken.
+- [x] Tangentbordet i Kvintcirkeln.
+
+## Comments
+
+**2026-11-03:** Byggt. Modulen är `lib/chordProgressions.ts` och Notnamnsläget ligger i `lib/noteNameMode.ts` (nyckeln `guitarPractice.noteNames`, med `guitarPractice.fretboard.noteNames` som fallback). Kvintcirkeln är `components/CircleOfFifths.tsx` och den gemensamma hooken `components/useNoteNameMode.ts`. Fem Greppbrädetester som förutsatte svenskt förval anger nu svenskt läge uttryckligen. Kvar: hovring, klick/tryck, tangentbord och teman i webbläsaren.

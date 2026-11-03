@@ -20,6 +20,8 @@ describe("sajtens texter", () => {
   it("en text med en lucka fyller i den på båda språken", () => {
     expect(MESSAGES.en.confirmDelete("Wonderwall")).toContain("Wonderwall");
     expect(MESSAGES.sv.confirmDelete("Wonderwall")).toContain("Wonderwall");
+    expect(MESSAGES.en.highlightedChord("Am")).toContain("Am");
+    expect(MESSAGES.sv.highlightedChord("Am")).toContain("Am");
   });
 
   it("Verktygens beskrivningar finns på båda språken", () => {

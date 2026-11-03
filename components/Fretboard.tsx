@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { type KeyboardEvent, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { type KeyboardEvent, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { browserStorage } from "@/lib/draft";
-import { type CagedShape, DEFAULT_NOTE_NAME_MODE, FRET_COUNT, type FretboardTab, fretboardView, INLAY_FRETS, type Inversion, type LabelMode, type NoteNameMode, type RootRole, SCALES, type ScaleId, type StringSet } from "@/lib/fretboard";
+import { type CagedShape, FRET_COUNT, type FretboardTab, fretboardView, INLAY_FRETS, type Inversion, type LabelMode, type NoteNameMode, type RootRole, SCALES, type ScaleId, type StringSet } from "@/lib/fretboard";
 import { choiceToParams, type FretboardChoice, restoredChoice } from "@/lib/fretboardParams";
 import { stepAround } from "@/lib/tableNavigation";
 import { STANDARD_TUNING } from "@/lib/score";
 import styles from "./Fretboard.module.css";
+import { useNoteNameMode } from "./useNoteNameMode";
 
 /** Det man väljer i Flikens tabell: en cell, ett Ackord, ett Intervall eller en Box. */
 type TableChoice = Pick<FretboardChoice, "chord" | "box" | "caged" | "interval">;
@@ -74,36 +75,6 @@ const HEIGHT = TOP + NECK_HEIGHT + BOTTOM;
 /** Halsen skalas med tillgänglig bredd, men inte mindre än så här. Därunder skrollar den i sidled. */
 const MIN_SCALE = 0.7;
 
-// Notnamnsläget sparas per webbläsare, med svenskt som standard. Det ligger inte i adressen.
-const NOTE_NAME_KEY = "guitarPractice.fretboard.noteNames";
-const noteNameListeners = new Set<() => void>();
-
-function readNoteNameMode(): NoteNameMode {
-  try {
-    return browserStorage()?.getItem(NOTE_NAME_KEY) === "english" ? "english" : DEFAULT_NOTE_NAME_MODE;
-  } catch {
-    return DEFAULT_NOTE_NAME_MODE;
-  }
-}
-
-function saveNoteNameMode(mode: NoteNameMode) {
-  try {
-    browserStorage()?.setItem(NOTE_NAME_KEY, mode);
-  } catch {
-    // Utan lagring gäller valet bara tills sidan laddas om
-  }
-  noteNameListeners.forEach((listener) => listener());
-}
-
-function subscribeNoteNameMode(listener: () => void) {
-  noteNameListeners.add(listener);
-  window.addEventListener("storage", listener);
-  return () => {
-    noteNameListeners.delete(listener);
-    window.removeEventListener("storage", listener);
-  };
-}
-
 // Det senaste valet sparas per webbläsare, så att sidan utan val i adressen börjar där man slutade
 const CHOICE_KEY = "guitarPractice.fretboard.choice";
 
@@ -145,7 +116,7 @@ export function Fretboard({ initialChoice }: { initialChoice: FretboardChoice })
   /** Urvalet som musen står över i Flikens tabell. Det förhandsvisas på halsen men skrivs inte i adressen. */
   const [hovered, setHovered] = useState<TableChoice | null>(null);
   const tableRef = useRef<HTMLTableElement>(null);
-  const noteNames = useSyncExternalStore(subscribeNoteNameMode, readNoteNameMode, () => DEFAULT_NOTE_NAME_MODE);
+  const [noteNames, saveNoteNameMode] = useNoteNameMode();
   const { root, scale, labels } = choice;
   const { selection, options, intervalPair } = fretboardView({ ...choice, noteNames, tuning: STANDARD_TUNING });
   /** Halsen visar det hovrade urvalet (med dess första Tonpar), och annars det valda. */

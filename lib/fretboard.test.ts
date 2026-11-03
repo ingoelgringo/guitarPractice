@@ -119,7 +119,7 @@ describe("Greppbräda", () => {
     });
 
     it("tabellen följer Skalan: A mollpentatonik har raderna i–VII från A naturlig moll, med svenska namn", () => {
-      const { cagedTable } = fretboardView({ root: A, scale: "minorPentatonic", tuning: STANDARD_TUNING }).options;
+      const { cagedTable } = fretboardView({ root: A, scale: "minorPentatonic", tuning: STANDARD_TUNING, noteNames: "swedish" }).options;
 
       expect(cagedTable.map((chord) => `${chord.numeral} – ${chord.name}`)).toEqual([
         "i – Am",
@@ -653,7 +653,7 @@ describe("Greppbräda", () => {
         .map(({ string, fret }) => [string, fret]);
     }
 
-    const cMajorSixth: FretboardSelection = { root: C, scale: "major", tab: "intervals", interval: 6, box: 1, tuning: STANDARD_TUNING };
+    const cMajorSixth: FretboardSelection = { root: C, scale: "major", tab: "intervals", interval: 6, box: 1, tuning: STANDARD_TUNING, noteNames: "swedish" };
 
     it("cell: sext i Box 1 av C-dur börjar på lägsta Grundtonen, C (band 8) och A (band 7 på sträng 4)", () => {
       const view = fretboardView(cMajorSixth);
@@ -716,7 +716,7 @@ describe("Greppbräda", () => {
     });
 
     it("pentatonik räknas i Föräldraskalan: sekund i Box 1 av A mollpentatonik är A och H, och H syns bara i Tonparet", () => {
-      const selection: FretboardSelection = { root: A, scale: "minorPentatonic", tab: "intervals", interval: 2, box: 1, tuning: STANDARD_TUNING };
+      const selection: FretboardSelection = { root: A, scale: "minorPentatonic", tab: "intervals", interval: 2, box: 1, tuning: STANDARD_TUNING, noteNames: "swedish" };
       const view = fretboardView(selection);
 
       expect(pairPlaces(selection)).toEqual(expect.arrayContaining([[6, 5], [6, 7]]));
@@ -763,7 +763,7 @@ describe("Greppbräda", () => {
     });
 
     it("förminskade Ackord har namn, i alla Flikar: vii° i C-dur heter H° i svenskt Notnamnsläge", () => {
-      expect(fretboardView({ ...cMajor, chord: 7, box: 1, tab: "penta" }).chordLabels.map(({ name }) => name)).toEqual(["H°"]);
+      expect(fretboardView({ ...cMajor, chord: 7, box: 1, tab: "penta", noteNames: "swedish" }).chordLabels.map(({ name }) => name)).toEqual(["H°"]);
     });
 
     it("utan Box eller utan Ackord står inget namn", () => {

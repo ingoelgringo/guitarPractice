@@ -1,0 +1,137 @@
+.page {
+  /* Det markerade Ackordet är grönt, i Kvintcirkeln och (senare) i Tonnetzen */
+  --chord-highlight: #2e8b4f;
+  --chord-highlight-text: #ffffff;
+  --chord-major: color-mix(in srgb, var(--foreground) 6%, var(--background));
+  --chord-minor: color-mix(in srgb, var(--foreground) 13%, var(--background));
+
+  flex: 1;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Mörkt tema, se app/globals.css */
+:global(:root[data-theme="dark"]) .page {
+  --chord-highlight: #4cc47a;
+  --chord-highlight-text: #0a0a0a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme="light"])) .page {
+    --chord-highlight: #4cc47a;
+    --chord-highlight-text: #0a0a0a;
+  }
+}
+
+/* Rutorna: bredvid varandra på bred skärm. Tonnetzen kommer före Kvintcirkeln. */
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+@media (min-width: 900px) {
+  .layout {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+}
+
+.circle {
+  flex: 0 1 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 480px;
+  width: 100%;
+}
+
+.circleSvg {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.circleSvg:focus {
+  outline: none;
+}
+
+.circleSvg:focus-visible {
+  outline: 2px solid var(--chord-highlight);
+  outline-offset: 4px;
+  border-radius: 50%;
+}
+
+.segment {
+  cursor: pointer;
+}
+
+.segment path {
+  stroke: var(--background);
+  stroke-width: 2;
+}
+
+.major path {
+  fill: var(--chord-major);
+}
+
+.minor path {
+  fill: var(--chord-minor);
+}
+
+.segment text {
+  fill: var(--foreground);
+  font-size: 17px;
+  pointer-events: none;
+}
+
+.major text {
+  font-weight: bold;
+  font-size: 19px;
+}
+
+.segment.shown path {
+  fill: var(--chord-highlight);
+}
+
+.segment.shown text {
+  fill: var(--chord-highlight-text);
+}
+
+/* Där tangentbordet står, så att man ser var man är även när ett annat Ackord är låst */
+.segment.focused path {
+  stroke: var(--foreground);
+  stroke-width: 3;
+}
+
+.help {
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--foreground) 65%, transparent);
+}
+
+.noteNames {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.noteNames select {
+  font: inherit;
+  padding: 4px 6px;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
