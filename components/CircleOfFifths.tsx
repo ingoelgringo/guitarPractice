@@ -4,9 +4,8 @@ import type { FocusEvent, KeyboardEvent } from "react";
 import { type Chord, CIRCLE_OF_FIFTHS, circleLabel, sameChord, stepInCircle } from "@/lib/chordProgressions";
 import type { NoteNameMode } from "@/lib/noteNameMode";
 import styles from "./ChordProgressions.module.css";
+import { CHORD_ATTRIBUTE } from "./chordElement";
 
-/** Attributet på det som är ett Ackord. Ett klick någon annanstans släpper låsningen. */
-export const CHORD_ATTRIBUTE = "data-chord";
 
 // Mått i SVG-enheter, med mitten i (0, 0)
 const OUTER = 190;

@@ -6,7 +6,11 @@
 
 **Status:** ready-for-agent
 
-- [ ] Tester: alla synliga kopior av ett Ackord hittas, och dess hörn.
-- [ ] Gemensamt tillstånd för låst och hovrat Ackord på sidan.
-- [ ] Hovring och klick på trianglar. Klick utanför trianglar och segment släpper låsningen.
+- [x] Tester: alla synliga kopior av ett Ackord hittas, och dess hörn.
+- [x] Gemensamt tillstånd för låst och hovrat Ackord på sidan.
+- [x] Hovring och klick på trianglar. Klick utanför trianglar och segment släpper låsningen.
 - [ ] Manuell kontroll i appen: båda riktningarna, pekskärm (tryck låser, dragning låser inte) och båda temana.
+
+## Comments
+
+**2026-11-03:** Byggt. `chordCopies` och `chordVertices` i `lib/chordProgressions.ts` hittar kopiorna och hörnen. Tonnetzen hanterar klicket på rutan och låser triangeln som trycktes ner, så att ett klick som glider lite över en kant inte släpper låsningen. Hörnen släpper igenom pekaren till triangeln under. Attributet `data-chord` ligger nu i `components/chordElement.ts`. Den manuella kontrollen i appen återstår.

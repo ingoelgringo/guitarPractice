@@ -6,7 +6,8 @@ import { MESSAGES } from "@/lib/messages";
 import type { NoteNameMode } from "@/lib/noteNameMode";
 import type { SiteLanguage } from "@/lib/siteLanguage";
 import styles from "./ChordProgressions.module.css";
-import { CHORD_ATTRIBUTE, CircleOfFifths } from "./CircleOfFifths";
+import { CHORD_ATTRIBUTE } from "./chordElement";
+import { CircleOfFifths } from "./CircleOfFifths";
 import { Tonnetz } from "./Tonnetz";
 import { useNoteNameMode } from "./useNoteNameMode";
 
@@ -24,7 +25,7 @@ export function ChordProgressions({ language }: { language: SiteLanguage }) {
 
   const lock = (chord: Chord) => setLocked((current) => clickedChord(current, chord));
 
-  /** Ett klick utanför Ackorden och dropdownen släpper låsningen. */
+  /** Ett klick utanför Ackorden (segmenten och trianglarna) och dropdownen släpper låsningen. */
   function releaseOutside(event: MouseEvent) {
     const target = event.target as Element;
     if (!target.closest(`[${CHORD_ATTRIBUTE}], label, select`)) setLocked(null);
@@ -37,7 +38,7 @@ export function ChordProgressions({ language }: { language: SiteLanguage }) {
       <p>{messages.chordProgressionsIntro}</p>
       <div className={styles.layout}>
         <section className={styles.tonnetz}>
-          <Tonnetz noteNames={noteNames} label={messages.tonnetz} />
+          <Tonnetz noteNames={noteNames} shown={shown} label={messages.tonnetz} onHover={setHovered} onLock={lock} />
           <p className={styles.help}>{messages.tonnetzHelp}</p>
         </section>
         <section className={styles.circle}>

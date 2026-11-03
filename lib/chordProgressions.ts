@@ -202,12 +202,27 @@ export function visibleTriangles(view: TonnetzView): VisibleTriangle[] {
   );
 }
 
+/** Nyckeln för en punkt (i, j) i gittret, ett hörn eller en cell, t.ex. i en mängd hörn eller som React-nyckel. */
+export function latticeKey(i: number, j: number): string {
+  return `${i},${j}`;
+}
+
+/** Alla synliga kopior av Ackordets triangel. */
+export function chordCopies(view: TonnetzView, chord: Chord | null): VisibleTriangle[] {
+  return chord ? visibleTriangles(view).filter((triangle) => sameChord(triangle.chord, chord)) : [];
+}
+
+/** Hörnen till alla synliga kopior av Ackordet, som nycklar från `latticeKey`. */
+export function chordVertices(view: TonnetzView, chord: Chord | null): Set<string> {
+  return new Set(chordCopies(view, chord).flatMap((triangle) => triangle.vertices.map(([i, j]) => latticeKey(i, j))));
+}
+
 /** Hörnen till de synliga trianglarna, vart och ett en gång. */
 export function visibleVertices(view: TonnetzView): VisibleVertex[] {
   const seen = new Map<string, VisibleVertex>();
   for (const [i, j] of visibleCells(view)) {
     for (const [vi, vj] of [[i, j], [i + 1, j], [i, j + 1], [i + 1, j + 1]] as const) {
-      const key = `${vi},${vj}`;
+      const key = latticeKey(vi, vj);
       if (!seen.has(key)) seen.set(key, { i: vi, j: vj, pitch: vertexPitch(vi, vj), ...onScreen(view, vi, vj) });
     }
   }

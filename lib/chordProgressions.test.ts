@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   type Chord,
   CIRCLE_OF_FIFTHS,
+  chordCopies,
   chordName,
+  chordVertices,
   circleLabel,
   clickedChord,
   isDrag,
+  latticeKey,
   majorTriangle,
   minorTriangle,
   noteNameOf,
@@ -238,5 +241,47 @@ describe("klick eller dragning", () => {
   it("en längre rörelse är en dragning", () => {
     expect(isDrag({ x: 0, y: 0 }, { x: 6, y: 0 })).toBe(true);
     expect(isDrag({ x: 0, y: 0 }, { x: -4, y: 4 })).toBe(true);
+  });
+});
+
+describe("ett Ackords kopior i Tonnetzen", () => {
+  const view = { offset: { x: 0, y: 0 }, width: 640, height: 400, edge: 72 };
+
+  it("hittar alla synliga trianglar för Ackordet och inga andra", () => {
+    const copies = chordCopies(view, major(C));
+    const cells = copies.map((triangle) => latticeKey(triangle.i, triangle.j));
+    // C ligger på (0,0) och en kvint- och terskombination bort: tre stora terser upp, eller fyra kvinter och en ters ner
+    expect(cells).toEqual(expect.arrayContaining(["0,0", "0,3", "4,-1"]));
+    expect(copies.every((triangle) => sameChord(triangle.chord, major(C)))).toBe(true);
+    const all = visibleTriangles(view).filter((triangle) => sameChord(triangle.chord, major(C)));
+    expect(all.map((triangle) => latticeKey(triangle.i, triangle.j)).sort()).toEqual([...cells].sort());
+  });
+
+  it("hittar kopiorna för mollackord också, t.ex. Em bredvid C-dur", () => {
+    const copies = chordCopies(view, minor(4));
+    expect(copies.some((triangle) => triangle.i === 0 && triangle.j === 0)).toBe(true);
+  });
+
+  it("utan Ackord finns inga kopior och inga hörn", () => {
+    expect(chordCopies(view, null)).toEqual([]);
+    expect(chordVertices(view, null).size).toBe(0);
+  });
+
+  it("hörnen är kopiornas tre hörn, med Ackordets toner", () => {
+    const vertices = chordVertices(view, minor(9));
+    const copies = chordCopies(view, minor(9));
+    expect(vertices.size).toBeGreaterThanOrEqual(3);
+    for (const triangle of copies) {
+      for (const [i, j] of triangle.vertices) expect(vertices.has(latticeKey(i, j))).toBe(true);
+    }
+    const pitches = new Set([...vertices].map((key) => vertexPitch(...(key.split(",").map(Number) as [number, number]))));
+    expect([...pitches].sort((a, b) => a - b)).toEqual([0, 4, 9]);
+  });
+
+  it("nya kopior som dras in i rutan hittas också", () => {
+    const moved = { ...view, offset: { x: -6 * view.edge, y: 0 } };
+    const keys = (v: typeof view) => chordCopies(v, major(C)).map((t) => latticeKey(t.i, t.j));
+    expect(keys(moved)).not.toEqual(keys(view));
+    expect(keys(moved).length).toBeGreaterThan(0);
   });
 });
