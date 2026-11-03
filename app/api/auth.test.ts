@@ -194,6 +194,14 @@ describe("Utloggning", () => {
     expect(header).toMatch(/Max-Age=0|Expires=Thu, 01 Jan 1970/i);
     expect(isOwner(requestWithCookie(sessionCookieFrom(response)))).toBe(false);
   });
+
+  it("utloggning rensar även sessionscookien från tiden då gitarrdelen låg på /", async () => {
+    const response = await logout();
+
+    const cleared = response.headers.getSetCookie().filter((c) => c.startsWith(`${SESSION_COOKIE}=`));
+    expect(cleared.some((c) => /Path=\/(;|$)/i.test(c) && /Max-Age=0/i.test(c))).toBe(true);
+    expect(cleared.some((c) => /Path=\/guitar(;|$)/i.test(c) && /Max-Age=0/i.test(c))).toBe(true);
+  });
 });
 
 describe("isOwner", () => {

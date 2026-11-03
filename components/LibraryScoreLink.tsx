@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { withBasePath } from "@/lib/basePath";
 import { browserStorage, loadDraft, replacingLosesWork } from "@/lib/draft";
 
 /**
@@ -11,7 +12,7 @@ export function LibraryScoreLink({ id, revision, children }: { id: string; revis
   return (
     // Vanlig länk: editorn läser Utkastet när sidan laddas
     <a
-      href={`/tab-editor?score=${id}`}
+      href={withBasePath(`/tab-editor?score=${id}`)}
       onClick={(event) => {
         const draft = loadDraft(browserStorage());
         if (

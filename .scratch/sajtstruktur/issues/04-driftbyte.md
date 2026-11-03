@@ -6,7 +6,6 @@
 
 **Status:** ready-for-human
 
-- [ ] Logga ut innan bytet. Den gamla sessionscookien har sökvägen `/` och skulle annars ligga kvar efter bytet, eftersom utloggningen då bara rensar `/guitar`.
 - [ ] Landningsrepot är deployat till sin katalog på servern (den svarar inte på `/` ännu).
 - [ ] Byt serverns vhost för `ingemar.berghult.com` till blocket från `ingemar-berghult` (behåll certbots 443-del): `/` och `/projects` statiskt, `/stenhagen/` oförändrat, `/guitar/` till port 3004 (blocken i `deploy/nginx/guitar-practice.conf`), `/stenhagen/`-blocken från den gamla versionen av samma fil (före grenen `sajtstruktur`) och 301 från `/tab-editor`, `/fretboard`, `/library` och `/login` till `/guitar/...`. `nginx -t` och sedan reload.
 - [ ] Merga grenen med 01–03 till `main` direkt efter, så att deployen bygger med basePath.

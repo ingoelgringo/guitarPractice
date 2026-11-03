@@ -3,8 +3,8 @@
 import type { AlphaTabApi } from "@coderline/alphatab";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
-import { browserStorage, loadDraft, saveDraft, type Draft } from "@/lib/draft";
 import { withBasePath } from "@/lib/basePath";
+import { browserStorage, loadDraft, saveDraft, type Draft } from "@/lib/draft";
 import { apply, createEditor, neighbourBeat, type Cursor, type EditorState, type Side } from "@/lib/editor";
 import { keyToBeatText, keyToCommand, type KeyPress } from "@/lib/keyboard";
 import { addToLibrary, loadFromLibrary, saveToLibrary, type LibraryFailure } from "@/lib/libraryClient";
