@@ -33,9 +33,11 @@ function segment(index: number, inner: number, outer: number): string {
   ].join(" ");
 }
 
+/** Avrundat, som i `point`: sin och cos kan skilja i sista decimalen mellan servern och webbläsaren. */
 function labelPosition(index: number, radius: number) {
   const angle = index * STEP;
-  return { x: radius * Math.sin(angle), y: -radius * Math.cos(angle) };
+  const round = (value: number) => Math.round(value * 100) / 100;
+  return { x: round(radius * Math.sin(angle)), y: round(-radius * Math.cos(angle)) };
 }
 
 interface Props {
