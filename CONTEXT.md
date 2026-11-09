@@ -92,7 +92,7 @@ _Avoid_: Export, sparfil
 _Avoid_: Molnet, databasen, mina projekt
 
 **Konflikt** (`conflict`):
-När ett Partitur eller en Ackordföljd i Biblioteket har sparats på en annan flik eller enhet sedan den revision man utgick från. Den automatiska sparningen stoppas tills Ägaren väljer *Ladda om* (ta den sparade versionen), *Spara som kopia* (ett nytt Partitur i Biblioteket) eller *Skriv över* (spara oavsett revision).
+När ett Partitur eller en Ackordföljd i Biblioteket har sparats på en annan flik eller enhet sedan den revision man utgick från. Den automatiska sparningen stoppas tills Ägaren väljer *Ladda om* (ta den sparade versionen), *Spara som kopia* (ett nytt Partitur eller en ny Ackordföljd i Biblioteket) eller *Skriv över* (spara oavsett revision).
 _Avoid_: Krock, versionsfel
 
 **Utkast** (`Draft`):

@@ -35,7 +35,7 @@ export function readDocument(document: unknown): Score | null {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Sant om `id` kan vara ett id i Biblioteket. Andra id finns inte och ska inte nå databasen. */
-function isLibraryId(id: string): boolean {
+export function isLibraryId(id: string): boolean {
   return UUID.test(id);
 }
 

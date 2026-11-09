@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { ExpectedRevision } from "../../../lib/library";
 
 /** Svaret på ett anrop till Biblioteket utan Ägarens session. */
 export function unauthorized() {
@@ -16,4 +17,10 @@ export async function readJson(request: Request): Promise<unknown> {
   } catch {
     return undefined;
   }
+}
+
+/** Revisionen i en sparning, "overwrite" för Skriv över, eller null när ingen giltig revision finns. */
+export function expectedRevision(body: Record<string, unknown>): ExpectedRevision | null {
+  if (body.overwrite === true) return "overwrite";
+  return typeof body.revision === "number" && Number.isInteger(body.revision) ? body.revision : null;
 }

@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] Migrering i `db/migrations/` för en tabell med Ackordföljder (`jsonb`, revision).
-- [ ] API-vägar som speglar `app/api/library`, bara för Ägaren (tester som `app/api/library.test.ts`).
-- [ ] Automatisk sparning och Konflikthantering med mönstret i `lib/librarySync.ts`.
-- [ ] Listan på sidan och knapparna för att öppna, byta namn, kopiera och ta bort.
+- [x] Migrering i `db/migrations/` för en tabell med Ackordföljder (`jsonb`, revision).
+- [x] API-vägar som speglar `app/api/library`, bara för Ägaren (tester som `app/api/library.test.ts`).
+- [x] Automatisk sparning och Konflikthantering med mönstret i `lib/librarySync.ts`.
+- [x] Listan på sidan och knapparna för att öppna, byta namn, kopiera och ta bort.

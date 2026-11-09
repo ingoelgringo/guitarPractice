@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { isOwner } from "../../../../lib/auth";
-import { deleteScore, getScore, readDocument, saveScore, type ExpectedRevision } from "../../../../lib/library";
+import { deleteScore, getScore, readDocument, saveScore } from "../../../../lib/library";
 import { isRecord } from "../../../../lib/scoreFile";
-import { notFound, readJson, unauthorized } from "../responses";
+import { expectedRevision, notFound, readJson, unauthorized } from "../responses";
 
 /** Ett Partitur i Biblioteket: id, revision, senast ändrad och dokumentet (Partiturfilen). */
 export async function GET(request: Request, ctx: RouteContext<"/api/library/[id]">) {
@@ -41,10 +41,4 @@ export async function DELETE(request: Request, ctx: RouteContext<"/api/library/[
   if (!isOwner(request)) return unauthorized();
   if (!(await deleteScore((await ctx.params).id))) return notFound();
   return new Response(null, { status: 204 });
-}
-
-/** Revisionen i anropet, "overwrite" för Skriv över, eller null när ingen giltig revision finns. */
-function expectedRevision(body: Record<string, unknown>): ExpectedRevision | null {
-  if (body.overwrite === true) return "overwrite";
-  return typeof body.revision === "number" && Number.isInteger(body.revision) ? body.revision : null;
 }

@@ -1,19 +1,17 @@
 import type { ExpectedRevision } from "./library";
 import type { LibraryResult } from "./libraryClient";
-import type { Score } from "./score";
-import { serialize } from "./scoreFile";
 
 /**
- * Bibliotekssynken: håller ett Partitur i Biblioteket sparat medan Ägaren arbetar. Den sparar
- * automatiskt en stund efter senaste ändringen och vet hela tiden om Partituret är sparat. Den
- * känner inte till DOM:en eller nätverket: webbläsarens händelser och anropen till Biblioteket
- * kommer utifrån.
+ * Bibliotekssynken: håller ett Partitur eller en Ackordföljd (dokumentet `T`) i Biblioteket sparat
+ * medan Ägaren arbetar. Den sparar automatiskt en stund efter senaste ändringen och vet hela tiden
+ * om dokumentet är sparat. Den känner inte till DOM:en eller nätverket: webbläsarens händelser och
+ * anropen till Biblioteket kommer utifrån.
  */
 
-/** Sparar Partituret med den förväntade revisionen, eller oavsett revision med "overwrite". */
-export type SaveToLibrary = (
+/** Sparar dokumentet med den förväntade revisionen, eller oavsett revision med "overwrite". */
+export type SaveToLibrary<T> = (
   id: string,
-  score: Score,
+  document: T,
   revision: ExpectedRevision,
 ) => Promise<LibraryResult<{ revision: number }>>;
 
@@ -44,13 +42,14 @@ export type SyncState = {
 /** Hur länge synken väntar efter senaste ändringen innan den sparar. */
 export const SAVE_DELAY_MS = 2000;
 
-export class LibrarySync {
+export class LibrarySync<T> {
   private readonly id: string;
-  private readonly save: SaveToLibrary;
+  private readonly save: SaveToLibrary<T>;
+  private readonly serialize: (document: T) => string;
   private revision: number;
-  /** Partiturfilen som den senast kända revisionen motsvarar, eller null när den inte är känd. */
+  /** Dokumentet som text i den senast kända revisionen, eller null när den inte är känd. */
   private savedText: string | null;
-  private score: Score;
+  private document: T;
   private text: string;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private inFlight = false;
@@ -66,12 +65,20 @@ export class LibrarySync {
   private snapshot: SyncState;
 
   /** Skapar synken utan att starta den. Inget sparas förrän `start` har anropats. */
-  constructor(options: { id: string; revision: number; savedText: string | null; score: Score; save: SaveToLibrary }) {
+  constructor(options: {
+    id: string;
+    revision: number;
+    savedText: string | null;
+    document: T;
+    serialize: (document: T) => string;
+    save: SaveToLibrary<T>;
+  }) {
     this.id = options.id;
     this.revision = options.revision;
     this.savedText = options.savedText;
-    this.score = options.score;
-    this.text = serialize(options.score);
+    this.document = options.document;
+    this.serialize = options.serialize;
+    this.text = options.serialize(options.document);
     this.save = options.save;
     this.snapshot = this.currentState();
   }
@@ -103,11 +110,11 @@ export class LibrarySync {
     this.cancelTimer();
   }
 
-  /** Partituret har ändrats. */
-  edit(score: Score): void {
+  /** Dokumentet har ändrats. */
+  edit(document: T): void {
     if (!this.running) return;
-    this.score = score;
-    this.text = serialize(score);
+    this.document = document;
+    this.text = this.serialize(document);
     if (!this.paused()) {
       if (this.isSaved() && !this.inFlight) this.cancelTimer();
       else this.schedule();
@@ -188,7 +195,7 @@ export class LibrarySync {
     const text = this.text;
     this.inFlight = true;
     this.changed();
-    const result = await this.save(this.id, this.score, this.overwriting ? "overwrite" : this.revision);
+    const result = await this.save(this.id, this.document, this.overwriting ? "overwrite" : this.revision);
     if (generation !== this.generation) return;
     this.inFlight = false;
     this.settle(result, text);

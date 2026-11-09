@@ -4,6 +4,7 @@ import { type MouseEvent, useState } from "react";
 import { type Chord, chordName, clickedChord, progressionTriad, shownChord } from "@/lib/chordProgressions";
 import { MESSAGES } from "@/lib/messages";
 import type { NoteNameMode } from "@/lib/noteNameMode";
+import type { ProgressionListEntry } from "@/lib/progressionLibraryClient";
 import { chordAt, placeChord, type Position, positionExists, triad } from "@/lib/progression";
 import type { SiteLanguage } from "@/lib/siteLanguage";
 import styles from "./ChordProgressions.module.css";
@@ -11,8 +12,9 @@ import { CHORD_ATTRIBUTE } from "./chordElement";
 import { CircleOfFifths } from "./CircleOfFifths";
 import { Tonnetz } from "./Tonnetz";
 import { ProgressionEditor } from "./ProgressionEditor";
+import { ProgressionLibrary } from "./ProgressionLibrary";
 import { useNoteNameMode } from "./useNoteNameMode";
-import { useProgressionDraft } from "./useProgressionDraft";
+import { setDraftProgression, useProgressionDraft } from "./useProgressionDraft";
 import { useProgressionHistory } from "./useProgressionHistory";
 import { useProgressionPlayback } from "./useProgressionPlayback";
 
@@ -23,13 +25,23 @@ const EDITOR_ATTRIBUTE = "data-progression-editor";
  * Verktyget Ackordföljder. Markeringen har två nivåer: det låsta Ackordet och det hovrade. Fokus i
  * Kvintcirkeln räknas som hovring. Det som visas är det hovrade, annars det klingande Ackordets
  * treklang under uppspelning och sist det låsta. När ett Taktslag är markerat placerar ett klick på
- * ett Ackord i Tonnetzen eller Kvintcirkeln treklangen där i stället för att låsa den.
+ * ett Ackord i Tonnetzen eller Kvintcirkeln treklangen där i stället för att låsa den. Ägaren har
+ * sina Ackordföljder i Biblioteket under editorn; en Gäst har bara sitt Utkast.
  */
-export function ChordProgressions({ language }: { language: SiteLanguage }) {
+export function ChordProgressions({
+  language,
+  library,
+}: {
+  language: SiteLanguage;
+  /** Listan med Ackordföljder i Biblioteket för Ägaren, eller null för en Gäst. */
+  library: ProgressionListEntry[] | null;
+}) {
   const messages = MESSAGES[language];
   const [noteNames, setNoteNames] = useNoteNameMode();
-  const [progression, setProgression] = useProgressionDraft();
-  const change = useProgressionHistory(progression, setProgression);
+  const draft = useProgressionDraft();
+  const progression = draft?.progression ?? null;
+  const change = useProgressionHistory(progression, setDraftProgression);
+
   const playback = useProgressionPlayback(progression);
   const [selected, setSelected] = useState<Position | null>(null);
   const [locked, setLocked] = useState<Chord | null>(null);
@@ -113,6 +125,7 @@ export function ChordProgressions({ language }: { language: SiteLanguage }) {
           />
         </div>
       )}
+      {draft && <ProgressionLibrary draft={draft} library={library} messages={messages} />}
       <p className={styles.visuallyHidden} aria-live="polite">
         {announced ? messages.highlightedChord(chordName(announced, noteNames)) : ""}
       </p>

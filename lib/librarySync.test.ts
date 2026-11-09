@@ -27,7 +27,7 @@ type Call = {
 /** Ett Bibliotek utan nätverk: varje sparning väntar tills testet svarar på den. */
 function fakeLibrary() {
   const calls: Call[] = [];
-  const save: SaveToLibrary = (id, score, revision) =>
+  const save: SaveToLibrary<Score> = (id, score, revision) =>
     new Promise((resolve) => {
       calls.push({
         id,
@@ -44,8 +44,8 @@ function fakeLibrary() {
 }
 
 /** En startad synk för ett Partitur som är sparat i revision 1. */
-function syncAt(save: SaveToLibrary, score = scoreWith("Sparad")) {
-  const sync = new LibrarySync({ id: "p1", revision: 1, savedText: serialize(score), score, save });
+function syncAt(save: SaveToLibrary<Score>, score = scoreWith("Sparad")) {
+  const sync = new LibrarySync({ id: "p1", revision: 1, savedText: serialize(score), document: score, serialize, save });
   sync.start();
   return sync;
 }
@@ -182,7 +182,7 @@ describe("Bibliotekssynk: automatisk sparning", () => {
 
   it("ett Utkast med osparade ändringar sparas när synken startar", async () => {
     const library = fakeLibrary();
-    const sync = new LibrarySync({ id: "p1", revision: 4, savedText: null, score: scoreWith("Offline"), save: library.save });
+    const sync = new LibrarySync({ id: "p1", revision: 4, savedText: null, document: scoreWith("Offline"), serialize, save: library.save });
     expect(sync.state).toMatchObject({ status: "saving", saved: false });
     await vi.advanceTimersByTimeAsync(5000);
     expect(library.calls).toHaveLength(0);

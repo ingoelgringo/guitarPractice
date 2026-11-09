@@ -83,7 +83,8 @@ export async function scoreFileFromLibrary(id: string): Promise<LibraryResult<{ 
  */
 const KEEPALIVE_LIMIT_BYTES = 60_000;
 
-async function send<T>(url: string, method: string, body?: string): Promise<LibraryResult<T>> {
+/** Ett anrop till Bibliotekets API, med felen som resultat. Används också för Ackordföljder. */
+export async function send<T>(url: string, method: string, body?: string): Promise<LibraryResult<T>> {
   let response: Response;
   let data: Record<string, unknown>;
   try {

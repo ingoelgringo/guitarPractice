@@ -34,8 +34,8 @@ const VIEW_ONLY_MEDIA = "(max-width: 640px), (pointer: coarse)";
 export type OpenedFromLibrary = { id: string; revision: number; score: Score };
 
 /** En synk för ett Partitur i Biblioteket, i en revision som motsvarar `savedText` (null när den inte är känd). */
-function syncFor(id: string, revision: number, score: Score, savedText: string | null): LibrarySync {
-  return new LibrarySync({ id, revision, savedText, score, save: saveToLibrary });
+function syncFor(id: string, revision: number, score: Score, savedText: string | null): LibrarySync<Score> {
+  return new LibrarySync({ id, revision, savedText, document: score, serialize, save: saveToLibrary });
 }
 
 const noSubscription = () => () => {};
@@ -84,7 +84,7 @@ export function TabEditor({ owner, fromLibrary }: { owner: boolean; fromLibrary?
   const downloaded = scoreText === fileText;
 
   // Synken skapas utan sidoeffekter och startas av en effekt, så att den går att skapa vid rendering
-  const [sync, setSync] = useState<LibrarySync | null>(() =>
+  const [sync, setSync] = useState<LibrarySync<Score> | null>(() =>
     restored?.library
       ? syncFor(
           restored.library.id,

@@ -3,7 +3,7 @@
  * Partiturfil och omfattas inte av ADR 0002.
  */
 
-import type { DraftStorage } from "./draft";
+import type { DraftStorage, LibraryRef } from "./draft";
 import {
   CHORD_TYPES,
   EXTENSIONS,
@@ -87,21 +87,72 @@ export function parseProgression(text: string): Progression | null {
   };
 }
 
+/**
+ * Utkastet: Ackordföljden man arbetar med, och vilken Ackordföljd i Biblioteket den är när den
+ * ligger där. En Gästs Utkast ligger aldrig i Biblioteket.
+ */
+export type ProgressionDraft = { progression: Progression; library?: LibraryRef };
+
 /** Sparar Utkastet. Utan fungerande lagring sparas inget, och editorn fungerar ändå. */
-export function saveProgressionDraft(storage: DraftStorage | null, progression: Progression): void {
+export function saveProgressionDraft(storage: DraftStorage | null, draft: ProgressionDraft): void {
   try {
-    storage?.setItem(PROGRESSION_DRAFT_KEY, serializeProgression(progression));
+    storage?.setItem(
+      PROGRESSION_DRAFT_KEY,
+      JSON.stringify({ progression: serializeProgression(draft.progression), library: draft.library }),
+    );
   } catch {
     // Utkastet är ingen säker lagring.
   }
 }
 
 /** Utkastet som finns sparat, eller `null` när det inte finns något som går att återställa. */
-export function loadProgressionDraft(storage: DraftStorage | null): Progression | null {
+export function loadProgressionDraft(storage: DraftStorage | null): ProgressionDraft | null {
+  let text: string | null;
   try {
-    const text = storage?.getItem(PROGRESSION_DRAFT_KEY) ?? null;
-    return text === null ? null : parseProgression(text);
+    text = storage?.getItem(PROGRESSION_DRAFT_KEY) ?? null;
   } catch {
     return null;
   }
+  return text === null ? null : readProgressionDraft(text);
+}
+
+function readProgressionDraft(text: string): ProgressionDraft | null {
+  // Ett Utkast från före Biblioteket är bara Ackordföljden
+  const bare = parseProgression(text);
+  if (bare) return { progression: bare };
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!isRecord(data) || typeof data.progression !== "string") return null;
+  const progression = parseProgression(data.progression);
+  if (!progression) return null;
+  const library = data.library;
+  if (library === undefined) return { progression };
+  if (
+    !isRecord(library) ||
+    typeof library.id !== "string" ||
+    !Number.isInteger(library.revision) ||
+    typeof library.saved !== "boolean"
+  ) {
+    return null;
+  }
+  return { progression, library: { id: library.id, revision: library.revision as number, saved: library.saved } };
+}
+
+/**
+ * Sant om Utkastet har arbete som går förlorat när en Ackordföljd från Biblioteket tar dess plats.
+ * Ett Utkast utan Ackord har inget att förlora, och ett sparat Utkast finns kvar i Biblioteket.
+ * Är Utkastet samma revision av samma Ackordföljd behålls det, och då går inget förlorat.
+ */
+export function progressionReplacingLosesWork(
+  draft: ProgressionDraft | null,
+  target: { id: string; revision: number },
+): boolean {
+  if (!draft) return false;
+  if (!draft.library) return draft.progression.sections.some((section) => section.chords.length > 0);
+  if (draft.library.saved) return false;
+  return !(draft.library.id === target.id && draft.library.revision === target.revision);
 }

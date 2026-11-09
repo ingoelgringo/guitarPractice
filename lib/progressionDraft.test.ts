@@ -5,6 +5,7 @@ import {
   PROGRESSION_DRAFT_KEY,
   PROGRESSION_SCHEMA_VERSION,
   parseProgression,
+  progressionReplacingLosesWork,
   saveProgressionDraft,
   serializeProgression,
 } from "./progressionDraft";
@@ -79,8 +80,26 @@ describe("Utkastet av en Ackordföljd", () => {
   it("sparas och läses i webbläsaren", () => {
     const storage = memoryStorage();
     const progression = sample();
-    saveProgressionDraft(storage, progression);
-    expect(loadProgressionDraft(storage)).toEqual(progression);
+    saveProgressionDraft(storage, { progression });
+    expect(loadProgressionDraft(storage)).toEqual({ progression });
+  });
+
+  it("minns vilken Ackordföljd i Biblioteket det är, med revision och om den är sparad", () => {
+    const storage = memoryStorage();
+    const draft = { progression: sample(), library: { id: "p1", revision: 3, saved: false } };
+    saveProgressionDraft(storage, draft);
+    expect(loadProgressionDraft(storage)).toEqual(draft);
+  });
+
+  it("läser ett Utkast från före Biblioteket, som bara är Ackordföljden", () => {
+    const progression = sample();
+    const storage = memoryStorage({ [PROGRESSION_DRAFT_KEY]: serializeProgression(progression) });
+    expect(loadProgressionDraft(storage)).toEqual({ progression });
+  });
+
+  it("är null när Bibliotekets uppgifter inte går att läsa", () => {
+    const text = JSON.stringify({ progression: serializeProgression(sample()), library: { id: "p1", revision: "3" } });
+    expect(loadProgressionDraft(memoryStorage({ [PROGRESSION_DRAFT_KEY]: text }))).toBeNull();
   });
 
   it("är null när det saknas eller inte går att läsa", () => {
@@ -99,6 +118,30 @@ describe("Utkastet av en Ackordföljd", () => {
       },
     };
     expect(loadProgressionDraft(broken)).toBeNull();
-    expect(() => saveProgressionDraft(broken, sample())).not.toThrow();
+    expect(() => saveProgressionDraft(broken, { progression: sample() })).not.toThrow();
+  });
+});
+
+describe("Att ersätta Utkastet med en Ackordföljd från Biblioteket", () => {
+  const target = { id: "p1", revision: 2 };
+
+  it("förlorar inget när det inte finns något Utkast eller Utkastet saknar Ackord", () => {
+    expect(progressionReplacingLosesWork(null, target)).toBe(false);
+    expect(progressionReplacingLosesWork({ progression: newProgression() }, target)).toBe(false);
+  });
+
+  it("förlorar arbete när Utkastet har Ackord och inte ligger i Biblioteket", () => {
+    expect(progressionReplacingLosesWork({ progression: sample() }, target)).toBe(true);
+  });
+
+  it("förlorar inget när Utkastet är sparat i Biblioteket", () => {
+    expect(progressionReplacingLosesWork({ progression: sample(), library: { id: "p9", revision: 1, saved: true } }, target)).toBe(false);
+  });
+
+  it("förlorar osparade ändringar, utom när det är samma revision av samma Ackordföljd", () => {
+    const unsaved = (id: string, revision: number) => ({ progression: sample(), library: { id, revision, saved: false } });
+    expect(progressionReplacingLosesWork(unsaved("p9", 2), target)).toBe(true);
+    expect(progressionReplacingLosesWork(unsaved("p1", 1), target)).toBe(true);
+    expect(progressionReplacingLosesWork(unsaved("p1", 2), target)).toBe(false);
   });
 });
