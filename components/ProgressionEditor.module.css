@@ -158,3 +158,109 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+.sectionHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.sectionHeader input,
+.addSection,
+.removeSection,
+.form select,
+.form button {
+  font: inherit;
+  padding: 4px 6px;
+}
+
+.barsInput {
+  width: 4.5em;
+}
+
+.formHeading {
+  font-size: 1rem;
+}
+
+.addToForm {
+  cursor: pointer;
+}
+
+.sectionNameInput {
+  font-weight: bold;
+  width: 10em;
+  max-width: 100%;
+}
+
+.error {
+  font-size: 0.875rem;
+  color: var(--error, #c62828);
+  flex-basis: 100%;
+}
+
+.addSection,
+.removeSection {
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.removeSection {
+  align-self: auto;
+  line-height: 1;
+}
+
+/* Formen: en rad med Delarnas namn som dras till en ny plats */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.formItems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.formItem {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--background);
+}
+
+.formItem.dragging {
+  opacity: 0.6;
+  border-style: dashed;
+}
+
+.formHandle {
+  padding: 4px 8px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.dragging .formHandle {
+  cursor: grabbing;
+}
+
+.formHandle:focus-visible {
+  outline: 2px solid var(--chord-highlight, var(--foreground));
+  outline-offset: 1px;
+}
+
+.form .formRemove {
+  border: none;
+  border-left: 1px solid var(--faint);
+  background: none;
+  color: var(--foreground);
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px 8px;
+}

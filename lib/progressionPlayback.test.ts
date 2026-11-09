@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { newProgression, placeChord, type Progression, setTimeSignature, triad } from "./progression";
+import { addSection, addToForm, newProgression, placeChord, type Progression, setSectionBars, setTimeSignature, triad } from "./progression";
 import { countIn, playbackPlan, pulseSeconds } from "./progressionPlayback";
 
 const C = 0, F = 5, G = 7, A = 9;
@@ -103,5 +103,55 @@ describe("uppspelningsplanen", () => {
     const plan = playbackPlan(newProgression());
     expect(plan.drums.length).toBeGreaterThan(0);
     expect([...plan.bass, ...plan.piano, ...plan.pad]).toEqual([]);
+  });
+});
+
+describe("uppspelningsplanen med Delar och Form", () => {
+  /** Verse (4 Takter, C i första Takten) och Chorus (2 Takter, F i andra Takten), i Formen Verse, Chorus, Verse. */
+  function song(): Progression {
+    let progression = withChords([[0, 0, C]]);
+    progression = addSection(progression, "Chorus");
+    const [verse, chorus] = progression.sections.map((s) => s.id);
+    progression = setSectionBars(progression, chorus, 2);
+    progression = placeChord(progression, { section: chorus, bar: 1, pulse: 0 }, triad(F, "major"));
+    return addToForm(progression, verse);
+  }
+
+  it("rullar ut Formen, så att en Del som står två gånger spelas två gånger", () => {
+    const progression = song();
+    const [verse, chorus] = progression.sections.map((s) => s.id);
+    const plan = playbackPlan(progression);
+    expect(plan.length).toBe(40);
+    expect(plan.chords.map(({ start, end, chord, position }) => [start, end, chord.root, position.section])).toEqual([
+      [0, 20, C, verse],
+      [20, 24, F, chorus],
+      [24, 40, C, verse],
+    ]);
+    expect(plan.drums.filter((hit) => hit.drum === "snare")).toHaveLength(20);
+  });
+
+  it("låter ett Ackord klinga vidare in i nästa Del", () => {
+    const plan = playbackPlan(song());
+    expect(plan.pad.find((note) => note.time === 0)?.duration).toBe(20);
+    expect(plan.bass.some((note) => note.time === 16)).toBe(true);
+  });
+
+  it("loopar en enskild Del", () => {
+    const progression = song();
+    const chorus = progression.sections[1].id;
+    const plan = playbackPlan(progression, { loop: chorus });
+    expect(plan.length).toBe(8);
+    expect(plan.chords.map(({ start, end, chord }) => [start, end, chord.root])).toEqual([[4, 8, F]]);
+    expect(Math.min(...plan.pad.map((note) => note.time))).toBe(4);
+  });
+
+  it("spelar Formen när Delen som skulle loopas inte finns", () => {
+    expect(playbackPlan(song(), { loop: "finns-inte" }).length).toBe(40);
+  });
+
+  it("är tom när Formen är tom", () => {
+    const plan = playbackPlan({ ...song(), form: [] });
+    expect(plan.length).toBe(0);
+    expect(plan.drums).toEqual([]);
   });
 });

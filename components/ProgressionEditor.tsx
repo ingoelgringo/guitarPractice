@@ -1,15 +1,17 @@
 "use client";
 
-import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import type { Messages } from "@/lib/messages";
 import type { NoteNameMode } from "@/lib/noteNameMode";
 import {
+  addSection,
   chordAt,
   degreeChord,
   type Key,
   type KeyMode,
   keyChords,
   keyTonicName,
+  MAX_BARS,
   MAX_TEMPO,
   MIN_TEMPO,
   move,
@@ -20,7 +22,12 @@ import {
   placeChord,
   recentTaps,
   removeChord,
+  removeSection,
+  renameSection,
+  type Section,
+  sectionNameError,
   setKey,
+  setSectionBars,
   setTempo,
   setTimeSignature,
   tapTempo,
@@ -30,6 +37,7 @@ import {
 } from "@/lib/progression";
 import { type Instrument, INSTRUMENTS } from "@/lib/progressionPlayback";
 import styles from "./ProgressionEditor.module.css";
+import { ProgressionFormRow } from "./ProgressionFormRow";
 import { type ProgressionPlayback, useProgressionPlayback } from "./useProgressionPlayback";
 
 interface Props {
@@ -90,12 +98,12 @@ export function ProgressionEditor({ progression, onChange, noteNames, messages }
     <section className={styles.editor} aria-label={messages.progression}>
       <h2 className={styles.heading}>{messages.progression}</h2>
       <Settings progression={progression} onChange={onChange} noteNames={noteNames} messages={messages} />
-      <Playback playback={playback} messages={messages} />
+      <Playback playback={playback} sections={progression.sections} messages={messages} />
       <p className={styles.help}>{messages.progressionHelp}</p>
       <div onKeyDown={onKeyDown}>
         {progression.sections.map((section) => (
           <div key={section.id} className={styles.section}>
-            <h3 className={styles.sectionName}>{section.name}</h3>
+            <SectionHeader section={section} progression={progression} onChange={onChange} messages={messages} />
             <div className={styles.bars} role="group" aria-label={`${section.name}: ${messages.bars}`}>
               {Array.from({ length: section.bars }, (_, bar) => (
                 <div key={bar} className={styles.bar}>
@@ -160,13 +168,106 @@ export function ProgressionEditor({ progression, onChange, noteNames, messages }
           </div>
         )}
       </div>
+      <button
+        type="button"
+        className={styles.addSection}
+        onClick={() => onChange(addSection(progression, messages.newSectionName))}
+      >
+        {messages.addSection}
+      </button>
+      <ProgressionFormRow progression={progression} onChange={onChange} messages={messages} />
     </section>
   );
 }
 
-/** Play och Stop, inräkningen och Instrumenten. */
-function Playback({ playback, messages }: { playback: ProgressionPlayback; messages: Messages }) {
-  const { state, countIn, setCountIn, muted, setMuted, play, stop } = playback;
+/** Delens namn och antal Takter, och en knapp som tar bort Delen. */
+function SectionHeader({
+  section,
+  progression,
+  onChange,
+  messages,
+}: {
+  section: Section;
+  progression: Progression;
+  onChange: (progression: Progression) => void;
+  messages: Messages;
+}) {
+  const [nameText, setNameText] = useState<string | null>(null);
+  const [barsText, setBarsText] = useState<string | null>(null);
+  const errorId = useId();
+  const error = nameText === null ? null : sectionNameError(progression, section.id, nameText);
+
+  const commitName = () => {
+    if (nameText !== null) onChange(renameSection(progression, section.id, nameText));
+    setNameText(null);
+  };
+  // Ett tomt fält ändrar inget, så att Ackorden inte försvinner när man suddar för att skriva om.
+  const commitBars = () => {
+    if (barsText !== null && barsText.trim() !== "") onChange(setSectionBars(progression, section.id, Number(barsText)));
+    setBarsText(null);
+  };
+  const commitOnEnter = (event: KeyboardEvent, commit: () => void, revert: () => void) => {
+    if (event.key === "Enter") commit();
+    else if (event.key === "Escape") revert();
+  };
+
+  return (
+    // Tangenterna i Delens rubrik ska inte flytta markeringen eller ändra Ackorden i Takterna.
+    <div className={styles.sectionHeader} onKeyDown={(event) => event.stopPropagation()}>
+      <input
+        className={styles.sectionNameInput}
+        aria-label={messages.sectionName}
+        aria-invalid={error !== null}
+        aria-describedby={error ? errorId : undefined}
+        value={nameText ?? section.name}
+        onChange={(event) => setNameText(event.target.value)}
+        onBlur={commitName}
+        onKeyDown={(event) => commitOnEnter(event, commitName, () => setNameText(null))}
+      />
+      <label className={styles.setting}>
+        <input
+          className={styles.barsInput}
+          type="number"
+          min={1}
+          max={MAX_BARS}
+          value={barsText ?? section.bars}
+          onChange={(event) => setBarsText(event.target.value)}
+          onBlur={commitBars}
+          onKeyDown={(event) => commitOnEnter(event, commitBars, () => setBarsText(null))}
+        />
+        {messages.bars}
+      </label>
+      {progression.sections.length > 1 && (
+        <button
+          type="button"
+          className={styles.removeSection}
+          aria-label={messages.removeSection(section.name)}
+          onClick={() => onChange(removeSection(progression, section.id))}
+        >
+          ×
+        </button>
+      )}
+      {error && (
+        <span id={errorId} className={styles.error} role="alert">
+          {error === "empty" ? messages.sectionNameEmpty : messages.sectionNameTaken}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Play och Stop, Delen som loopas, inräkningen och Instrumenten. */
+function Playback({
+  playback,
+  sections,
+  messages,
+}: {
+  playback: ProgressionPlayback;
+  sections: readonly Section[];
+  messages: Messages;
+}) {
+  const { state, countIn, setCountIn, muted, setMuted, loop, setLoop, play, stop } = playback;
+  const looped = loop !== null && sections.some((s) => s.id === loop) ? loop : "";
   const active = state === "playing" || state === "loading";
   const names: Record<Instrument, string> = {
     drums: messages.drums,
@@ -179,6 +280,17 @@ function Playback({ playback, messages }: { playback: ProgressionPlayback; messa
       <button type="button" className={styles.play} onClick={active ? stop : play}>
         {active ? messages.stop : messages.play}
       </button>
+      <label className={styles.setting}>
+        {messages.loop}
+        <select value={looped} onChange={(event) => setLoop(event.target.value || null)}>
+          <option value="">{messages.wholeForm}</option>
+          {sections.map((section) => (
+            <option key={section.id} value={section.id}>
+              {section.name}
+            </option>
+          ))}
+        </select>
+      </label>
       <label className={styles.setting}>
         <input type="checkbox" checked={countIn} onChange={(event) => setCountIn(event.target.checked)} />
         {messages.countIn}

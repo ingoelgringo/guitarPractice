@@ -308,3 +308,76 @@ export function move(progression: Progression, position: Position, { key, altKey
       return null;
   }
 }
+
+export const MAX_BARS = 64;
+const NEW_SECTION_BARS = 4;
+
+const normalizedName = (name: string) => name.trim().toLocaleLowerCase();
+
+function nameTaken(progression: Progression, name: string, except?: string): boolean {
+  const wanted = normalizedName(name);
+  return progression.sections.some((s) => s.id !== except && normalizedName(s.name) === wanted);
+}
+
+/** Namnet, eller namnet med det första lediga numret efter, t.ex. "Verse 2". */
+function uniqueSectionName(progression: Progression, name: string): string {
+  const base = name.trim();
+  if (!nameTaken(progression, base)) return base;
+  for (let n = 2; ; n++) if (!nameTaken(progression, `${base} ${n}`)) return `${base} ${n}`;
+}
+
+/** Lägger till en Del på 4 Takter sist bland Delarna och sist i Formen, med ett unikt namn. */
+export function addSection(progression: Progression, name: string): Progression {
+  const section: Section = { id: newSectionId(), name: uniqueSectionName(progression, name), bars: NEW_SECTION_BARS, chords: [] };
+  return { ...progression, sections: [...progression.sections, section], form: [...progression.form, section.id] };
+}
+
+/** Varför Delen inte kan heta så: namnet är tomt eller används av en annan Del. Annars `null`. */
+export function sectionNameError(progression: Progression, id: string, name: string): "empty" | "taken" | null {
+  if (name.trim() === "") return "empty";
+  return nameTaken(progression, name, id) ? "taken" : null;
+}
+
+/** Byter namn på Delen. Ett tomt namn eller ett som en annan Del har ändrar inget. */
+export function renameSection(progression: Progression, id: string, name: string): Progression {
+  if (sectionNameError(progression, id, name)) return progression;
+  return updateSection(progression, id, (s) => ({ ...s, name: name.trim() }));
+}
+
+/** Sätter antalet Takter, avrundat mellan 1 och 64. Ackorden i Takter som försvinner tas bort. */
+export function setSectionBars(progression: Progression, id: string, bars: number): Progression {
+  if (!Number.isFinite(bars)) return progression;
+  const count = Math.min(MAX_BARS, Math.max(1, Math.round(bars)));
+  return updateSection(progression, id, (s) => ({ ...s, bars: count, chords: s.chords.filter((c) => c.bar < count) }));
+}
+
+/** Tar bort Delen och alla dess platser i Formen. Den sista Delen kan inte tas bort. */
+export function removeSection(progression: Progression, id: string): Progression {
+  if (progression.sections.length <= 1 || !section(progression, id)) return progression;
+  return {
+    ...progression,
+    sections: progression.sections.filter((s) => s.id !== id),
+    form: progression.form.filter((f) => f !== id),
+  };
+}
+
+/** Lägger Delen sist i Formen. */
+export function addToForm(progression: Progression, id: string): Progression {
+  if (!section(progression, id)) return progression;
+  return { ...progression, form: [...progression.form, id] };
+}
+
+/** Tar bort platsen i Formen med det givna indexet. */
+export function removeFromForm(progression: Progression, index: number): Progression {
+  return { ...progression, form: progression.form.filter((_, i) => i !== index) };
+}
+
+/** Flyttar platsen `from` i Formen så att den hamnar på index `to`. */
+export function moveInForm(progression: Progression, from: number, to: number): Progression {
+  const { form } = progression;
+  if (from === to || from < 0 || to < 0 || from >= form.length || to >= form.length) return progression;
+  const next = [...form];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return { ...progression, form: next };
+}

@@ -191,12 +191,22 @@ export function countIn(timeSignature: TimeSignature): CountIn {
   return { hits, length };
 }
 
-export function playbackPlan(progression: Progression): PlaybackPlan {
+export interface PlanOptions {
+  /** Delen som loopas ensam. Utan den, eller om Delen inte finns, spelas Formen. */
+  loop?: string | null;
+}
+
+/** Delarna i den ordning de spelas: Formen utrullad, eller bara Delen som loopas. */
+function playedSections(progression: Progression, loop: string | null | undefined): readonly string[] {
+  return loop && progression.sections.some((s) => s.id === loop) ? [loop] : progression.form;
+}
+
+export function playbackPlan(progression: Progression, { loop }: PlanOptions = {}): PlaybackPlan {
   const pulses = pulsesPerBar(progression.timeSignature);
   const pattern = PATTERNS[progression.timeSignature];
   const placed: Omit<PlannedChord, "end">[] = [];
   let length = 0;
-  for (const id of progression.form) {
+  for (const id of playedSections(progression, loop)) {
     const section = progression.sections.find((s) => s.id === id);
     if (!section) continue;
     for (const { bar, pulse, chord } of section.chords) {

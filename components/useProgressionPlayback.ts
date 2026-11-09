@@ -12,8 +12,8 @@ export type MutedInstruments = Record<Instrument, boolean>;
 
 const NONE_MUTED = Object.fromEntries(INSTRUMENTS.map((instrument) => [instrument, false])) as MutedInstruments;
 
-const playbackOf = (progression: Progression): Playback => ({
-  plan: playbackPlan(progression),
+const playbackOf = (progression: Progression, loop: string | null): Playback => ({
+  plan: playbackPlan(progression, { loop }),
   pulseSeconds: pulseSeconds(progression),
 });
 
@@ -21,9 +21,11 @@ export type ProgressionPlayback = ReturnType<typeof useProgressionPlayback>;
 
 /**
  * Uppspelningen av en Ackordföljd. Ljudlagret och Tone.js laddas vid första Play. Ändringar i
- * Ackordföljden och Instrument som bockas i eller ur gäller direkt, utan att musiken börjar om.
+ * Ackordföljden, Delen som loopas och Instrument som bockas i eller ur gäller direkt, utan att
+ * musiken börjar om.
  */
 export function useProgressionPlayback(progression: Progression) {
+  const [loop, setLoop] = useState<string | null>(null);
   const [state, setState] = useState<PlaybackState>("stopped");
   const [sounding, setSounding] = useState<Position | null>(null);
   const [countIn, setCountIn] = useState(true);
@@ -31,17 +33,17 @@ export function useProgressionPlayback(progression: Progression) {
   const context = useRef<AudioContext | null>(null);
   const playerPromise = useRef<Promise<ProgressionAudio> | null>(null);
   const player = useRef<ProgressionAudio | null>(null);
-  const latest = useRef({ progression, muted });
+  const latest = useRef({ progression, muted, loop });
   /** Räknas upp vid Stop och när editorn försvinner, så att en Play som laddar inte startar sent. */
   const generation = useRef(0);
 
   useEffect(() => {
-    latest.current = { progression, muted };
+    latest.current = { progression, muted, loop };
   });
 
   useEffect(() => {
-    if (state === "playing") player.current?.update(playbackOf(progression));
-  }, [progression, state]);
+    if (state === "playing") player.current?.update(playbackOf(progression, loop));
+  }, [progression, loop, state]);
 
   // Musiken slutar och ljudlagret städas bort när editorn försvinner.
   useEffect(
@@ -65,9 +67,9 @@ export function useProgressionPlayback(progression: Progression) {
       const audio = await playerPromise.current;
       if (current !== generation.current) return;
       player.current = audio;
-      const { progression, muted } = latest.current;
+      const { progression, muted, loop } = latest.current;
       for (const instrument of INSTRUMENTS) audio.setMuted(instrument, muted[instrument]);
-      audio.play(playbackOf(progression), { countIn: countIn ? countInBar(progression.timeSignature) : null, onChord: setSounding });
+      audio.play(playbackOf(progression, loop), { countIn: countIn ? countInBar(progression.timeSignature) : null, onChord: setSounding });
       setState("playing");
     } catch (error) {
       console.error(error);
@@ -88,5 +90,5 @@ export function useProgressionPlayback(progression: Progression) {
     player.current?.setMuted(instrument, value);
   }
 
-  return { state, sounding, countIn, setCountIn, muted, setMuted, play, stop };
+  return { state, sounding, countIn, setCountIn, muted, setMuted, loop, setLoop, play, stop };
 }

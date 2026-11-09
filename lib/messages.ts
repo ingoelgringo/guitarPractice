@@ -62,7 +62,7 @@ const en = {
   // Ackordföljden
   progression: "Chord progression",
   progressionHelp:
-    "Click a beat and pick a chord. Arrows move by bar, Alt+arrows by beat, 1–7 pick a chord in the key, + and − switch between major and minor, and Backspace or Delete removes the chord.",
+    "Click a beat and pick a chord. Left and right move by bar, Alt+left and right by beat, up and down by part, 1–7 pick a chord in the key, + and − switch between major and minor, and Backspace or Delete removes the chord.",
   key: "Key",
   keyMajor: "major",
   keyMinor: "minor",
@@ -83,6 +83,20 @@ const en = {
   bass: "Bass",
   electricPiano: "Electric piano",
   synthPad: "Synth pad",
+  sections: "Parts",
+  addSection: "New part",
+  newSectionName: "Part",
+  sectionName: "Name",
+  removeSection: (name: string) => `Remove ${name}`,
+  sectionNameEmpty: "The part needs a name.",
+  sectionNameTaken: "Another part already has that name.",
+  form: "Form",
+  formHelp: "Drag the parts to change the order, or move them with Alt+left and right arrow.",
+  formEmpty: "The form is empty. Add a part to it.",
+  addToForm: "Add to form",
+  removeFromForm: (name: string) => `Remove ${name} from the form`,
+  loop: "Loop",
+  wholeForm: "Whole form",
 };
 
 export type Messages = typeof en;
@@ -138,7 +152,7 @@ const sv: Messages = {
 
   progression: "Ackordföljd",
   progressionHelp:
-    "Klicka på ett taktslag och välj ett ackord. Pilarna går en takt, Alt och pilarna ett taktslag, 1–7 väljer ett ackord i tonarten, + och − byter mellan dur och moll, och Backspace eller Delete tar bort ackordet.",
+    "Klicka på ett taktslag och välj ett ackord. Vänster- och högerpil går en takt, Alt och vänster- och högerpil ett taktslag, upp- och nedpil en del, 1–7 väljer ett ackord i tonarten, + och − byter mellan dur och moll, och Backspace eller Delete tar bort ackordet.",
   key: "Tonart",
   keyMajor: "dur",
   keyMinor: "moll",
@@ -159,6 +173,20 @@ const sv: Messages = {
   bass: "Bas",
   electricPiano: "Elpiano",
   synthPad: "Synthpad",
+  sections: "Delar",
+  addSection: "Ny del",
+  newSectionName: "Del",
+  sectionName: "Namn",
+  removeSection: (name: string) => `Ta bort ${name}`,
+  sectionNameEmpty: "Delen behöver ett namn.",
+  sectionNameTaken: "En annan del har redan det namnet.",
+  form: "Form",
+  formHelp: "Dra delarna för att ändra ordningen, eller flytta dem med Alt och vänster- eller högerpil.",
+  formEmpty: "Formen är tom. Lägg till en del i den.",
+  addToForm: "Lägg till i formen",
+  removeFromForm: (name: string) => `Ta bort ${name} ur formen`,
+  loop: "Loopa",
+  wholeForm: "Hela formen",
 };
 
 export const MESSAGES: Record<SiteLanguage, Messages> = { en, sv };

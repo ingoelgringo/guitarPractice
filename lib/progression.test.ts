@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  addSection,
+  addToForm,
+  moveInForm,
+  removeFromForm,
+  removeSection,
+  renameSection,
+  sectionNameError,
+  setSectionBars,
   chordAt,
   degreeChord,
   keyChords,
@@ -226,5 +234,87 @@ describe("förflyttningen", () => {
   it("ger null för andra tangenter", () => {
     const progression = newProgression();
     expect(move(progression, at(progression, 0, 0), { key: "a", altKey: false })).toBeNull();
+  });
+});
+
+describe("Delar och Formen", () => {
+  const verseAndChorus = (): Progression => addSection(newProgression(), "Chorus");
+  const ids = (progression: Progression) => progression.sections.map((s) => s.id);
+  const formNames = (progression: Progression) =>
+    progression.form.map((id) => progression.sections.find((s) => s.id === id)?.name);
+
+  it("får en ny Del på 4 Takter, sist bland Delarna och sist i Formen", () => {
+    const progression = verseAndChorus();
+    expect(progression.sections.map((s) => [s.name, s.bars])).toEqual([["Verse", 4], ["Chorus", 4]]);
+    expect(formNames(progression)).toEqual(["Verse", "Chorus"]);
+    expect(new Set(ids(progression)).size).toBe(2);
+  });
+
+  it("ger en ny Del ett unikt namn när namnet redan finns", () => {
+    const progression = addSection(addSection(newProgression(), "Verse"), "Verse");
+    expect(progression.sections.map((s) => s.name)).toEqual(["Verse", "Verse 2", "Verse 3"]);
+  });
+
+  it("byter namn på en Del bara till ett namn som inte är tomt och inte används av en annan Del", () => {
+    const progression = verseAndChorus();
+    const [verse, chorus] = ids(progression);
+    expect(sectionNameError(progression, verse, "Chorus")).toBe("taken");
+    expect(sectionNameError(progression, verse, " chorus ")).toBe("taken");
+    expect(sectionNameError(progression, verse, "  ")).toBe("empty");
+    expect(sectionNameError(progression, verse, "Verse")).toBeNull();
+    expect(renameSection(progression, verse, "Chorus")).toBe(progression);
+    expect(renameSection(progression, chorus, " Pre-chorus ").sections[1].name).toBe("Pre-chorus");
+  });
+
+  it("ändrar antalet Takter och tar bort Ackorden i de Takter som försvinner", () => {
+    let progression = newProgression();
+    progression = placeChord(progression, at(progression, 1, 0), triad(F, "major"));
+    progression = placeChord(progression, at(progression, 2, 0), triad(G, "major"));
+    progression = placeChord(progression, at(progression, 3, 2), triad(A, "minor"));
+    const id = progression.sections[0].id;
+    const shorter = setSectionBars(progression, id, 2);
+    expect(shorter.sections[0].bars).toBe(2);
+    expect(shorter.sections[0].chords.map((c) => c.chord.root)).toEqual([F]);
+    expect(setSectionBars(progression, id, 8).sections[0].chords).toHaveLength(3);
+  });
+
+  it("har mellan 1 och 64 Takter i en Del", () => {
+    const progression = newProgression();
+    const id = progression.sections[0].id;
+    expect(setSectionBars(progression, id, 0).sections[0].bars).toBe(1);
+    expect(setSectionBars(progression, id, 100).sections[0].bars).toBe(64);
+    expect(setSectionBars(progression, id, 2.6).sections[0].bars).toBe(3);
+    expect(setSectionBars(progression, id, Number.NaN)).toBe(progression);
+  });
+
+  it("tar bort en Del ur Formen när Delen tas bort, men den sista Delen finns kvar", () => {
+    let progression = verseAndChorus();
+    const [verse, chorus] = ids(progression);
+    progression = addToForm(addToForm(progression, verse), chorus);
+    expect(formNames(progression)).toEqual(["Verse", "Chorus", "Verse", "Chorus"]);
+    const withoutVerse = removeSection(progression, verse);
+    expect(withoutVerse.sections.map((s) => s.name)).toEqual(["Chorus"]);
+    expect(formNames(withoutVerse)).toEqual(["Chorus", "Chorus"]);
+    expect(removeSection(withoutVerse, chorus)).toBe(withoutVerse);
+  });
+
+  it("lägger till en Del i slutet av Formen och tar bort en plats i Formen", () => {
+    let progression = verseAndChorus();
+    const [verse] = ids(progression);
+    progression = addToForm(progression, verse);
+    expect(formNames(progression)).toEqual(["Verse", "Chorus", "Verse"]);
+    expect(formNames(removeFromForm(progression, 0))).toEqual(["Chorus", "Verse"]);
+    expect(addToForm(progression, "finns-inte")).toBe(progression);
+  });
+
+  it("flyttar en plats i Formen till en annan plats", () => {
+    let progression = addSection(verseAndChorus(), "Bridge");
+    const [verse] = ids(progression);
+    progression = addToForm(progression, verse);
+    expect(formNames(progression)).toEqual(["Verse", "Chorus", "Bridge", "Verse"]);
+    expect(formNames(moveInForm(progression, 0, 2))).toEqual(["Chorus", "Bridge", "Verse", "Verse"]);
+    expect(formNames(moveInForm(progression, 3, 1))).toEqual(["Verse", "Verse", "Chorus", "Bridge"]);
+    expect(moveInForm(progression, 1, 1)).toBe(progression);
+    expect(moveInForm(progression, 1, 9)).toBe(progression);
   });
 });
