@@ -12,6 +12,7 @@ import {
   majorTriangle,
   minorTriangle,
   noteNameOf,
+  progressionTriad,
   type Point,
   sameChord,
   shownChord,
@@ -23,6 +24,7 @@ import {
   visibleTriangles,
   visibleVertices,
 } from "./chordProgressions";
+import { type ProgressionChord, triad } from "./progression";
 
 const C = 0;
 const major = (root: number): Chord => ({ root, quality: "major" });
@@ -80,6 +82,17 @@ describe("markeringen", () => {
     expect(shownChord(major(C), minor(9))).toEqual(minor(9));
     expect(shownChord(major(C), null)).toEqual(major(C));
     expect(shownChord(null, null)).toBeNull();
+  });
+
+  it("visar det klingande Ackordet före det låsta, men det hovrade går först", () => {
+    expect(shownChord(major(C), null, minor(9))).toEqual(minor(9));
+    expect(shownChord(major(C), major(7), minor(9))).toEqual(major(7));
+    expect(shownChord(major(C), null, undefined)).toEqual(major(C));
+  });
+
+  it("visar inget låst Ackord när det klingande saknar treklang, så att inget annat ser ut att klinga", () => {
+    expect(shownChord(major(C), null, null)).toBeNull();
+    expect(shownChord(major(C), major(7), null)).toEqual(major(7));
   });
 
   it("ett klick låser Ackordet", () => {
@@ -283,5 +296,29 @@ describe("ett Ackords kopior i Tonnetzen", () => {
     const keys = (v: typeof view) => chordCopies(v, major(C)).map((t) => latticeKey(t.i, t.j));
     expect(keys(moved)).not.toEqual(keys(view));
     expect(keys(moved).length).toBeGreaterThan(0);
+  });
+});
+
+describe("treklangen i ett Ackord", () => {
+  const chord = (root: number, type: ProgressionChord["type"], extensions: ProgressionChord["extensions"] = [], bass = root): ProgressionChord => ({
+    root,
+    type,
+    extensions,
+    bass,
+  });
+
+  it("är dur eller moll på Ackordets grundton", () => {
+    expect(progressionTriad(triad(C, "major"))).toEqual(major(C));
+    expect(progressionTriad(triad(9, "minor"))).toEqual(minor(9));
+  });
+
+  it("bortser från tillägg och Bas: Am för Am7/G", () => {
+    expect(progressionTriad(chord(9, "minor", ["7"], 7))).toEqual(minor(9));
+    expect(progressionTriad(chord(7, "major", ["7", "♭9", "♯11"]))).toEqual(major(7));
+  });
+
+  it("finns inte för förminskade, överstigande och sus-ackord, eller med ♭5", () => {
+    for (const type of ["diminished", "augmented", "sus2", "sus4"] as const) expect(progressionTriad(triad(C, type))).toBeNull();
+    expect(progressionTriad(chord(11, "minor", ["7", "♭5"]))).toBeNull();
   });
 });

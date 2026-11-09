@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] Treklangen i ett Ackord som `Chord` i `lib/chordProgressions.ts` (tester först).
-- [ ] Klick i Tonnetzen eller Kvintcirkeln placerar Ackordet när ett Taktslag är markerat, och låser annars som i dag.
-- [ ] Det klingande Ackordet markeras under uppspelning.
+- [x] Treklangen i ett Ackord som `Chord` i `lib/chordProgressions.ts` (tester först).
+- [x] Klick i Tonnetzen eller Kvintcirkeln placerar Ackordet när ett Taktslag är markerat, och låser annars som i dag.
+- [x] Det klingande Ackordet markeras under uppspelning.

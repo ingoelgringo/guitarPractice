@@ -22,9 +22,9 @@ export type ProgressionPlayback = ReturnType<typeof useProgressionPlayback>;
 /**
  * Uppspelningen av en Ackordföljd. Ljudlagret och Tone.js laddas vid första Play. Ändringar i
  * Ackordföljden, Delen som loopas och Instrument som bockas i eller ur gäller direkt, utan att
- * musiken börjar om.
+ * musiken börjar om. Innan Ackordföljden har laddats (`null`) går det inte att spela.
  */
-export function useProgressionPlayback(progression: Progression) {
+export function useProgressionPlayback(progression: Progression | null) {
   const [loop, setLoop] = useState<string | null>(null);
   const [state, setState] = useState<PlaybackState>("stopped");
   const [sounding, setSounding] = useState<Position | null>(null);
@@ -42,7 +42,7 @@ export function useProgressionPlayback(progression: Progression) {
   });
 
   useEffect(() => {
-    if (state === "playing") player.current?.update(playbackOf(progression, loop));
+    if (state === "playing" && progression) player.current?.update(playbackOf(progression, loop));
   }, [progression, loop, state]);
 
   // Musiken slutar och ljudlagret städas bort när editorn försvinner.
@@ -56,6 +56,7 @@ export function useProgressionPlayback(progression: Progression) {
   );
 
   async function play() {
+    if (!latest.current.progression) return;
     const current = ++generation.current;
     setState("loading");
     // Ljudet måste startas i klickets händelse, före all väntan.
@@ -68,6 +69,7 @@ export function useProgressionPlayback(progression: Progression) {
       if (current !== generation.current) return;
       player.current = audio;
       const { progression, muted, loop } = latest.current;
+      if (!progression) return;
       for (const instrument of INSTRUMENTS) audio.setMuted(instrument, muted[instrument]);
       audio.play(playbackOf(progression, loop), { countIn: countIn ? countInBar(progression.timeSignature) : null, onChord: setSounding });
       setState("playing");

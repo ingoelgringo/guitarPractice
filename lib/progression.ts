@@ -306,6 +306,12 @@ export function chordAt(progression: Progression, position: Position): Progressi
   );
 }
 
+/** Om Taktslaget finns, alltså inte har försvunnit med sin Del, en mindre Del eller en annan taktart. */
+export function positionExists(progression: Progression, position: Position): boolean {
+  const s = section(progression, position.section);
+  return !!s && position.bar < s.bars && position.pulse < pulsesPerBar(progression.timeSignature);
+}
+
 function updateSection(progression: Progression, id: string, change: (section: Section) => Section): Progression {
   return { ...progression, sections: progression.sections.map((s) => (s.id === id ? change(s) : s)) };
 }

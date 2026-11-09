@@ -4,6 +4,7 @@
  */
 
 import type { NoteNameMode } from "./noteNameMode";
+import type { ProgressionChord } from "./progression";
 
 export type ChordQuality = "major" | "minor";
 
@@ -53,9 +54,24 @@ export function sameChord(a: Chord | null, b: Chord | null): boolean {
   return a !== null && b !== null && a.root === b.root && a.quality === b.quality;
 }
 
-/** Det markerade Ackordet: det hovrade om något hovras, annars det låsta. */
-export function shownChord(locked: Chord | null, hovered: Chord | null): Chord | null {
-  return hovered ?? locked;
+/**
+ * Det markerade Ackordet: det hovrade om något hovras, annars det klingande Ackordets treklang under
+ * uppspelning och annars det låsta. `sounding` är `undefined` när inget Ackord klingar och `null`
+ * när det klingande saknar treklang. Då visas inget, så att det låsta inte ser ut att klinga.
+ */
+export function shownChord(locked: Chord | null, hovered: Chord | null, sounding?: Chord | null): Chord | null {
+  return hovered ?? (sounding === undefined ? locked : sounding);
+}
+
+/**
+ * Treklangen i ett Ackord, som Tonnetzen och Kvintcirkeln visar: dur eller moll på grundtonen, utan
+ * tillägg och Bas (Am för Am7/G). Förminskade, överstigande och sus-ackord har ingen, och inte
+ * heller ett Ackord med ♭5, vars treklang är förminskad.
+ */
+export function progressionTriad(chord: ProgressionChord): Chord | null {
+  if (chord.type !== "major" && chord.type !== "minor") return null;
+  if (chord.extensions.includes("♭5")) return null;
+  return { root: chord.root, quality: chord.type };
 }
 
 /** Det låsta Ackordet efter ett klick på ett Ackord, eller utanför Ackorden (`null`). */

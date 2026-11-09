@@ -16,6 +16,7 @@ import {
   sectionNameError,
   setSectionBars,
   chordAt,
+  positionExists,
   degreeChord,
   keyChords,
   move,
@@ -145,6 +146,16 @@ describe("Ackord på Taktslag", () => {
     expect(withQuality(am7overG, "major")).toEqual({ root: A, type: "major", extensions: ["7"], bass: G });
     expect(withQuality(triad(B, "diminished"), "minor")).toEqual(triad(B, "minor"));
     expect(withQuality(triad(C, "major"), "major")).toEqual(triad(C, "major"));
+  });
+});
+
+describe("Taktslag som finns", () => {
+  it("finns inte längre när Delen krymper, taktarten byts eller Delen tas bort", () => {
+    const progression = newProgression();
+    expect(positionExists(progression, at(progression, 3, 3))).toBe(true);
+    expect(positionExists(setSectionBars(progression, progression.sections[0].id, 3), at(progression, 3, 0))).toBe(false);
+    expect(positionExists(setTimeSignature(progression, "3/4"), at(progression, 0, 3))).toBe(false);
+    expect(positionExists(progression, { section: "saknas", bar: 0, pulse: 0 })).toBe(false);
   });
 });
 

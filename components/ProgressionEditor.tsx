@@ -37,18 +37,28 @@ import {
   type TimeSignature,
   withQuality,
 } from "@/lib/progression";
-import { EMPTY_HISTORY, historyKey, record, redo, undo } from "@/lib/progressionHistory";
 import { type Instrument, INSTRUMENTS } from "@/lib/progressionPlayback";
 import { ChordBuilder, ChordTextField } from "./ChordPicker";
 import styles from "./ProgressionEditor.module.css";
 import { ProgressionFormRow } from "./ProgressionFormRow";
-import { type ProgressionPlayback, useProgressionPlayback } from "./useProgressionPlayback";
+import type { ProgressionPlayback } from "./useProgressionPlayback";
 
 interface Props {
   progression: Progression;
+  /** Varje ändring går hit, och sidan lägger den i historiken. */
   onChange: (progression: Progression) => void;
   noteNames: NoteNameMode;
   messages: Messages;
+}
+
+interface EditorProps extends Props {
+  /**
+   * Det markerade Taktslaget, eller `null`. Sidan håller det, så att Tonnetzen och Kvintcirkeln kan
+   * placera Ackord där, och ser till att det finns.
+   */
+  selection: Position | null;
+  onSelect: (position: Position | null) => void;
+  playback: ProgressionPlayback;
 }
 
 const samePosition = (a: Position | null, b: Position) =>
@@ -63,20 +73,20 @@ type Picker = { position: Position } & ({ kind: "builder" } | { kind: "text"; in
  * Editorn för en Ackordföljd: Tonart, taktart och tempo, och Delarnas Takter med ett Taktslag per
  * puls. Ett markerat Taktslag får Ackord från tonartens lista eller med tangentbordet.
  */
-export function ProgressionEditor({ progression, onChange, noteNames, messages }: Props) {
-  const [selected, setSelected] = useState<Position | null>(null);
+export function ProgressionEditor({
+  progression,
+  onChange: change,
+  selection,
+  onSelect: setSelected,
+  playback,
+  noteNames,
+  messages,
+}: EditorProps) {
   const [picker, setPicker] = useState<Picker | null>(null);
-  // Historiken hör till den Ackordföljd den byggdes för. Byts Ackordföljden ut utifrån börjar den om.
-  const [tracked, setTracked] = useState({ progression, history: EMPTY_HISTORY });
-  const history = tracked.progression === progression ? tracked.history : EMPTY_HISTORY;
-  const playback = useProgressionPlayback(progression);
   const pulseRefs = useRef(new Map<string, HTMLButtonElement>());
   const { key, timeSignature } = progression;
   const pulses = pulsesPerBar(timeSignature);
   const name = (chord: Parameters<typeof progressionChordName>[0]) => progressionChordName(chord, key, noteNames);
-  // En markering som inte längre finns, t.ex. efter att en Del har krympt, räknas som ingen.
-  const selection = selected && positionExists(progression, selected) ? selected : null;
-
   // Panelen och fältet hör till sitt Taktslag och försvinner när ett annat markeras.
   const openPicker = picker && selection && samePosition(selection, picker.position) ? picker : null;
 
@@ -86,33 +96,6 @@ export function ProgressionEditor({ progression, onChange, noteNames, messages }
   useEffect(() => {
     if (selection) focusPulse(selection);
   }, [selection]);
-
-  /** Ändrar Ackordföljden och lägger ändringen i historiken. */
-  function change(next: Progression) {
-    setTracked({ progression: next, history: record(history, progression, next) });
-    onChange(next);
-  }
-
-  // Ctrl+Z och Ctrl+Y gäller hela sidan, så att de fungerar även när fokus har försvunnit med ett
-  // Taktslag eller en Del som ångrades bort. Lyssnaren fångar tangenten på vägen ner, innan Delarnas
-  // rubriker och ackordväljaren stoppar den.
-  useEffect(() => {
-    function onWindowKeyDown(event: globalThis.KeyboardEvent) {
-      const action = historyKey(event);
-      if (!action) return;
-      const target = event.target instanceof HTMLElement ? event.target : null;
-      // Textfält har sin egen inmatning och sitt eget ångra
-      if (target?.closest("input, textarea, [contenteditable]")) return;
-      if (document.querySelector("dialog[open]")) return;
-      event.preventDefault();
-      const step = (action === "undo" ? undo : redo)(history, progression);
-      if (!step) return;
-      setTracked(step);
-      onChange(step.progression);
-    }
-    window.addEventListener("keydown", onWindowKeyDown, true);
-    return () => window.removeEventListener("keydown", onWindowKeyDown, true);
-  }, [history, progression, onChange]);
 
   function closePicker() {
     setPicker(null);
@@ -429,11 +412,6 @@ function Playback({
       </span>
     </div>
   );
-}
-
-function positionExists(progression: Progression, position: Position): boolean {
-  const section = progression.sections.find((s) => s.id === position.section);
-  return !!section && position.bar < section.bars && position.pulse < pulsesPerBar(progression.timeSignature);
 }
 
 /** Tonart, taktart och tempo. */
