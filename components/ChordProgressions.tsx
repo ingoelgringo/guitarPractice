@@ -34,7 +34,16 @@ export function ChordProgressions({ language }: { language: SiteLanguage }) {
   return (
     // Klicket fångas här bara för att släppa låsningen; tangentbordet släpper med Esc i Kvintcirkeln.
     <main className={styles.page} onClick={releaseOutside}>
-      <h1>Chord Progressions</h1>
+      <div className={styles.header}>
+        <h1>Chord Progressions</h1>
+        <label className={styles.noteNames}>
+          {messages.noteNames}{" "}
+          <select value={noteNames} onChange={(event) => setNoteNames(event.target.value as NoteNameMode)}>
+            <option value="english">{messages.noteNamesEnglish}</option>
+            <option value="swedish">{messages.noteNamesSwedish}</option>
+          </select>
+        </label>
+      </div>
       <p>{messages.chordProgressionsIntro}</p>
       <div className={styles.layout}>
         <section className={styles.tonnetz}>
@@ -56,13 +65,6 @@ export function ChordProgressions({ language }: { language: SiteLanguage }) {
           <p className={styles.help}>{messages.circleOfFifthsHelp}</p>
         </section>
       </div>
-      <label className={styles.noteNames}>
-        {messages.noteNames}{" "}
-        <select value={noteNames} onChange={(event) => setNoteNames(event.target.value as NoteNameMode)}>
-          <option value="english">{messages.noteNamesEnglish}</option>
-          <option value="swedish">{messages.noteNamesSwedish}</option>
-        </select>
-      </label>
       <p className={styles.visuallyHidden} aria-live="polite">
         {shown ? messages.highlightedChord(chordName(shown, noteNames)) : ""}
       </p>

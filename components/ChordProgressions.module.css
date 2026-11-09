@@ -209,7 +209,17 @@
   color: color-mix(in srgb, var(--foreground) 65%, transparent);
 }
 
+/* Rubriken till vänster och Notnamnsdropdownen längst upp till höger; radbryts på smal skärm */
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+
 .noteNames {
+  margin-left: auto;
   display: flex;
   align-items: center;
   gap: 8px;
