@@ -91,10 +91,12 @@ describe("uppspelningsplanen", () => {
   });
 
   it("räknar in en Takt på fjärdedelarna, och i 6/8 och 12/8 på de punkterade fjärdedelarna", () => {
-    expect(countIn("4/4").map((hit) => hit.time)).toEqual([0, 1, 2, 3]);
-    expect(countIn("3/4").map((hit) => hit.time)).toEqual([0, 1, 2]);
-    expect(countIn("6/8").map((hit) => hit.time)).toEqual([0, 3]);
-    expect(countIn("12/8").map((hit) => hit.time)).toEqual([0, 3, 6, 9]);
+    const times = (timeSignature: "4/4" | "3/4" | "6/8" | "12/8") => countIn(timeSignature).hits.map((hit) => hit.time);
+    expect(times("4/4")).toEqual([0, 1, 2, 3]);
+    expect(times("3/4")).toEqual([0, 1, 2]);
+    expect(times("6/8")).toEqual([0, 3]);
+    expect(times("12/8")).toEqual([0, 3, 6, 9]);
+    expect(countIn("6/8").length).toBe(6);
   });
 
   it("har bara trummor när det inte finns några Ackord", () => {

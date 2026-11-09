@@ -30,7 +30,7 @@ import {
 } from "@/lib/progression";
 import { type Instrument, INSTRUMENTS } from "@/lib/progressionPlayback";
 import styles from "./ProgressionEditor.module.css";
-import { useProgressionPlayback } from "./useProgressionPlayback";
+import { type ProgressionPlayback, useProgressionPlayback } from "./useProgressionPlayback";
 
 interface Props {
   progression: Progression;
@@ -165,7 +165,7 @@ export function ProgressionEditor({ progression, onChange, noteNames, messages }
 }
 
 /** Play och Stop, inräkningen och Instrumenten. */
-function Playback({ playback, messages }: { playback: ReturnType<typeof useProgressionPlayback>; messages: Messages }) {
+function Playback({ playback, messages }: { playback: ProgressionPlayback; messages: Messages }) {
   const { state, countIn, setCountIn, muted, setMuted, play, stop } = playback;
   const active = state === "playing" || state === "loading";
   const names: Record<Instrument, string> = {

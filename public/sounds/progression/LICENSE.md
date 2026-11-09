@@ -1,4 +1,4 @@
-# Samplingarna för Ackordföljdens komp
+# Samplingarna för Ackordföljdens Instrument
 
 Trummorna och elpianot kommer ur **Versilian Community Sample Library (VCSL)** av Versilian Studios LLC, <https://github.com/sgossner/VCSL>, commit `c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e`.
 

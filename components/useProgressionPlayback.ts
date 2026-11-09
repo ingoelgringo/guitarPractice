@@ -1,13 +1,23 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { type Position, type Progression, pulsesPerBar } from "@/lib/progression";
-import { countIn as countInHits, type Instrument, INSTRUMENTS, playbackPlan, pulseSeconds } from "@/lib/progressionPlayback";
-import type { ProgressionAudio } from "./progressionAudio";
+import type { Position, Progression } from "@/lib/progression";
+import { countIn as countInBar, type Instrument, INSTRUMENTS, playbackPlan, pulseSeconds } from "@/lib/progressionPlayback";
+import type { Playback, ProgressionAudio } from "./progressionAudio";
 
 export type PlaybackState = "stopped" | "loading" | "playing" | "failed";
 
-const NONE_MUTED = Object.fromEntries(INSTRUMENTS.map((instrument) => [instrument, false])) as Record<Instrument, boolean>;
+/** Vilka Instrument som är urbockade. */
+export type MutedInstruments = Record<Instrument, boolean>;
+
+const NONE_MUTED = Object.fromEntries(INSTRUMENTS.map((instrument) => [instrument, false])) as MutedInstruments;
+
+const playbackOf = (progression: Progression): Playback => ({
+  plan: playbackPlan(progression),
+  pulseSeconds: pulseSeconds(progression),
+});
+
+export type ProgressionPlayback = ReturnType<typeof useProgressionPlayback>;
 
 /**
  * Uppspelningen av en Ackordföljd. Ljudlagret och Tone.js laddas vid första Play. Ändringar i
@@ -18,53 +28,64 @@ export function useProgressionPlayback(progression: Progression) {
   const [sounding, setSounding] = useState<Position | null>(null);
   const [countIn, setCountIn] = useState(true);
   const [muted, setMutedState] = useState(NONE_MUTED);
-  const audio = useRef<Promise<ProgressionAudio> | null>(null);
-  const ready = useRef<ProgressionAudio | null>(null);
-  const latest = useRef(progression);
+  const context = useRef<AudioContext | null>(null);
+  const playerPromise = useRef<Promise<ProgressionAudio> | null>(null);
+  const player = useRef<ProgressionAudio | null>(null);
+  const latest = useRef({ progression, muted });
+  /** Räknas upp vid Stop och när editorn försvinner, så att en Play som laddar inte startar sent. */
   const generation = useRef(0);
 
   useEffect(() => {
-    latest.current = progression;
-    if (state === "playing") ready.current?.update(playbackPlan(progression), pulseSeconds(progression));
+    latest.current = { progression, muted };
+  });
+
+  useEffect(() => {
+    if (state === "playing") player.current?.update(playbackOf(progression));
   }, [progression, state]);
 
-  // Musiken slutar när editorn försvinner.
-  useEffect(() => () => ready.current?.stop(), []);
+  // Musiken slutar och ljudlagret städas bort när editorn försvinner.
+  useEffect(
+    () => () => {
+      generation.current++;
+      void playerPromise.current?.then((audio) => audio.dispose()).catch(() => {});
+      void context.current?.close();
+    },
+    [],
+  );
 
   async function play() {
     const current = ++generation.current;
     setState("loading");
+    // Ljudet måste startas i klickets händelse, före all väntan.
+    context.current ??= new AudioContext();
+    void context.current.resume();
     try {
-      audio.current ??= import("./progressionAudio").then((module) => module.createProgressionAudio());
-      const player = await audio.current;
+      const audioContext = context.current;
+      playerPromise.current ??= import("./progressionAudio").then((module) => module.createProgressionAudio(audioContext));
+      const audio = await playerPromise.current;
       if (current !== generation.current) return;
-      ready.current = player;
-      for (const instrument of INSTRUMENTS) player.setMuted(instrument, muted[instrument]);
-      const progression = latest.current;
-      const { timeSignature } = progression;
-      player.play(playbackPlan(progression), {
-        pulseSeconds: pulseSeconds(progression),
-        countIn: countIn ? { hits: countInHits(timeSignature), length: pulsesPerBar(timeSignature) } : null,
-        onChord: setSounding,
-      });
+      player.current = audio;
+      const { progression, muted } = latest.current;
+      for (const instrument of INSTRUMENTS) audio.setMuted(instrument, muted[instrument]);
+      audio.play(playbackOf(progression), { countIn: countIn ? countInBar(progression.timeSignature) : null, onChord: setSounding });
       setState("playing");
     } catch (error) {
       console.error(error);
-      audio.current = null;
+      playerPromise.current = null;
       if (current === generation.current) setState("failed");
     }
   }
 
   function stop() {
     generation.current++;
-    ready.current?.stop();
+    player.current?.stop();
     setSounding(null);
     setState("stopped");
   }
 
   function setMuted(instrument: Instrument, value: boolean) {
     setMutedState((current) => ({ ...current, [instrument]: value }));
-    ready.current?.setMuted(instrument, value);
+    player.current?.setMuted(instrument, value);
   }
 
   return { state, sounding, countIn, setCountIn, muted, setMuted, play, stop };

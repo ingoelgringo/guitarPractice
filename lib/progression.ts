@@ -10,6 +10,11 @@ export type TimeSignature = (typeof TIME_SIGNATURES)[number];
 
 const PULSES: Record<TimeSignature, number> = { "4/4": 4, "3/4": 3, "2/4": 2, "6/8": 6, "12/8": 12 };
 
+/** Antalet Taktslag i ett slag som tempot räknas i: tre i 6/8 och 12/8 (punkterade fjärdedelar), annars ett. */
+export function pulsesPerBeat(timeSignature: TimeSignature): number {
+  return timeSignature.endsWith("/8") ? 3 : 1;
+}
+
 /** Antalet Taktslag i en Takt. */
 export function pulsesPerBar(timeSignature: TimeSignature): number {
   return PULSES[timeSignature];

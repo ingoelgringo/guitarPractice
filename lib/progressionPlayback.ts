@@ -9,6 +9,7 @@ import {
   type Progression,
   type ProgressionChord,
   pulsesPerBar,
+  pulsesPerBeat,
   type TimeSignature,
 } from "./progression";
 
@@ -61,7 +62,7 @@ const hihats = (pulses: number, step: number): DrumHit[] =>
 
 const hits = (drum: Drum, times: readonly number[], velocity: number): DrumHit[] => times.map((time) => ({ time, drum, velocity }));
 
-/** Kompets fasta mönster per taktart, i Taktslag från Taktens början. */
+/** De fasta mönstren per taktart, i Taktslag från Taktens början. */
 const PATTERNS: Record<TimeSignature, Pattern> = {
   "4/4": {
     drums: [...hits("kick", [0, 2, 2.5], 0.9), ...hits("snare", [1, 3], 0.8), ...hihats(4, 0.5)],
@@ -100,7 +101,7 @@ function onsets(start: number, end: number, pulses: number, pattern: readonly nu
 }
 
 /** Varje anslag klingar till nästa, och det sista till Ackordets slut. */
-function notes(times: number[], end: number, pitches: number[]): NoteEvent[] {
+function noteEvents(times: number[], end: number, pitches: number[]): NoteEvent[] {
   return times.map((time, i) => ({ time, duration: (times[i + 1] ?? end) - time, notes: pitches }));
 }
 
@@ -166,20 +167,28 @@ function voiceLeading(chord: ProgressionChord, previous: readonly number[]): num
  * punkterade fjärdedelar, alltså tre Taktslag.
  */
 export function pulseSeconds({ tempo, timeSignature }: Pick<Progression, "tempo" | "timeSignature">): number {
-  return 60 / tempo / (timeSignature.endsWith("/8") ? 3 : 1);
+  return 60 / tempo / pulsesPerBeat(timeSignature);
+}
+
+/** En Takts inräkning före loopen: hi-hat-anslagen och längden i Taktslag. */
+export interface CountIn {
+  hits: DrumHit[];
+  length: number;
 }
 
 /**
  * Inräkningen: en Takt med hi-hat på varje fjärdedel, i 6/8 och 12/8 på varje punkterad
- * fjärdedel. Det första slaget är starkast.
+ * fjärdedel. Det första anslaget är starkast.
  */
-export function countIn(timeSignature: TimeSignature): DrumHit[] {
-  const step = timeSignature.endsWith("/8") ? 3 : 1;
-  return Array.from({ length: pulsesPerBar(timeSignature) / step }, (_, i) => ({
+export function countIn(timeSignature: TimeSignature): CountIn {
+  const step = pulsesPerBeat(timeSignature);
+  const length = pulsesPerBar(timeSignature);
+  const hits: DrumHit[] = Array.from({ length: length / step }, (_, i) => ({
     time: i * step,
     drum: "hihat",
     velocity: i === 0 ? 1 : 0.7,
   }));
+  return { hits, length };
 }
 
 export function playbackPlan(progression: Progression): PlaybackPlan {
@@ -205,8 +214,8 @@ export function playbackPlan(progression: Progression): PlaybackPlan {
   for (const { start, end, chord } of chords) {
     const voiced = voiceLeading(chord, previous);
     previous = voiced;
-    plan.bass.push(...notes(onsets(start, end, pulses, pattern.bass), end, [bassNote(chord.bass)]));
-    plan.piano.push(...notes(onsets(start, end, pulses, pattern.piano), end, voiced));
+    plan.bass.push(...noteEvents(onsets(start, end, pulses, pattern.bass), end, [bassNote(chord.bass)]));
+    plan.piano.push(...noteEvents(onsets(start, end, pulses, pattern.piano), end, voiced));
     plan.pad.push({ time: start, duration: end - start, notes: voiced });
   }
   return plan;
