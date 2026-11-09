@@ -31,11 +31,16 @@ export interface Key {
 export const CHORD_TYPES = ["major", "minor", "diminished", "augmented", "sus2", "sus4"] as const;
 export type ChordType = (typeof CHORD_TYPES)[number];
 
+/** Tilläggen i den ordning de skrivs i ackordnamnet och visas i väljaren. */
+export const EXTENSIONS = ["6", "7", "maj7", "9", "add9", "11", "13", "♭5", "♭9", "♯9", "♯11", "♭13"] as const;
+export type Extension = (typeof EXTENSIONS)[number];
+
 /** Ett Ackord: grundton och Bas 0–11, ackordtyp och tillägg (t.ex. "7", "♭9"). */
 export interface ProgressionChord {
   root: number;
   type: ChordType;
-  extensions: readonly string[];
+  /** I samma ordning som `EXTENSIONS`, utan dubbletter. */
+  extensions: readonly Extension[];
   bass: number;
 }
 
@@ -137,10 +142,117 @@ const TYPE_SUFFIX: Record<ChordType, string> = {
   sus4: "sus4",
 };
 
-/** Ackordets namn stavat efter Tonarten, t.ex. "B♭", "F♯m", "B°" eller "G/B". */
+export const ALTERATIONS = ["♭5", "♭9", "♯9", "♯11", "♭13"] as const satisfies readonly Extension[];
+
+/** Tillägg som inte går ihop: två septimor, 6 med en septima eller med 13, 9 med add9, och samma ton naturlig och förändrad. */
+const CONFLICTS: readonly (readonly [Extension, Extension])[] = [
+  ["7", "maj7"],
+  ["6", "7"],
+  ["6", "maj7"],
+  ["6", "13"],
+  ["9", "add9"],
+  ["9", "♭9"],
+  ["9", "♯9"],
+  ["11", "♯11"],
+  ["13", "♭13"],
+];
+
+/** Om de två tilläggen inte går ihop i samma Ackord. */
+export function extensionsConflict(a: Extension, b: Extension): boolean {
+  return CONFLICTS.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
+}
+
+/** Tilläggen i den fasta ordningen, utan dubbletter. */
+export function inExtensionOrder(extensions: Iterable<Extension>): Extension[] {
+  const set = new Set(extensions);
+  return EXTENSIONS.filter((e) => set.has(e));
+}
+
+const has = (chord: ProgressionChord, extension: Extension) => chord.extensions.includes(extension);
+
+/** 6 och 9 utan septima skrivs 6/9. */
+const isSixNine = (chord: ProgressionChord) =>
+  has(chord, "6") && has(chord, "9") && !(["7", "maj7", "11", "13"] as const).some((e) => has(chord, e));
+
+/**
+ * Tilläggen som de skrivs efter ackordtypen, i två delar: först 6 eller 6/9 och septiman med det
+ * högsta av 9, 11 och 13 (som "9" eller "maj9"), sedan add9 och de förändrade tonerna. Sus står
+ * mellan delarna.
+ */
+function extensionText(chord: ProgressionChord): [string, string] {
+  const highest = (["13", "11", "9"] as const).find((e) => has(chord, e));
+  let core = "";
+  if (isSixNine(chord)) core = "6/9";
+  else {
+    if (has(chord, "6")) core += "6";
+    if (has(chord, "maj7")) core += `maj${highest ?? "7"}`;
+    else if (highest) core += highest;
+    else if (has(chord, "7")) core += "7";
+  }
+  const rest = (has(chord, "add9") ? "add9" : "") + ALTERATIONS.filter((e) => has(chord, e)).join("");
+  return [core, rest];
+}
+
+/** Ackordets namn stavat efter Tonarten, t.ex. "B♭", "F♯m7", "B°" eller "G7sus4/D". */
 export function progressionChordName(chord: ProgressionChord, key: Key, mode: NoteNameMode): string {
-  const name = spellInKey(chord.root, key, mode) + TYPE_SUFFIX[chord.type] + chord.extensions.join("");
+  const [core, rest] = extensionText(chord);
+  const sus = chord.type === "sus2" || chord.type === "sus4";
+  const typed = sus ? core + TYPE_SUFFIX[chord.type] : TYPE_SUFFIX[chord.type] + core;
+  // En förändrad ton direkt efter grundtonen skulle läsas som ett förtecken, t.ex. C♭9 som C♭.
+  const name = spellInKey(chord.root, key, mode) + typed + (typed === "" && /^[♭♯]/.test(rest) ? `(${rest})` : rest);
   return chord.bass === chord.root ? name : `${name}/${spellInKey(chord.bass, key, mode)}`;
+}
+
+/**
+ * Slår av eller på ett tillägg. Ett tillägg som slås på tar bort dem som inte går ihop med det.
+ * Ackordtypen och Basen ändras inte.
+ */
+export function toggleExtension(chord: ProgressionChord, extension: Extension): ProgressionChord {
+  const extensions = chord.extensions.includes(extension)
+    ? chord.extensions.filter((e) => e !== extension)
+    : [...chord.extensions.filter((e) => !extensionsConflict(e, extension)), extension];
+  return { ...chord, extensions: inExtensionOrder(extensions) };
+}
+
+const TYPE_INTERVALS: Record<ChordType, readonly number[]> = {
+  major: [0, 4, 7],
+  minor: [0, 3, 7],
+  diminished: [0, 3, 6],
+  augmented: [0, 4, 8],
+  sus2: [0, 2, 7],
+  sus4: [0, 5, 7],
+};
+
+const EXTENSION_INTERVAL: Record<Extension, number> = {
+  "6": 9,
+  "7": 10,
+  maj7: 11,
+  "9": 2,
+  add9: 2,
+  "11": 5,
+  "13": 9,
+  "♭5": 6,
+  "♭9": 1,
+  "♯9": 3,
+  "♯11": 6,
+  "♭13": 8,
+};
+
+/**
+ * Ackordets tonklasser: ackordtypens treklang och tilläggen. 9, 11 och 13 har med septiman (den
+ * stora om maj7 finns), utom 9 i 6/9. ♭5 ersätter kvinten, och i ett förminskat ackord är
+ * septiman förminskad.
+ */
+export function chordTones(chord: ProgressionChord): number[] {
+  const intervals = new Set(TYPE_INTERVALS[chord.type]);
+  if (has(chord, "♭5")) intervals.delete(7);
+  for (const extension of chord.extensions) {
+    if (extension !== "7" && extension !== "maj7") intervals.add(EXTENSION_INTERVAL[extension]);
+  }
+  const impliesSeventh = has(chord, "7") || has(chord, "11") || has(chord, "13") || (has(chord, "9") && !isSixNine(chord));
+  if (has(chord, "maj7")) intervals.add(11);
+  else if (impliesSeventh) intervals.add(chord.type === "diminished" ? 9 : 10);
+  return [...intervals].map((interval) => (chord.root + interval) % 12);
 }
 
 /** Tonartens grundton stavad, t.ex. "F♯" eller "C♯". */

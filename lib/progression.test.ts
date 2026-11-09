@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   addSection,
+  CHORD_TYPES,
+  type ChordType,
+  chordTones,
+  type Extension,
+  type Key,
+  type ProgressionChord,
+  toggleExtension,
   addToForm,
   moveInForm,
   removeFromForm,
@@ -316,5 +323,106 @@ describe("Delar och Formen", () => {
     expect(formNames(moveInForm(progression, 3, 1))).toEqual(["Verse", "Verse", "Chorus", "Bridge"]);
     expect(moveInForm(progression, 1, 1)).toBe(progression);
     expect(moveInForm(progression, 1, 9)).toBe(progression);
+  });
+});
+
+describe("Ackord med ackordtyp och tillägg", () => {
+  const chord = (root: number, type: ChordType, extensions: Extension[] = [], bass = root): ProgressionChord => ({
+    root,
+    type,
+    extensions,
+    bass,
+  });
+  const english = (c: ProgressionChord, key: Key = cMajor) => progressionChordName(c, key, "english");
+
+  it("har namn för varje ackordtyp", () => {
+    expect([...CHORD_TYPES].map((type) => english(chord(C, type)))).toEqual(["C", "Cm", "C°", "C+", "Csus2", "Csus4"]);
+  });
+
+  it("har namn med septimor, nonor och högre tillägg", () => {
+    expect(english(chord(G, "major", ["7"]))).toBe("G7");
+    expect(english(chord(C, "major", ["maj7"]))).toBe("Cmaj7");
+    expect(english(chord(A, "minor", ["7"]))).toBe("Am7");
+    expect(english(chord(A, "minor", ["maj7"]))).toBe("Ammaj7");
+    expect(english(chord(D, "major", ["9"]))).toBe("D9");
+    expect(english(chord(D, "major", ["7", "9"]))).toBe("D9");
+    expect(english(chord(F, "major", ["maj7", "9"]))).toBe("Fmaj9");
+    expect(english(chord(D, "minor", ["11"]))).toBe("Dm11");
+    expect(english(chord(G, "major", ["13"]))).toBe("G13");
+    expect(english(chord(C, "major", ["6"]))).toBe("C6");
+    expect(english(chord(C, "major", ["6", "9"]))).toBe("C6/9");
+    expect(english(chord(C, "major", ["add9"]))).toBe("Cadd9");
+    expect(english(chord(B, "diminished", ["7"]))).toBe("B°7");
+  });
+
+  it("har namn med förändrade toner efter septimen", () => {
+    expect(english(chord(B, "minor", ["7", "♭5"]))).toBe("Bm7♭5");
+    expect(english(chord(E, "major", ["7", "♯9"]))).toBe("E7♯9");
+    expect(english(chord(G, "major", ["7", "♭9", "♭13"]))).toBe("G7♭9♭13");
+    expect(english(chord(F, "major", ["maj7", "♯11"]))).toBe("Fmaj7♯11");
+  });
+
+  it("skriver förändrade toner direkt efter grundtonen inom parentes, så att de inte läses som förtecken", () => {
+    expect(english(chord(C, "major", ["♭9"]))).toBe("C(♭9)");
+    expect(english(chord(C, "major", ["♭5"]))).toBe("C(♭5)");
+    expect(english(chord(C, "minor", ["♭5"]))).toBe("Cm♭5");
+  });
+
+  it("skriver tilläggen i en fast ordning oavsett i vilken ordning de lades till", () => {
+    expect(english(chord(G, "major", ["♭9", "7"]))).toBe("G7♭9");
+  });
+
+  it("har sus efter septimen", () => {
+    expect(english(chord(G, "sus4", ["7"]))).toBe("G7sus4");
+    expect(english(chord(D, "sus2", ["add9"]))).toBe("Dsus2add9");
+  });
+
+  it("stavas efter Tonarten och Notnamnsläget, även Basen", () => {
+    const fSharpM7overC = chord(6, "minor", ["7"], C);
+    expect(english(fSharpM7overC)).toBe("F♯m7/C");
+    expect(progressionChordName(chord(10, "major", ["maj7"]), { tonic: F, mode: "major" }, "swedish")).toBe("Bmaj7");
+    expect(progressionChordName(chord(B, "minor", ["7"], A), { tonic: D, mode: "major" }, "swedish")).toBe("Hm7/A");
+    expect(progressionChordName(chord(G, "major", ["7"], B), cMajor, "swedish")).toBe("G7/H");
+  });
+
+  it("slås av och på ett i taget och behåller ackordtyp och Bas", () => {
+    const g = chord(G, "major", [], B);
+    const g7 = toggleExtension(g, "7");
+    expect(g7).toEqual(chord(G, "major", ["7"], B));
+    expect(toggleExtension(toggleExtension(g7, "♭9"), "7")).toEqual(chord(G, "major", ["♭9"], B));
+    expect(toggleExtension(g7, "7")).toEqual(g);
+  });
+
+  it("byter ut ett tillägg som inte går ihop med det som slås på", () => {
+    const c = chord(C, "major");
+    expect(toggleExtension(toggleExtension(c, "7"), "maj7").extensions).toEqual(["maj7"]);
+    expect(toggleExtension(toggleExtension(c, "6"), "7").extensions).toEqual(["7"]);
+    expect(toggleExtension(toggleExtension(c, "9"), "add9").extensions).toEqual(["add9"]);
+    expect(toggleExtension(toggleExtension(c, "13"), "6").extensions).toEqual(["6"]);
+    expect(toggleExtension(toggleExtension(c, "6"), "9").extensions).toEqual(["6", "9"]);
+    expect(toggleExtension(toggleExtension(c, "♭9"), "♯9").extensions).toEqual(["♭9", "♯9"]);
+  });
+
+  it("+ och − behåller tilläggen och Basen", () => {
+    const am7b5overG = chord(A, "minor", ["7", "♭5"], G);
+    expect(withQuality(am7b5overG, "major")).toEqual(chord(A, "major", ["7", "♭5"], G));
+    expect(withQuality(chord(G, "sus4", ["7"], D), "minor")).toEqual(chord(G, "minor", ["7"], D));
+  });
+
+  it("har toner för ackordtypen och tilläggen", () => {
+    const tones = (c: ProgressionChord) => [...chordTones(c)].sort((a, b) => a - b);
+    expect(tones(chord(C, "major"))).toEqual([0, 4, 7]);
+    expect(tones(chord(G, "major", ["7"]))).toEqual([2, 5, 7, 11]);
+    expect(tones(chord(C, "major", ["maj7"]))).toEqual([0, 4, 7, 11]);
+    expect(tones(chord(C, "major", ["9"]))).toEqual([0, 2, 4, 7, 10]);
+    expect(tones(chord(C, "major", ["maj7", "9"]))).toEqual([0, 2, 4, 7, 11]);
+    expect(tones(chord(C, "major", ["add9"]))).toEqual([0, 2, 4, 7]);
+    expect(tones(chord(C, "major", ["6"]))).toEqual([0, 4, 7, 9]);
+    expect(tones(chord(C, "diminished", ["7"]))).toEqual([0, 3, 6, 9]);
+    expect(tones(chord(B, "minor", ["7", "♭5"]))).toEqual([2, 5, 9, 11]);
+    expect(tones(chord(C, "major", ["7", "♭9", "♯9"]))).toEqual([0, 1, 3, 4, 7, 10]);
+    expect(tones(chord(C, "major", ["13"]))).toEqual([0, 4, 7, 9, 10]);
+    expect(tones(chord(C, "major", ["11"]))).toEqual([0, 4, 5, 7, 10]);
+    expect(tones(chord(C, "major", ["7", "♯11", "♭13"]))).toEqual([0, 4, 6, 7, 8, 10]);
   });
 });

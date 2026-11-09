@@ -62,7 +62,7 @@ const en = {
   // Ackordföljden
   progression: "Chord progression",
   progressionHelp:
-    "Click a beat and pick a chord. Left and right move by bar, Alt+left and right by beat, up and down by part, 1–7 pick a chord in the key, + and − switch between major and minor, and Backspace or Delete removes the chord.",
+    "Click a beat and pick a chord. Left and right move by bar, Alt+left and right by beat, up and down by part, 1–7 pick a chord in the key, a note letter opens a field where you type any chord, + and − switch between major and minor, and Backspace or Delete removes the chord.",
   key: "Key",
   keyMajor: "major",
   keyMinor: "minor",
@@ -97,6 +97,20 @@ const en = {
   removeFromForm: (name: string) => `Remove ${name} from the form`,
   loop: "Loop",
   wholeForm: "Whole form",
+  otherChord: "Other chord…",
+  chordBuilder: "Build a chord",
+  chordRoot: "Root",
+  chordType: "Chord type",
+  chordDiminished: "diminished",
+  chordAugmented: "augmented",
+  chordExtensions: "Extensions",
+  chordBass: "Bass",
+  placeChord: "Place",
+  cancel: "Cancel",
+  chordText: "Chord",
+  chordTextHelp: "Type a chord, e.g. F#m7/C, and press Enter.",
+  chordTextInvalid: "That is not a chord.",
+  chordSuggestions: "Suggestions",
 };
 
 export type Messages = typeof en;
@@ -152,7 +166,7 @@ const sv: Messages = {
 
   progression: "Ackordföljd",
   progressionHelp:
-    "Klicka på ett taktslag och välj ett ackord. Vänster- och högerpil går en takt, Alt och vänster- och högerpil ett taktslag, upp- och nedpil en del, 1–7 väljer ett ackord i tonarten, + och − byter mellan dur och moll, och Backspace eller Delete tar bort ackordet.",
+    "Klicka på ett taktslag och välj ett ackord. Vänster- och högerpil går en takt, Alt och vänster- och högerpil ett taktslag, upp- och nedpil en del, 1–7 väljer ett ackord i tonarten, en tonbokstav öppnar ett fält där du skriver vilket ackord som helst, + och − byter mellan dur och moll, och Backspace eller Delete tar bort ackordet.",
   key: "Tonart",
   keyMajor: "dur",
   keyMinor: "moll",
@@ -187,6 +201,20 @@ const sv: Messages = {
   removeFromForm: (name: string) => `Ta bort ${name} ur formen`,
   loop: "Loopa",
   wholeForm: "Hela formen",
+  otherChord: "Annat ackord…",
+  chordBuilder: "Bygg ett ackord",
+  chordRoot: "Grundton",
+  chordType: "Ackordtyp",
+  chordDiminished: "förminskad",
+  chordAugmented: "överstigande",
+  chordExtensions: "Tillägg",
+  chordBass: "Bas",
+  placeChord: "Placera",
+  cancel: "Avbryt",
+  chordText: "Ackord",
+  chordTextHelp: "Skriv ett ackord, t.ex. F#m7/C, och tryck Enter.",
+  chordTextInvalid: "Det är inget ackord.",
+  chordSuggestions: "Förslag",
 };
 
 export const MESSAGES: Record<SiteLanguage, Messages> = { en, sv };

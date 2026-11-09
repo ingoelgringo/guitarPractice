@@ -6,6 +6,8 @@
 import type { DraftStorage } from "./draft";
 import {
   CHORD_TYPES,
+  EXTENSIONS,
+  inExtensionOrder,
   MAX_TEMPO,
   MIN_TEMPO,
   type PlacedChord,
@@ -33,8 +35,14 @@ const isCount = (value: unknown, below: number): value is number =>
 function readChord(value: unknown): ProgressionChord | null {
   if (!isRecord(value) || !isPitch(value.root) || !isPitch(value.bass)) return null;
   if (!CHORD_TYPES.includes(value.type as never)) return null;
-  if (!Array.isArray(value.extensions) || !value.extensions.every((e) => typeof e === "string")) return null;
-  return { root: value.root, type: value.type as ProgressionChord["type"], extensions: value.extensions, bass: value.bass };
+  const extensions = value.extensions;
+  if (!Array.isArray(extensions) || !extensions.every((e) => EXTENSIONS.includes(e))) return null;
+  return {
+    root: value.root,
+    type: value.type as ProgressionChord["type"],
+    extensions: inExtensionOrder(extensions),
+    bass: value.bass,
+  };
 }
 
 function readSection(value: unknown, pulses: number): Section | null {

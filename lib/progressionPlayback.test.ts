@@ -82,6 +82,26 @@ describe("uppspelningsplanen", () => {
     });
   });
 
+  it("låter elpianot och padden spela tilläggen", () => {
+    const progression = withChords([[0, 0, C]]);
+    const g7b9 = { root: G, type: "major", extensions: ["7", "♭9"], bass: G } as const;
+    const plan = playbackPlan(placeChord(progression, { section: progression.sections[0].id, bar: 1, pulse: 0 }, g7b9));
+    for (const events of [plan.pad, plan.piano]) {
+      const notes = events.find((event) => event.time === 4)?.notes ?? [];
+      expect(new Set(notes.map((n) => n % 12))).toEqual(new Set([7, 11, 2, 5, 8]));
+      expect(notes).toHaveLength(5);
+      expect(Math.min(...notes)).toBeGreaterThanOrEqual(52);
+      expect(Math.max(...notes)).toBeLessThanOrEqual(79);
+    }
+  });
+
+  it("låter basen spela Basen även med tillägg, och inte grundtonen", () => {
+    const progression = withChords([]);
+    const am7overG = { root: A, type: "minor", extensions: ["7"], bass: G } as const;
+    const plan = playbackPlan(placeChord(progression, { section: progression.sections[0].id, bar: 0, pulse: 0 }, am7overG));
+    expect(new Set(plan.bass.flatMap((event) => event.notes))).toEqual(new Set([31]));
+  });
+
   it("låter basen spela Basen i ett lågt register", () => {
     const progression = withChords([[0, 0, C]]);
     const slash = placeChord(progression, { section: progression.sections[0].id, bar: 1, pulse: 0 }, { ...triad(G, "major"), bass: 11 });

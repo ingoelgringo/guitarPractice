@@ -264,3 +264,85 @@
   line-height: 1;
   padding: 4px 8px;
 }
+
+/* "Annat ackord…" och ackordfältet, under den markerade Delens Takter */
+.picker {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  max-width: 100%;
+}
+
+.pickerRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.picker select,
+.picker input,
+.picker button {
+  font: inherit;
+  padding: 4px 6px;
+}
+
+.extensions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.extensionsLegend {
+  float: left;
+  margin-right: 8px;
+  align-self: center;
+}
+
+.extension {
+  min-width: 3em;
+  cursor: pointer;
+}
+
+.extension.extensionOn {
+  background: color-mix(in srgb, var(--chord-highlight, var(--foreground)) 30%, transparent);
+  border-color: var(--chord-highlight, var(--foreground));
+}
+
+.preview {
+  font-weight: bold;
+  font-size: 1.125rem;
+  min-width: 5em;
+}
+
+.chordTextInput {
+  font-weight: bold;
+  width: 9em;
+}
+
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.suggestion {
+  border: 1px solid var(--faint);
+  border-radius: 4px;
+}
+
+.suggestion:hover,
+.suggestionActive {
+  background: var(--faint);
+  border-color: var(--chord-highlight, var(--foreground));
+}

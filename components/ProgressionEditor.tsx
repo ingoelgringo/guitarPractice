@@ -1,6 +1,7 @@
 "use client";
 
 import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
+import { opensChordText } from "@/lib/chordText";
 import type { Messages } from "@/lib/messages";
 import type { NoteNameMode } from "@/lib/noteNameMode";
 import {
@@ -17,6 +18,7 @@ import {
   move,
   type Position,
   type Progression,
+  type ProgressionChord,
   progressionChordName,
   pulsesPerBar,
   placeChord,
@@ -36,6 +38,7 @@ import {
   withQuality,
 } from "@/lib/progression";
 import { type Instrument, INSTRUMENTS } from "@/lib/progressionPlayback";
+import { ChordBuilder, ChordTextField } from "./ChordPicker";
 import styles from "./ProgressionEditor.module.css";
 import { ProgressionFormRow } from "./ProgressionFormRow";
 import { type ProgressionPlayback, useProgressionPlayback } from "./useProgressionPlayback";
@@ -52,12 +55,16 @@ const samePosition = (a: Position | null, b: Position) =>
 
 const positionKey = ({ section, bar, pulse }: Position) => `${section}:${bar}:${pulse}`;
 
+/** Panelen "Annat ackord…" eller ackordfältet, öppen vid ett Taktslag. */
+type Picker = { position: Position } & ({ kind: "builder" } | { kind: "text"; initial: string });
+
 /**
  * Editorn för en Ackordföljd: Tonart, taktart och tempo, och Delarnas Takter med ett Taktslag per
  * puls. Ett markerat Taktslag får Ackord från tonartens lista eller med tangentbordet.
  */
 export function ProgressionEditor({ progression, onChange, noteNames, messages }: Props) {
   const [selected, setSelected] = useState<Position | null>(null);
+  const [picker, setPicker] = useState<Picker | null>(null);
   const playback = useProgressionPlayback(progression);
   const pulseRefs = useRef(new Map<string, HTMLButtonElement>());
   const { key, timeSignature } = progression;
@@ -66,10 +73,25 @@ export function ProgressionEditor({ progression, onChange, noteNames, messages }
   // En markering som inte längre finns, t.ex. efter att en Del har krympt, räknas som ingen.
   const selection = selected && positionExists(progression, selected) ? selected : null;
 
+  // Panelen och fältet hör till sitt Taktslag och försvinner när ett annat markeras.
+  const openPicker = picker && selection && samePosition(selection, picker.position) ? picker : null;
+
+  const focusPulse = (position: Position) => pulseRefs.current.get(positionKey(position))?.focus();
+
   // Tangentbordets markering följs av fokus, så att skärmläsare och Tab hittar rätt Taktslag.
   useEffect(() => {
-    if (selection) pulseRefs.current.get(positionKey(selection))?.focus();
+    if (selection) focusPulse(selection);
   }, [selection]);
+
+  function closePicker() {
+    setPicker(null);
+    if (selection) focusPulse(selection);
+  }
+
+  function placeFromPicker(chord: ProgressionChord) {
+    if (selection) onChange(placeChord(progression, selection, chord));
+    closePicker();
+  }
 
   function onKeyDown(event: KeyboardEvent) {
     if (!selection) return;
@@ -80,7 +102,11 @@ export function ProgressionEditor({ progression, onChange, noteNames, messages }
       return;
     }
     const current = chordAt(progression, selection);
-    if (/^[1-7]$/.test(event.key) && !event.ctrlKey && !event.metaKey && !event.altKey) {
+    const modified = event.ctrlKey || event.metaKey || event.altKey;
+    if (opensChordText(event.key, noteNames) && !modified) {
+      event.preventDefault();
+      setPicker({ position: selection, kind: "text", initial: event.key.toUpperCase() });
+    } else if (/^[1-7]$/.test(event.key) && !modified) {
       event.preventDefault();
       onChange(placeChord(progression, selection, degreeChord(key, Number(event.key))));
     } else if ((event.key === "+" || event.key === "-") && current) {
@@ -142,31 +168,22 @@ export function ProgressionEditor({ progression, onChange, noteNames, messages }
                 </div>
               ))}
             </div>
+            {selection?.section === section.id && (
+              <ChordChoices
+                selection={selection}
+                progression={progression}
+                onChange={onChange}
+                picker={openPicker}
+                onOpenBuilder={() => setPicker({ position: selection, kind: "builder" })}
+                onPlace={placeFromPicker}
+                onCancel={closePicker}
+                onDismiss={() => setPicker(null)}
+                noteNames={noteNames}
+                messages={messages}
+              />
+            )}
           </div>
         ))}
-        {selection && (
-          <div className={styles.chordList} role="group" aria-label={messages.keyChords}>
-            <span className={styles.chordListLabel}>{messages.keyChords}</span>
-            {keyChords(key).map(({ degree, chord }) => (
-              <button
-                key={degree}
-                type="button"
-                className={styles.chordChoice}
-                onClick={() => onChange(placeChord(progression, selection, chord))}
-              >
-                <span className={styles.degree}>{degree}</span> {name(chord)}
-              </button>
-            ))}
-            <button
-              type="button"
-              className={styles.chordChoice}
-              disabled={!chordAt(progression, selection)}
-              onClick={() => onChange(removeChord(progression, selection))}
-            >
-              {messages.removeChord}
-            </button>
-          </div>
-        )}
       </div>
       <button
         type="button"
@@ -177,6 +194,74 @@ export function ProgressionEditor({ progression, onChange, noteNames, messages }
       </button>
       <ProgressionFormRow progression={progression} onChange={onChange} messages={messages} />
     </section>
+  );
+}
+
+/** Tonartens ackord vid den markerade Delen, "Annat ackord…" och panelen eller ackordfältet. */
+function ChordChoices({
+  selection,
+  progression,
+  onChange,
+  picker,
+  onOpenBuilder,
+  onPlace,
+  onCancel,
+  onDismiss,
+  noteNames,
+  messages,
+}: {
+  selection: Position;
+  progression: Progression;
+  onChange: (progression: Progression) => void;
+  picker: Picker | null;
+  onOpenBuilder: () => void;
+  onPlace: (chord: ProgressionChord) => void;
+  onCancel: () => void;
+  onDismiss: () => void;
+  noteNames: NoteNameMode;
+  messages: Messages;
+}) {
+  const { key } = progression;
+  const current = chordAt(progression, selection);
+  const pickerProps = { keyOfProgression: key, noteNames, messages, onPlace, onCancel };
+  return (
+    <>
+      <div className={styles.chordList} role="group" aria-label={messages.keyChords}>
+        <span className={styles.chordListLabel}>{messages.keyChords}</span>
+        {keyChords(key).map(({ degree, chord }) => (
+          <button
+            key={degree}
+            type="button"
+            className={styles.chordChoice}
+            onClick={() => onChange(placeChord(progression, selection, chord))}
+          >
+            <span className={styles.degree}>{degree}</span> {progressionChordName(chord, key, noteNames)}
+          </button>
+        ))}
+        <button
+          type="button"
+          className={styles.chordChoice}
+          aria-expanded={picker?.kind === "builder"}
+          onClick={onOpenBuilder}
+        >
+          {messages.otherChord}
+        </button>
+        <button
+          type="button"
+          className={styles.chordChoice}
+          disabled={!current}
+          onClick={() => onChange(removeChord(progression, selection))}
+        >
+          {messages.removeChord}
+        </button>
+      </div>
+      {picker?.kind === "builder" && (
+        <ChordBuilder key={positionKey(selection)} initial={current ?? degreeChord(key, 1)} {...pickerProps} />
+      )}
+      {picker?.kind === "text" && (
+        <ChordTextField key={positionKey(selection)} initial={picker.initial} onDismiss={onDismiss} {...pickerProps} />
+      )}
+    </>
   );
 }
 

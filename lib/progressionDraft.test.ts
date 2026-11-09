@@ -54,6 +54,27 @@ describe("Ackordföljdens format", () => {
   });
 });
 
+describe("Ackordföljdens format med tillägg", () => {
+  it("läser tillbaka tilläggen och Basen", () => {
+    const progression = newProgression();
+    const chord = { root: 7, type: "sus4", extensions: ["7", "♭9"], bass: 2 } as const;
+    const withExtensions = placeChord(progression, { section: progression.sections[0].id, bar: 0, pulse: 0 }, chord);
+    expect(parseProgression(serializeProgression(withExtensions))).toEqual(withExtensions);
+  });
+
+  it("ger null för tillägg som inte finns", () => {
+    const data = JSON.parse(serializeProgression(sample()));
+    data.sections[0].chords[0].chord.extensions = ["7", "x"];
+    expect(parseProgression(JSON.stringify(data))).toBeNull();
+  });
+
+  it("skriver tilläggen i den fasta ordningen", () => {
+    const data = JSON.parse(serializeProgression(sample()));
+    data.sections[0].chords[0].chord.extensions = ["♭9", "7", "7"];
+    expect(parseProgression(JSON.stringify(data))?.sections[0].chords[0].chord.extensions).toEqual(["7", "♭9"]);
+  });
+});
+
 describe("Utkastet av en Ackordföljd", () => {
   it("sparas och läses i webbläsaren", () => {
     const storage = memoryStorage();

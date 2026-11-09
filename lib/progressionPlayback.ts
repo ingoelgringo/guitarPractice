@@ -4,7 +4,7 @@
  */
 
 import {
-  type ChordType,
+  chordTones,
   type Position,
   type Progression,
   type ProgressionChord,
@@ -105,15 +105,6 @@ function noteEvents(times: number[], end: number, pitches: number[]): NoteEvent[
   return times.map((time, i) => ({ time, duration: (times[i + 1] ?? end) - time, notes: pitches }));
 }
 
-const TRIADS: Record<ChordType, readonly number[]> = {
-  major: [0, 4, 7],
-  minor: [0, 3, 7],
-  diminished: [0, 3, 6],
-  augmented: [0, 4, 8],
-  sus2: [0, 2, 7],
-  sus4: [0, 5, 7],
-};
-
 /** Basen ligger mellan E1 (28) och D♯2 (39). */
 const bassNote = (pitch: number) => 28 + ((pitch - 4 + 12) % 12);
 
@@ -150,9 +141,10 @@ function distance(from: readonly number[], to: readonly number[]): number {
   return to.reduce((sum, note) => sum + Math.min(...from.map((previous) => Math.abs(previous - note))), 0);
 }
 
-/** Det läge av ackordet som ligger närmast det förra. */
+/** Det läge av ackordet, med tilläggen, som ligger närmast det förra. */
 function voiceLeading(chord: ProgressionChord, previous: readonly number[]): number[] {
-  const pitchClasses = TRIADS[chord.type].map((interval) => (chord.root + interval) % 12);
+  // I tonhöjdsordning från grundtonen, så att lägena blir täta.
+  const pitchClasses = chordTones(chord).sort((a, b) => ((a - chord.root + 12) % 12) - ((b - chord.root + 12) % 12));
   let best: number[] = [];
   let bestDistance = Infinity;
   for (const candidate of voicings(pitchClasses)) {
