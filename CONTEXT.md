@@ -15,7 +15,7 @@ En stämma för ett instrument i ett Partitur, med egen Stämning och Capo. Vers
 _Avoid_: Instrument, stämma
 
 **Takt** (`Bar`):
-En tidsenhet i ett Spår som avgränsas av taktstreck och har en taktart. Taktarten och tempot gäller från Partiturets start eller från det senaste Bytet före. När Slag Skjuts flödar de över taktstrecken, medan Byten och repriser sitter kvar på sin Takt.
+En tidsenhet som avgränsas av taktstreck och har en taktart, i ett Spår eller i en Del av en Ackordföljd. Taktarten och tempot gäller från Partiturets start eller från det senaste Bytet före. När Slag Skjuts flödar de över taktstrecken, medan Byten och repriser sitter kvar på sin Takt.
 _Avoid_: Measure
 
 **Byte** (`BarChange`):
@@ -88,15 +88,15 @@ En nedladdad fil som innehåller ett Partitur. När den öppnas igen blir den al
 _Avoid_: Export, sparfil
 
 **Bibliotek** (`Library`):
-Ägarens samling av Partitur i databasen. Ett Partitur i Biblioteket sparas automatiskt och har ett revisionsnummer. Ett Partitur utanför Biblioteket finns bara som Utkast och Partiturfil.
+Ägarens samling av Partitur och Ackordföljder i databasen. Varje Verktyg visar sin egen sort. Det som ligger i Biblioteket sparas automatiskt och har ett revisionsnummer. Ett Partitur utanför Biblioteket finns bara som Utkast och Partiturfil, och en Ackordföljd utanför Biblioteket bara som Utkast.
 _Avoid_: Molnet, databasen, mina projekt
 
 **Konflikt** (`conflict`):
-När ett Partitur i Biblioteket har sparats på en annan flik eller enhet sedan den revision man utgick från. Den automatiska sparningen stoppas tills Ägaren väljer *Ladda om* (ta den sparade versionen), *Spara som kopia* (ett nytt Partitur i Biblioteket) eller *Skriv över* (spara oavsett revision).
+När ett Partitur eller en Ackordföljd i Biblioteket har sparats på en annan flik eller enhet sedan den revision man utgick från. Den automatiska sparningen stoppas tills Ägaren väljer *Ladda om* (ta den sparade versionen), *Spara som kopia* (ett nytt Partitur i Biblioteket) eller *Skriv över* (spara oavsett revision).
 _Avoid_: Krock, versionsfel
 
 **Utkast** (`Draft`):
-Den automatiskt sparade kopian av det Partitur man arbetar med. Den finns bara i den aktuella webbläsaren och är inte en säker lagring.
+Den automatiskt sparade kopian av det Partitur eller den Ackordföljd man arbetar med. Den finns bara i den aktuella webbläsaren och är inte en säker lagring.
 _Avoid_: Autosave, cache
 
 ### Greppbräda
@@ -119,8 +119,12 @@ En Grundton och ett mönster av intervall, t.ex. A mollpentatonik eller C-dur.
 Den sjutoniga skala som en pentatonisk skala eller en bluesskala hämtar sina Ackord från, t.ex. A naturlig moll för A mollpentatonik.
 
 **Ackord** (`Chord`):
-En dur-, moll- eller förminskad treklang på en Grundton, t.ex. "Am". I Greppbrädan byggs den på ett steg i en Skala (eller i dess Föräldraskala) och anges med steg och namn, t.ex. "ii – Dm".
+En Grundton med en ackordtyp (dur, moll, förminskad, överstigande, sus2 eller sus4), eventuella tillägg (t.ex. 7, maj7, 9, ♭9, ♯11) och en Bas, t.ex. "Am7/G". Greppbrädan, Tonnetzen och Kvintcirkeln använder bara treklanger utan tillägg: dur, moll och (i Greppbrädan) förminskad. I Greppbrädan byggs Ackordet på ett steg i en Skala (eller i dess Föräldraskala) och anges med steg och namn, t.ex. "ii – Dm".
 _Avoid_: Ackordnamn (fri text i editorn)
+
+**Bas** (`bass`):
+Den ton som ligger lägst i ett Ackord och som basen spelar, t.ex. G i "Am7/G". Den är Grundtonen om inget annat väljs.
+_Avoid_: Basnot, slash
 
 **Box** (`Box`):
 Ett av en Skalas fem lägen: ett område på några band där skalans toner spelas utan att flytta handen. Boxarna numreras 1–5 från det läge som har Grundtonen på sträng 6.
@@ -192,6 +196,30 @@ _Avoid_: Tonnätet, tonnetz table, rutnät
 De tolv durackorden i kvintordning med det parallella mollackordet innanför varje durackord, sammanlagt 24 ackord. Varje ackord i Kvintcirkeln motsvarar en sorts triangel i Tonnetzen.
 _Avoid_: Kvintcykel, circle of fifths
 
+**Ackordföljd** (`Progression`):
+Det man bygger under Tonnetzen och Kvintcirkeln och spelar upp som komp att öva till. Den har en Tonart, ett tempo, en taktart, Delar och en Form. I 6/8 och 12/8 räknas tempot i punkterade fjärdedelar. Den är inget Partitur: den har inga Spår, Toner eller Notvärden.
+_Avoid_: Backingtrack, låt, komp
+
+**Tonart** (`Key`):
+En Grundton och dur eller moll, t.ex. a-moll, som gäller för hela Ackordföljden. Den avgör vilka Ackord som är lättast att välja: tonartens sju treklanger med steg (I, ii … vii°), och i moll även dur-V. Ackord utanför Tonarten går också att placera.
+_Avoid_: Skala (en Skala hör till Greppbrädan)
+
+**Del** (`Section`):
+En namngiven bit av en Ackordföljd, t.ex. "Verse" eller "Chorus", med ett antal Takter. Den definieras en gång och kan spelas flera gånger i Formen.
+_Avoid_: Sektion, avsnitt
+
+**Form** (`Form`):
+Ordningen som Delarna spelas i, t.ex. Verse, Chorus, Verse, Chorus. Samma Del kan stå flera gånger, och en ändring i Delen gäller överallt där den står.
+_Avoid_: Arrangemang, struktur
+
+**Taktslag** (`pulse`):
+En av pulserna i en Takt: fyra i 4/4, tre i 3/4, sex i 6/8. Ett Ackord kan placeras på vilket Taktslag som helst och klingar till nästa Ackord, även över taktstreck och mellan Delar. Före det första Ackordet spelar bara trummorna.
+_Avoid_: Slag (ett Slag i ett Partitur har ett Notvärde)
+
+**Instrument**:
+En av de fyra stämmorna som spelar en Ackordföljd: trummor, bas, elpiano och synthpad. Varje Instrument kan bockas i eller ur, även under uppspelning.
+_Avoid_: Spår (det hör till ett Partitur), stämma
+
 ### Sajt
 
 **Verktyg** (`Tool`):
@@ -221,8 +249,8 @@ _Avoid_: Locale, språkläge
 ### Användare
 
 **Gäst**:
-Den som använder editorn utan att logga in. En gäst sparar endast genom att ladda ner en fil.
+Den som använder editorn utan att logga in. En gäst sparar ett Partitur endast genom att ladda ner en fil, och en Ackordföljd bara som Utkast.
 
 **Ägare**:
-Det enda inloggade kontot (sajtens ägare). Ägaren kan även lägga Partitur i Biblioteket. Det finns ingen registrering.
+Det enda inloggade kontot (sajtens ägare). Ägaren kan även lägga Partitur och Ackordföljder i Biblioteket. Det finns ingen registrering.
 _Avoid_: Admin, användare
