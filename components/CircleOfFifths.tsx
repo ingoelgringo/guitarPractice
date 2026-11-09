@@ -40,6 +40,8 @@ function labelPosition(index: number, radius: number) {
 
 interface Props {
   noteNames: NoteNameMode;
+  /** Ackordföljdens Tonart, som markeras med en ring. */
+  tonic: Chord | null;
   locked: Chord | null;
   /** Det markerade Ackordet, som fylls grönt. */
   shown: Chord | null;
@@ -56,7 +58,7 @@ interface Props {
  * Kvintcirkeln som SVG: durackorden ytterst med C överst, medurs i kvintordning, och de parallella
  * mollackorden innanför. Den är fokuserbar och styrs med piltangenterna, Enter och Esc.
  */
-export function CircleOfFifths({ noteNames, locked, shown, focused, label, onHover, onFocusChord, onLock, onRelease }: Props) {
+export function CircleOfFifths({ noteNames, tonic, locked, shown, focused, label, onHover, onFocusChord, onLock, onRelease }: Props) {
   function onFocus(event: FocusEvent<SVGSVGElement>) {
     // Bara fokus från tangentbordet visas; ett musklick ska inte markera C-dur
     if (event.currentTarget.matches(":focus-visible")) onFocusChord(locked ?? CIRCLE_OF_FIFTHS[0].major);
@@ -84,6 +86,7 @@ export function CircleOfFifths({ noteNames, locked, shown, focused, label, onHov
       chord.quality === "minor" ? styles.minor : styles.major,
       sameChord(chord, shown) ? styles.shown : "",
       sameChord(chord, focused) ? styles.focused : "",
+      sameChord(chord, tonic) ? styles.tonic : "",
     ];
     return (
       <g

@@ -9,7 +9,9 @@ import styles from "./ChordProgressions.module.css";
 import { CHORD_ATTRIBUTE } from "./chordElement";
 import { CircleOfFifths } from "./CircleOfFifths";
 import { Tonnetz } from "./Tonnetz";
+import { ProgressionEditor } from "./ProgressionEditor";
 import { useNoteNameMode } from "./useNoteNameMode";
+import { useProgressionDraft } from "./useProgressionDraft";
 
 /**
  * Verktyget Ackordföljder. Markeringen har två nivåer: det låsta Ackordet och det hovrade. Fokus i
@@ -18,6 +20,7 @@ import { useNoteNameMode } from "./useNoteNameMode";
 export function ChordProgressions({ language }: { language: SiteLanguage }) {
   const messages = MESSAGES[language];
   const [noteNames, setNoteNames] = useNoteNameMode();
+  const [progression, setProgression] = useProgressionDraft();
   const [locked, setLocked] = useState<Chord | null>(null);
   const [hovered, setHovered] = useState<Chord | null>(null);
   const [focused, setFocused] = useState<Chord | null>(null);
@@ -53,6 +56,7 @@ export function ChordProgressions({ language }: { language: SiteLanguage }) {
         <section className={styles.circle}>
           <CircleOfFifths
             noteNames={noteNames}
+            tonic={progression && { root: progression.key.tonic, quality: progression.key.mode }}
             locked={locked}
             shown={shown}
             focused={focused}
@@ -65,6 +69,9 @@ export function ChordProgressions({ language }: { language: SiteLanguage }) {
           <p className={styles.help}>{messages.circleOfFifthsHelp}</p>
         </section>
       </div>
+      {progression && (
+        <ProgressionEditor progression={progression} onChange={setProgression} noteNames={noteNames} messages={messages} />
+      )}
       <p className={styles.visuallyHidden} aria-live="polite">
         {shown ? messages.highlightedChord(chordName(shown, noteNames)) : ""}
       </p>

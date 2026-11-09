@@ -1,0 +1,132 @@
+.editor {
+  --line: color-mix(in srgb, var(--foreground) 45%, transparent);
+  --faint: color-mix(in srgb, var(--foreground) 12%, transparent);
+
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.heading {
+  font-size: 1.25rem;
+}
+
+.help {
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--foreground) 65%, transparent);
+}
+
+.settings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+}
+
+.setting {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.settings select,
+.settings input,
+.settings button,
+.chordChoice {
+  font: inherit;
+  padding: 4px 6px;
+}
+
+.tempo {
+  width: 4.5em;
+}
+
+.tap {
+  cursor: pointer;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.sectionName {
+  font-size: 1rem;
+}
+
+/* Takterna radbryts. Varje Takt har ett taktstreck till vänster, och raden avslutas med ett till höger. */
+.bars {
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+.bar {
+  display: flex;
+  border-left: 2px solid var(--line);
+  padding: 0 4px;
+}
+
+.bar:last-child {
+  border-right: 2px solid var(--line);
+}
+
+.pulse {
+  font: inherit;
+  font-weight: bold;
+  min-width: 3.25em;
+  height: 2.5em;
+  padding: 0 4px;
+  border: 1px solid var(--faint);
+  border-radius: 4px;
+  margin: 0 1px;
+  background: none;
+  color: var(--foreground);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* I 6/8 och 12/8 grupperas Taktslagen tre och tre */
+.groupStart {
+  margin-left: 8px;
+}
+
+.pulse:hover {
+  background: var(--faint);
+}
+
+.pulse.selected {
+  border-color: var(--chord-highlight, var(--foreground));
+  box-shadow: inset 0 0 0 1px var(--chord-highlight, var(--foreground));
+}
+
+.pulse:focus {
+  outline: none;
+}
+
+.pulse:focus-visible {
+  outline: 2px solid var(--chord-highlight, var(--foreground));
+  outline-offset: 1px;
+}
+
+.chordList {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.chordListLabel {
+  margin-right: 4px;
+}
+
+.chordChoice {
+  cursor: pointer;
+}
+
+.degree {
+  font-size: 0.8em;
+  color: color-mix(in srgb, var(--foreground) 65%, transparent);
+}

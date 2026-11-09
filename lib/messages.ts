@@ -58,6 +58,21 @@ const en = {
   noteNamesSwedish: "Swedish (H, B)",
   noteNamesEnglish: "English (B, B♭)",
   highlightedChord: (chord: string) => `${chord} highlighted`,
+
+  // Ackordföljden
+  progression: "Chord progression",
+  progressionHelp:
+    "Click a beat and pick a chord. Arrows move by bar, Alt+arrows by beat, 1–7 pick a chord in the key, + and − switch between major and minor, and Backspace or Delete removes the chord.",
+  key: "Key",
+  keyMajor: "major",
+  keyMinor: "minor",
+  timeSignature: "Time signature",
+  tempo: "Tempo",
+  tapTempo: "Tap tempo",
+  keyChords: "Chords in the key",
+  removeChord: "Remove",
+  bars: "Bars",
+  pulseLabel: (bar: number, pulse: number, chord: string | null) => `Bar ${bar}, beat ${pulse}${chord ? `: ${chord}` : ""}`,
 };
 
 export type Messages = typeof en;
@@ -110,6 +125,20 @@ const sv: Messages = {
   noteNamesSwedish: "Svenska (H, B)",
   noteNamesEnglish: "Engelska (B, B♭)",
   highlightedChord: (chord: string) => `${chord} markerat`,
+
+  progression: "Ackordföljd",
+  progressionHelp:
+    "Klicka på ett taktslag och välj ett ackord. Pilarna går en takt, Alt och pilarna ett taktslag, 1–7 väljer ett ackord i tonarten, + och − byter mellan dur och moll, och Backspace eller Delete tar bort ackordet.",
+  key: "Tonart",
+  keyMajor: "dur",
+  keyMinor: "moll",
+  timeSignature: "Taktart",
+  tempo: "Tempo",
+  tapTempo: "Tappa tempot",
+  keyChords: "Tonartens ackord",
+  removeChord: "Ta bort",
+  bars: "Takter",
+  pulseLabel: (bar: number, pulse: number, chord: string | null) => `Takt ${bar}, taktslag ${pulse}${chord ? `: ${chord}` : ""}`,
 };
 
 export const MESSAGES: Record<SiteLanguage, Messages> = { en, sv };

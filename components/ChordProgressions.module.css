@@ -198,6 +198,12 @@
   fill: var(--chord-highlight-text);
 }
 
+/* Ackordföljdens Tonart */
+.segment.tonic path {
+  stroke: var(--chord-highlight);
+  stroke-width: 3;
+}
+
 /* Där tangentbordet står, så att man ser var man är även när ett annat Ackord är låst */
 .segment.focused path {
   stroke: var(--foreground);
