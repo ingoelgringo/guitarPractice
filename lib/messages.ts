@@ -62,7 +62,7 @@ const en = {
   // Ackordföljden
   progression: "Chord progression",
   progressionHelp:
-    "Click a beat and pick a chord. Left and right move by bar, Alt+left and right by beat, up and down by part, 1–7 pick a chord in the key, a note letter opens a field where you type any chord, + and − switch between major and minor, and Backspace or Delete removes the chord.",
+    "Click a beat and pick a chord. Left and right move by bar, Alt+left and right by beat, up and down by part, 1–7 pick a chord in the key, a note letter opens a field where you type any chord, + and − switch between major and minor, Backspace or Delete removes the chord, and Ctrl+Z and Ctrl+Y undo and redo.",
   key: "Key",
   keyMajor: "major",
   keyMinor: "minor",
@@ -166,7 +166,7 @@ const sv: Messages = {
 
   progression: "Ackordföljd",
   progressionHelp:
-    "Klicka på ett taktslag och välj ett ackord. Vänster- och högerpil går en takt, Alt och vänster- och högerpil ett taktslag, upp- och nedpil en del, 1–7 väljer ett ackord i tonarten, en tonbokstav öppnar ett fält där du skriver vilket ackord som helst, + och − byter mellan dur och moll, och Backspace eller Delete tar bort ackordet.",
+    "Klicka på ett taktslag och välj ett ackord. Vänster- och högerpil går en takt, Alt och vänster- och högerpil ett taktslag, upp- och nedpil en del, 1–7 väljer ett ackord i tonarten, en tonbokstav öppnar ett fält där du skriver vilket ackord som helst, + och − byter mellan dur och moll, Backspace eller Delete tar bort ackordet, och Ctrl+Z och Ctrl+Y ångrar och gör om.",
   key: "Tonart",
   keyMajor: "dur",
   keyMinor: "moll",

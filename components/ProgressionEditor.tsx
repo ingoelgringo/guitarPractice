@@ -37,6 +37,7 @@ import {
   type TimeSignature,
   withQuality,
 } from "@/lib/progression";
+import { EMPTY_HISTORY, historyKey, record, redo, undo } from "@/lib/progressionHistory";
 import { type Instrument, INSTRUMENTS } from "@/lib/progressionPlayback";
 import { ChordBuilder, ChordTextField } from "./ChordPicker";
 import styles from "./ProgressionEditor.module.css";
@@ -65,6 +66,9 @@ type Picker = { position: Position } & ({ kind: "builder" } | { kind: "text"; in
 export function ProgressionEditor({ progression, onChange, noteNames, messages }: Props) {
   const [selected, setSelected] = useState<Position | null>(null);
   const [picker, setPicker] = useState<Picker | null>(null);
+  // Historiken hör till den Ackordföljd den byggdes för. Byts Ackordföljden ut utifrån börjar den om.
+  const [tracked, setTracked] = useState({ progression, history: EMPTY_HISTORY });
+  const history = tracked.progression === progression ? tracked.history : EMPTY_HISTORY;
   const playback = useProgressionPlayback(progression);
   const pulseRefs = useRef(new Map<string, HTMLButtonElement>());
   const { key, timeSignature } = progression;
@@ -83,13 +87,40 @@ export function ProgressionEditor({ progression, onChange, noteNames, messages }
     if (selection) focusPulse(selection);
   }, [selection]);
 
+  /** Ändrar Ackordföljden och lägger ändringen i historiken. */
+  function change(next: Progression) {
+    setTracked({ progression: next, history: record(history, progression, next) });
+    onChange(next);
+  }
+
+  // Ctrl+Z och Ctrl+Y gäller hela sidan, så att de fungerar även när fokus har försvunnit med ett
+  // Taktslag eller en Del som ångrades bort. Lyssnaren fångar tangenten på vägen ner, innan Delarnas
+  // rubriker och ackordväljaren stoppar den.
+  useEffect(() => {
+    function onWindowKeyDown(event: globalThis.KeyboardEvent) {
+      const action = historyKey(event);
+      if (!action) return;
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      // Textfält har sin egen inmatning och sitt eget ångra
+      if (target?.closest("input, textarea, [contenteditable]")) return;
+      if (document.querySelector("dialog[open]")) return;
+      event.preventDefault();
+      const step = (action === "undo" ? undo : redo)(history, progression);
+      if (!step) return;
+      setTracked(step);
+      onChange(step.progression);
+    }
+    window.addEventListener("keydown", onWindowKeyDown, true);
+    return () => window.removeEventListener("keydown", onWindowKeyDown, true);
+  }, [history, progression, onChange]);
+
   function closePicker() {
     setPicker(null);
     if (selection) focusPulse(selection);
   }
 
   function placeFromPicker(chord: ProgressionChord) {
-    if (selection) onChange(placeChord(progression, selection, chord));
+    if (selection) change(placeChord(progression, selection, chord));
     closePicker();
   }
 
@@ -108,13 +139,13 @@ export function ProgressionEditor({ progression, onChange, noteNames, messages }
       setPicker({ position: selection, kind: "text", initial: event.key.toUpperCase() });
     } else if (/^[1-7]$/.test(event.key) && !modified) {
       event.preventDefault();
-      onChange(placeChord(progression, selection, degreeChord(key, Number(event.key))));
+      change(placeChord(progression, selection, degreeChord(key, Number(event.key))));
     } else if ((event.key === "+" || event.key === "-") && current) {
       event.preventDefault();
-      onChange(placeChord(progression, selection, withQuality(current, event.key === "+" ? "major" : "minor")));
+      change(placeChord(progression, selection, withQuality(current, event.key === "+" ? "major" : "minor")));
     } else if (event.key === "Backspace" || event.key === "Delete") {
       event.preventDefault();
-      onChange(removeChord(progression, selection));
+      change(removeChord(progression, selection));
     } else if (event.key === "Escape") {
       setSelected(null);
     }
@@ -123,13 +154,13 @@ export function ProgressionEditor({ progression, onChange, noteNames, messages }
   return (
     <section className={styles.editor} aria-label={messages.progression}>
       <h2 className={styles.heading}>{messages.progression}</h2>
-      <Settings progression={progression} onChange={onChange} noteNames={noteNames} messages={messages} />
+      <Settings progression={progression} onChange={change} noteNames={noteNames} messages={messages} />
       <Playback playback={playback} sections={progression.sections} messages={messages} />
       <p className={styles.help}>{messages.progressionHelp}</p>
       <div onKeyDown={onKeyDown}>
         {progression.sections.map((section) => (
           <div key={section.id} className={styles.section}>
-            <SectionHeader section={section} progression={progression} onChange={onChange} messages={messages} />
+            <SectionHeader section={section} progression={progression} onChange={change} messages={messages} />
             <div className={styles.bars} role="group" aria-label={`${section.name}: ${messages.bars}`}>
               {Array.from({ length: section.bars }, (_, bar) => (
                 <div key={bar} className={styles.bar}>
@@ -172,7 +203,7 @@ export function ProgressionEditor({ progression, onChange, noteNames, messages }
               <ChordChoices
                 selection={selection}
                 progression={progression}
-                onChange={onChange}
+                onChange={change}
                 picker={openPicker}
                 onOpenBuilder={() => setPicker({ position: selection, kind: "builder" })}
                 onPlace={placeFromPicker}
@@ -188,11 +219,11 @@ export function ProgressionEditor({ progression, onChange, noteNames, messages }
       <button
         type="button"
         className={styles.addSection}
-        onClick={() => onChange(addSection(progression, messages.newSectionName))}
+        onClick={() => change(addSection(progression, messages.newSectionName))}
       >
         {messages.addSection}
       </button>
-      <ProgressionFormRow progression={progression} onChange={onChange} messages={messages} />
+      <ProgressionFormRow progression={progression} onChange={change} messages={messages} />
     </section>
   );
 }

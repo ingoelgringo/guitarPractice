@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] Historik för Ackordföljden (tester först).
-- [ ] Byte av taktart tar bort Ackord på Taktslag som försvinner, och ångra återställer dem (tester).
-- [ ] Ctrl+Z/Ctrl+Y i editorn.
+- [x] Historik för Ackordföljden (tester först).
+- [x] Byte av taktart tar bort Ackord på Taktslag som försvinner, och ångra återställer dem (tester).
+- [x] Ctrl+Z/Ctrl+Y i editorn.
