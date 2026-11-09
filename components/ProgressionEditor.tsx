@@ -28,7 +28,9 @@ import {
   type TimeSignature,
   withQuality,
 } from "@/lib/progression";
+import { type Instrument, INSTRUMENTS } from "@/lib/progressionPlayback";
 import styles from "./ProgressionEditor.module.css";
+import { useProgressionPlayback } from "./useProgressionPlayback";
 
 interface Props {
   progression: Progression;
@@ -48,6 +50,7 @@ const positionKey = ({ section, bar, pulse }: Position) => `${section}:${bar}:${
  */
 export function ProgressionEditor({ progression, onChange, noteNames, messages }: Props) {
   const [selected, setSelected] = useState<Position | null>(null);
+  const playback = useProgressionPlayback(progression);
   const pulseRefs = useRef(new Map<string, HTMLButtonElement>());
   const { key, timeSignature } = progression;
   const pulses = pulsesPerBar(timeSignature);
@@ -87,6 +90,7 @@ export function ProgressionEditor({ progression, onChange, noteNames, messages }
     <section className={styles.editor} aria-label={messages.progression}>
       <h2 className={styles.heading}>{messages.progression}</h2>
       <Settings progression={progression} onChange={onChange} noteNames={noteNames} messages={messages} />
+      <Playback playback={playback} messages={messages} />
       <p className={styles.help}>{messages.progressionHelp}</p>
       <div onKeyDown={onKeyDown}>
         {progression.sections.map((section) => (
@@ -99,6 +103,7 @@ export function ProgressionEditor({ progression, onChange, noteNames, messages }
                     const position = { section: section.id, bar, pulse };
                     const chord = chordAt(progression, position);
                     const isSelected = samePosition(selection, position);
+                    const isSounding = samePosition(playback.sounding, position);
                     const first = bar === 0 && pulse === 0 && section === progression.sections[0];
                     const groupStart = pulses > 4 && pulse > 0 && pulse % 3 === 0;
                     return (
@@ -110,7 +115,12 @@ export function ProgressionEditor({ progression, onChange, noteNames, messages }
                           if (element) pulseRefs.current.set(k, element);
                           else pulseRefs.current.delete(k);
                         }}
-                        className={[styles.pulse, isSelected ? styles.selected : "", groupStart ? styles.groupStart : ""].join(" ")}
+                        className={[
+                          styles.pulse,
+                          isSelected ? styles.selected : "",
+                          isSounding ? styles.sounding : "",
+                          groupStart ? styles.groupStart : "",
+                        ].join(" ")}
                         tabIndex={isSelected || (!selection && first) ? 0 : -1}
                         aria-pressed={isSelected}
                         aria-label={messages.pulseLabel(bar + 1, pulse + 1, chord && name(chord))}
@@ -151,6 +161,45 @@ export function ProgressionEditor({ progression, onChange, noteNames, messages }
         )}
       </div>
     </section>
+  );
+}
+
+/** Play och Stop, inräkningen och Instrumenten. */
+function Playback({ playback, messages }: { playback: ReturnType<typeof useProgressionPlayback>; messages: Messages }) {
+  const { state, countIn, setCountIn, muted, setMuted, play, stop } = playback;
+  const active = state === "playing" || state === "loading";
+  const names: Record<Instrument, string> = {
+    drums: messages.drums,
+    bass: messages.bass,
+    piano: messages.electricPiano,
+    pad: messages.synthPad,
+  };
+  return (
+    <div className={styles.settings}>
+      <button type="button" className={styles.play} onClick={active ? stop : play}>
+        {active ? messages.stop : messages.play}
+      </button>
+      <label className={styles.setting}>
+        <input type="checkbox" checked={countIn} onChange={(event) => setCountIn(event.target.checked)} />
+        {messages.countIn}
+      </label>
+      <fieldset className={styles.instruments}>
+        <legend className={styles.visuallyHidden}>{messages.instruments}</legend>
+        {INSTRUMENTS.map((instrument) => (
+          <label key={instrument} className={styles.setting}>
+            <input
+              type="checkbox"
+              checked={!muted[instrument]}
+              onChange={(event) => setMuted(instrument, !event.target.checked)}
+            />
+            {names[instrument]}
+          </label>
+        ))}
+      </fieldset>
+      <span className={styles.help} role="status">
+        {state === "loading" ? messages.loadingSounds : state === "failed" ? messages.soundFailed : ""}
+      </span>
+    </div>
   );
 }
 

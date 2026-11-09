@@ -73,6 +73,16 @@ const en = {
   removeChord: "Remove",
   bars: "Bars",
   pulseLabel: (bar: number, pulse: number, chord: string | null) => `Bar ${bar}, beat ${pulse}${chord ? `: ${chord}` : ""}`,
+  play: "Play",
+  stop: "Stop",
+  loadingSounds: "Loading sounds…",
+  soundFailed: "The sounds could not be loaded.",
+  countIn: "Count-in",
+  instruments: "Instruments",
+  drums: "Drums",
+  bass: "Bass",
+  electricPiano: "Electric piano",
+  synthPad: "Synth pad",
 };
 
 export type Messages = typeof en;
@@ -139,6 +149,16 @@ const sv: Messages = {
   removeChord: "Ta bort",
   bars: "Takter",
   pulseLabel: (bar: number, pulse: number, chord: string | null) => `Takt ${bar}, taktslag ${pulse}${chord ? `: ${chord}` : ""}`,
+  play: "Spela",
+  stop: "Stoppa",
+  loadingSounds: "Laddar ljuden…",
+  soundFailed: "Ljuden gick inte att ladda.",
+  countIn: "Inräkning",
+  instruments: "Instrument",
+  drums: "Trummor",
+  bass: "Bas",
+  electricPiano: "Elpiano",
+  synthPad: "Synthpad",
 };
 
 export const MESSAGES: Record<SiteLanguage, Messages> = { en, sv };
