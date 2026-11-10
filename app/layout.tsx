@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SiteHeader } from "@/components/SiteHeader";
+import { WheelSelect } from "@/components/WheelSelect";
 import { MESSAGES } from "@/lib/messages";
 import { siteLanguageInPage } from "@/lib/siteLanguageInPage";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
@@ -22,6 +23,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body>
         <SiteHeader language={language} />
         {children}
+        <WheelSelect />
       </body>
     </html>
   );
