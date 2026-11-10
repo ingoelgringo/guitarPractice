@@ -3,7 +3,7 @@
  * komponenten `WheelSelect` kopplar den till hela sajten.
  */
 
-/** Hjulrörelsen i pixlar som blir ett steg, ungefär ett hack på ett vanligt mushjul. */
+/** Den minsta hjulrörelsen i pixlar som blir ett steg, ungefär ett hack på ett vanligt mushjul. */
 export const WHEEL_STEP = 100;
 
 export interface WheelInput {
@@ -18,20 +18,15 @@ export interface WheelInput {
 }
 
 /**
- * Alternativet efter hjulrörelsen: ett steg per `WHEEL_STEP`, förbi avstängda alternativ, och
- * stopp vid första och sista. Små rörelser, t.ex. från en touchpad, sparas tills de blir ett steg.
+ * Alternativet efter hjulrörelsen: högst ett steg per rörelse, förbi avstängda alternativ, och
+ * stopp vid första och sista. Ett hack ger alltså ett steg hur stort det än är, t.ex. med skalad
+ * skärm. Små rörelser, t.ex. från en touchpad, sparas tills de blir `WHEEL_STEP`.
  */
 export function wheelSelection({ index, disabled, pending, delta }: WheelInput): { index: number; pending: number } {
   const total = pending + delta;
-  const steps = Math.trunc(total / WHEEL_STEP);
-  const rest = total - steps * WHEEL_STEP;
-  const direction = Math.sign(steps);
-  let current = index;
-  for (let i = 0; i < Math.abs(steps); i++) {
-    let next = current + direction;
-    while (next >= 0 && next < disabled.length && disabled[next]) next += direction;
-    if (next < 0 || next >= disabled.length) break;
-    current = next;
-  }
-  return { index: current, pending: rest };
+  if (Math.abs(total) < WHEEL_STEP) return { index, pending: total };
+  const direction = Math.sign(total);
+  let next = index + direction;
+  while (next >= 0 && next < disabled.length && disabled[next]) next += direction;
+  return { index: next >= 0 && next < disabled.length ? next : index, pending: 0 };
 }

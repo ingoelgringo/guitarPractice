@@ -3,9 +3,8 @@
 import { useEffect } from "react";
 import { WHEEL_STEP, wheelSelection } from "@/lib/wheelSelect";
 
-/** Hur många pixlar en rad och en sida är, när webbläsaren räknar hjulet i rader eller sidor. */
-const LINE = WHEEL_STEP / 3;
-const PAGE = WHEEL_STEP;
+/** När webbläsaren räknar hjulet i rader eller sidor är varje rörelse ett helt steg. */
+const LINE_OR_PAGE = WHEEL_STEP;
 
 /**
  * Hjulet över en dropdown byter alternativ i stället för att skrolla sidan, utan att dropdownen
@@ -21,7 +20,7 @@ export function WheelSelect() {
       const select = event.target instanceof Element ? event.target.closest("select") : null;
       if (!select || select.disabled || select.multiple || select.size > 1) return;
       event.preventDefault();
-      const scale = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? LINE : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? PAGE : 1;
+      const scale = event.deltaMode === WheelEvent.DOM_DELTA_PIXEL ? 1 : LINE_OR_PAGE;
       const next = wheelSelection({
         index: select.selectedIndex,
         disabled: Array.from(select.options, (option) => option.disabled),

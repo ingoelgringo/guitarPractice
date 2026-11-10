@@ -13,10 +13,19 @@ describe("att skrolla i en dropdown", () => {
     const first = wheelSelection({ index: 0, disabled: options(5), pending: 0, delta: WHEEL_STEP / 2 });
     expect(first).toEqual({ index: 0, pending: WHEEL_STEP / 2 });
     expect(wheelSelection({ index: 0, disabled: options(5), pending: first.pending, delta: WHEEL_STEP / 2 })).toEqual({ index: 1, pending: 0 });
+    expect(wheelSelection({ index: 0, disabled: options(5), pending: WHEEL_STEP / 2, delta: -WHEEL_STEP / 4 })).toEqual({ index: 0, pending: WHEEL_STEP / 4 });
   });
 
-  it("går flera alternativ vid en stor rörelse", () => {
-    expect(wheelSelection({ index: 0, disabled: options(5), pending: 0, delta: 3 * WHEEL_STEP }).index).toBe(3);
+  it("går ett alternativ per hack även när hacket är stort, t.ex. med skalad skärm", () => {
+    let state = { index: 0, pending: 0 };
+    for (const delta of [150, 150, 200, 300]) state = wheelSelection({ ...state, disabled: options(9), delta });
+    expect(state.index).toBe(4);
+  });
+
+  it("går ett alternativ per hack även när hacket är litet", () => {
+    let state = { index: 0, pending: 0 };
+    for (let i = 0; i < 3; i++) state = wheelSelection({ ...state, disabled: options(9), delta: WHEEL_STEP });
+    expect(state.index).toBe(3);
   });
 
   it("stannar vid första och sista alternativet", () => {
