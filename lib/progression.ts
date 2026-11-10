@@ -44,11 +44,17 @@ export interface ProgressionChord {
   bass: number;
 }
 
-/** Ett Ackord på ett Taktslag i en Del. Takter och Taktslag räknas från 0. */
+/** Tystnad: Ackordet före slutar, och bara trummorna spelar till nästa Ackord. */
+export const SILENCE = "silence";
+
+/** Det som kan stå på ett Taktslag: ett Ackord eller Tystnad. */
+export type Placement = ProgressionChord | typeof SILENCE;
+
+/** Ett Ackord eller Tystnad på ett Taktslag i en Del. Takter och Taktslag räknas från 0. */
 export interface PlacedChord {
   bar: number;
   pulse: number;
-  chord: ProgressionChord;
+  chord: Placement;
 }
 
 export interface Section {
@@ -298,12 +304,27 @@ function section(progression: Progression, id: string): Section | undefined {
   return progression.sections.find((s) => s.id === id);
 }
 
-/** Ackordet på Taktslaget, eller `null` om där inte står något. */
-export function chordAt(progression: Progression, position: Position): ProgressionChord | null {
+/** Ackordet eller Tystnaden på Taktslaget, eller `null` om där inte står något. */
+export function chordAt(progression: Progression, position: Position): Placement | null {
   return (
     section(progression, position.section)?.chords.find((c) => c.bar === position.bar && c.pulse === position.pulse)?.chord ??
     null
   );
+}
+
+/**
+ * Det som klingar på Taktslaget: det som står där, annars det som står närmast före, i Delen eller
+ * i Delarna före den i den ordning de står. Före det första Ackordet är det `null`.
+ */
+export function shownChordAt(progression: Progression, position: Position): Placement | null {
+  const index = progression.sections.findIndex((s) => s.id === position.section);
+  for (let i = index; i >= 0; i--) {
+    const { chords } = progression.sections[i];
+    const before = i === index ? chords.filter((c) => c.bar < position.bar || (c.bar === position.bar && c.pulse <= position.pulse)) : chords;
+    const last = before[before.length - 1];
+    if (last) return last.chord;
+  }
+  return null;
 }
 
 /** Om Taktslaget finns, alltså inte har försvunnit med sin Del, en mindre Del eller en annan taktart. */
@@ -318,8 +339,8 @@ function updateSection(progression: Progression, id: string, change: (section: S
 
 const byTime = (a: PlacedChord, b: PlacedChord) => a.bar - b.bar || a.pulse - b.pulse;
 
-/** Placerar Ackordet på Taktslaget och ersätter det som stod där. */
-export function placeChord(progression: Progression, position: Position, chord: ProgressionChord): Progression {
+/** Placerar Ackordet eller Tystnaden på Taktslaget och ersätter det som stod där. */
+export function placeChord(progression: Progression, position: Position, chord: Placement): Progression {
   return updateSection(progression, position.section, (s) => ({
     ...s,
     chords: [...s.chords.filter((c) => c.bar !== position.bar || c.pulse !== position.pulse), { bar: position.bar, pulse: position.pulse, chord }].sort(byTime),

@@ -216,6 +216,10 @@ _Avoid_: Arrangemang, struktur
 En av pulserna i en Takt: fyra i 4/4, tre i 3/4, sex i 6/8. Ett Ackord kan placeras på vilket Taktslag som helst och klingar till nästa Ackord, även över taktstreck och mellan Delar. Före det första Ackordet spelar bara trummorna.
 _Avoid_: Slag (ett Slag i ett Partitur har ett Notvärde)
 
+**Tystnad** (`silence`):
+Det som kan stå på ett Taktslag i stället för ett Ackord. Ackordet före slutar där, och bara trummorna spelar till nästa Ackord. Den skrivs "N.C." i Takten och väljs som grundtonen *Inget*.
+_Avoid_: Paus (en paus är ett Slag utan toner i ett Partitur), N.C., tyst
+
 **Instrument**:
 En av de fyra stämmorna som spelar en Ackordföljd: trummor, bas, elpiano och synthpad. Varje Instrument kan bockas i eller ur, även under uppspelning.
 _Avoid_: Spår (det hör till ett Partitur), stämma

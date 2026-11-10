@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addSection, addToForm, newProgression, placeChord, type Progression, setSectionBars, setTimeSignature, triad } from "./progression";
+import { addSection, addToForm, newProgression, placeChord, type Progression, setSectionBars, setTimeSignature, SILENCE, triad } from "./progression";
 import { countIn, playbackPlan, pulseSeconds } from "./progressionPlayback";
 
 const C = 0, F = 5, G = 7, A = 9;
@@ -123,6 +123,22 @@ describe("uppspelningsplanen", () => {
     const plan = playbackPlan(newProgression());
     expect(plan.drums.length).toBeGreaterThan(0);
     expect([...plan.bass, ...plan.piano, ...plan.pad]).toEqual([]);
+  });
+});
+
+describe("Tystnad i uppspelningsplanen", () => {
+  it("avslutar Ackordet före, så att bara trummorna spelar till nästa Ackord", () => {
+    let progression = withChords([[0, 0, C], [3, 0, G]]);
+    progression = placeChord(progression, { section: progression.sections[0].id, bar: 1, pulse: 2 }, SILENCE);
+    const plan = playbackPlan(progression);
+    expect(plan.chords.map(({ start, end, chord }) => [start, end, chord.root])).toEqual([
+      [0, 6, C],
+      [12, 16, G],
+    ]);
+    for (const instrument of ["bass", "piano", "pad"] as const) {
+      expect(plan[instrument].every(({ time, duration }) => time + duration <= 6 || time >= 12)).toBe(true);
+    }
+    expect(plan.drums.some((hit) => hit.time >= 6 && hit.time < 12)).toBe(true);
   });
 });
 

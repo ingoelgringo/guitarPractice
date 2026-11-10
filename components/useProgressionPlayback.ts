@@ -1,16 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { browserStorage } from "@/lib/draft";
 import type { Position, Progression } from "@/lib/progression";
 import { countIn as countInBar, type Instrument, INSTRUMENTS, playbackPlan, pulseSeconds } from "@/lib/progressionPlayback";
+import { type PlaybackSettings, readPlaybackSettings, savePlaybackSettings } from "@/lib/progressionPlaybackSettings";
 import type { Playback, ProgressionAudio } from "./progressionAudio";
 
 export type PlaybackState = "stopped" | "loading" | "playing" | "failed";
-
-/** Vilka Instrument som är urbockade. */
-export type MutedInstruments = Record<Instrument, boolean>;
-
-const NONE_MUTED = Object.fromEntries(INSTRUMENTS.map((instrument) => [instrument, false])) as MutedInstruments;
 
 const playbackOf = (progression: Progression, loop: string | null): Playback => ({
   plan: playbackPlan(progression, { loop }),
@@ -22,14 +19,16 @@ export type ProgressionPlayback = ReturnType<typeof useProgressionPlayback>;
 /**
  * Uppspelningen av en Ackordföljd. Ljudlagret och Tone.js laddas vid första Play. Ändringar i
  * Ackordföljden, Delen som loopas och Instrument som bockas i eller ur gäller direkt, utan att
- * musiken börjar om. Innan Ackordföljden har laddats (`null`) går det inte att spela.
+ * musiken börjar om. Innan Ackordföljden har laddats (`null`) går det inte att spela. Inräkningen
+ * och Instrumenten sparas i webbläsaren.
  */
 export function useProgressionPlayback(progression: Progression | null) {
   const [loop, setLoop] = useState<string | null>(null);
   const [state, setState] = useState<PlaybackState>("stopped");
   const [sounding, setSounding] = useState<Position | null>(null);
-  const [countIn, setCountIn] = useState(true);
-  const [muted, setMutedState] = useState(NONE_MUTED);
+  // Servern renderar ingen editor, så att det sparade valet kan läsas direkt utan att sidan blinkar.
+  const [settings, setSettings] = useState(() => readPlaybackSettings(browserStorage()));
+  const { countIn, muted } = settings;
   const context = useRef<AudioContext | null>(null);
   const playerPromise = useRef<Promise<ProgressionAudio> | null>(null);
   const player = useRef<ProgressionAudio | null>(null);
@@ -87,8 +86,18 @@ export function useProgressionPlayback(progression: Progression | null) {
     setState("stopped");
   }
 
+  function changeSettings(change: (current: PlaybackSettings) => PlaybackSettings) {
+    const next = change(settings);
+    setSettings(next);
+    savePlaybackSettings(browserStorage(), next);
+  }
+
+  function setCountIn(value: boolean) {
+    changeSettings((current) => ({ ...current, countIn: value }));
+  }
+
   function setMuted(instrument: Instrument, value: boolean) {
-    setMutedState((current) => ({ ...current, [instrument]: value }));
+    changeSettings((current) => ({ ...current, muted: { ...current.muted, [instrument]: value } }));
     player.current?.setMuted(instrument, value);
   }
 

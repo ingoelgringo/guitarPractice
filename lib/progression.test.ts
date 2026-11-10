@@ -34,6 +34,8 @@ import {
   TIME_SIGNATURES,
   triad,
   withQuality,
+  SILENCE,
+  shownChordAt,
 } from "./progression";
 
 const C = 0, D = 2, E = 4, F = 5, G = 7, A = 9, B = 11;
@@ -146,6 +148,45 @@ describe("Ackord på Taktslag", () => {
     expect(withQuality(am7overG, "major")).toEqual({ root: A, type: "major", extensions: ["7"], bass: G });
     expect(withQuality(triad(B, "diminished"), "minor")).toEqual(triad(B, "minor"));
     expect(withQuality(triad(C, "major"), "major")).toEqual(triad(C, "major"));
+  });
+});
+
+/** En ny Ackordföljd med det givna på de givna platserna (Takt, Taktslag) i första Delen. */
+function placed(...items: [bar: number, pulse: number, placement: Parameters<typeof placeChord>[2]][]): Progression {
+  return items.reduce((p, [bar, pulse, placement]) => placeChord(p, at(p, bar, pulse), placement), newProgression());
+}
+
+describe("Tystnad", () => {
+  it("placeras på ett Taktslag som ett Ackord och ersätter det som stod där", () => {
+    const progression = placed([0, 0, triad(C, "major")], [0, 0, SILENCE]);
+    expect(chordAt(progression, at(progression, 0, 0))).toBe(SILENCE);
+    expect(progression.sections[0].chords).toHaveLength(1);
+  });
+});
+
+describe("Ackordet som visas vid ett Taktslag", () => {
+  it("är Ackordet som står där", () => {
+    const progression = placed([1, 2, triad(E, "minor")]);
+    expect(shownChordAt(progression, at(progression, 1, 2))).toEqual(triad(E, "minor"));
+  });
+
+  it("är Ackordet som klingar från ett tidigare Taktslag när Taktslaget är tomt", () => {
+    const progression = placed([0, 0, triad(C, "major")], [1, 1, triad(A, "minor")]);
+    expect(shownChordAt(progression, at(progression, 1, 0))).toEqual(triad(C, "major"));
+    expect(shownChordAt(progression, at(progression, 3, 3))).toEqual(triad(A, "minor"));
+  });
+
+  it("är Tystnad efter en Tystnad, och inget före det första Ackordet", () => {
+    const progression = placed([1, 0, triad(C, "major")], [2, 0, SILENCE]);
+    expect(shownChordAt(progression, at(progression, 0, 3))).toBeNull();
+    expect(shownChordAt(progression, at(progression, 2, 2))).toBe(SILENCE);
+  });
+
+  it("kan komma från en tidigare Del", () => {
+    let progression = addSection(newProgression(), "Chorus");
+    progression = placeChord(progression, at(progression, 3, 2), triad(G, "major"));
+    const chorus = { section: progression.sections[1].id, bar: 0, pulse: 0 };
+    expect(shownChordAt(progression, chorus)).toEqual(triad(G, "major"));
   });
 });
 
@@ -292,7 +333,7 @@ describe("Delar och Formen", () => {
     const id = progression.sections[0].id;
     const shorter = setSectionBars(progression, id, 2);
     expect(shorter.sections[0].bars).toBe(2);
-    expect(shorter.sections[0].chords.map((c) => c.chord.root)).toEqual([F]);
+    expect(shorter.sections[0].chords.map((c) => c.chord)).toEqual([triad(F, "major")]);
     expect(setSectionBars(progression, id, 8).sections[0].chords).toHaveLength(3);
   });
 

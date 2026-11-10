@@ -5,7 +5,7 @@ import { type Chord, chordName, clickedChord, progressionTriad, shownChord } fro
 import { MESSAGES } from "@/lib/messages";
 import type { NoteNameMode } from "@/lib/noteNameMode";
 import type { ProgressionListEntry } from "@/lib/progressionLibraryClient";
-import { chordAt, placeChord, type Position, positionExists, triad } from "@/lib/progression";
+import { chordAt, placeChord, type Position, positionExists, SILENCE, triad } from "@/lib/progression";
 import type { SiteLanguage } from "@/lib/siteLanguage";
 import styles from "./ChordProgressions.module.css";
 import { CHORD_ATTRIBUTE } from "./chordElement";
@@ -50,7 +50,7 @@ export function ChordProgressions({
   // En markering som inte längre finns, t.ex. efter att en Del har krympt, räknas som ingen.
   const selection = progression && selected && positionExists(progression, selected) ? selected : null;
   const soundingChord = progression && playback.sounding && chordAt(progression, playback.sounding);
-  const sounding = soundingChord ? progressionTriad(soundingChord) : undefined;
+  const sounding = soundingChord && soundingChord !== SILENCE ? progressionTriad(soundingChord) : undefined;
   // Det klingande Ackordet läses inte upp, så att skärmläsaren inte pratar i takt med musiken.
   const announced = shownChord(locked, hovered ?? focused);
   const shown = shownChord(locked, hovered ?? focused, sounding);

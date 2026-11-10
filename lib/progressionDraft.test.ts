@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { newProgression, placeChord, triad } from "./progression";
+import { newProgression, placeChord, SILENCE, triad } from "./progression";
 import {
   loadProgressionDraft,
   PROGRESSION_DRAFT_KEY,
@@ -29,6 +29,12 @@ describe("Ackordföljdens format", () => {
     const text = serializeProgression(progression);
     expect(JSON.parse(text).schemaVersion).toBe(PROGRESSION_SCHEMA_VERSION);
     expect(parseProgression(text)).toEqual(progression);
+  });
+
+  it("läser tillbaka Tystnad", () => {
+    const base = sample();
+    const progression = placeChord(base, { section: base.sections[0].id, bar: 2, pulse: 0 }, SILENCE);
+    expect(parseProgression(serializeProgression(progression))).toEqual(progression);
   });
 
   it("ger null för text som inte är en Ackordföljd", () => {
@@ -72,7 +78,7 @@ describe("Ackordföljdens format med tillägg", () => {
   it("skriver tilläggen i den fasta ordningen", () => {
     const data = JSON.parse(serializeProgression(sample()));
     data.sections[0].chords[0].chord.extensions = ["♭9", "7", "7"];
-    expect(parseProgression(JSON.stringify(data))?.sections[0].chords[0].chord.extensions).toEqual(["7", "♭9"]);
+    expect(parseProgression(JSON.stringify(data))?.sections[0].chords[0].chord).toMatchObject({ extensions: ["7", "♭9"] });
   });
 });
 

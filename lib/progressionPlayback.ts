@@ -10,6 +10,7 @@ import {
   type ProgressionChord,
   pulsesPerBar,
   pulsesPerBeat,
+  SILENCE,
   type TimeSignature,
 } from "./progression";
 
@@ -196,7 +197,7 @@ function playedSections(progression: Progression, loop: string | null | undefine
 export function playbackPlan(progression: Progression, { loop }: PlanOptions = {}): PlaybackPlan {
   const pulses = pulsesPerBar(progression.timeSignature);
   const pattern = PATTERNS[progression.timeSignature];
-  const placed: Omit<PlannedChord, "end">[] = [];
+  const placed: (Omit<PlannedChord, "end" | "chord"> & { chord: PlannedChord["chord"] | typeof SILENCE })[] = [];
   let length = 0;
   for (const id of playedSections(progression, loop)) {
     const section = progression.sections.find((s) => s.id === id);
@@ -206,7 +207,10 @@ export function playbackPlan(progression: Progression, { loop }: PlanOptions = {
     }
     length += section.bars * pulses;
   }
-  const chords = placed.map((c, i) => ({ ...c, end: placed[i + 1]?.start ?? length }));
+  // Tystnaden avslutar Ackordet före och klingar inte själv.
+  const chords = placed
+    .map((c, i) => ({ ...c, end: placed[i + 1]?.start ?? length }))
+    .filter((c): c is PlannedChord => c.chord !== SILENCE);
 
   const drums: DrumHit[] = [];
   for (let bar = 0; bar < length; bar += pulses) drums.push(...pattern.drums.map((hit) => ({ ...hit, time: bar + hit.time })));

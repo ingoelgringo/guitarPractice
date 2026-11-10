@@ -11,10 +11,12 @@ import {
   MAX_TEMPO,
   MIN_TEMPO,
   type PlacedChord,
+  type Placement,
   type Progression,
   type ProgressionChord,
   pulsesPerBar,
   type Section,
+  SILENCE,
   TIME_SIGNATURES,
   type TimeSignature,
 } from "./progression";
@@ -32,7 +34,8 @@ const isPitch = (value: unknown): value is number => Number.isInteger(value) && 
 const isCount = (value: unknown, below: number): value is number =>
   Number.isInteger(value) && (value as number) >= 0 && (value as number) < below;
 
-function readChord(value: unknown): ProgressionChord | null {
+function readChord(value: unknown): Placement | null {
+  if (value === SILENCE) return SILENCE;
   if (!isRecord(value) || !isPitch(value.root) || !isPitch(value.bass)) return null;
   if (!CHORD_TYPES.includes(value.type as never)) return null;
   const extensions = value.extensions;

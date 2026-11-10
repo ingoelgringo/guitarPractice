@@ -56,24 +56,40 @@
   font-size: 1rem;
 }
 
-/* Takterna radbryts. Varje Takt har ett taktstreck till vänster, och raden avslutas med ett till höger. */
+/*
+ * Takterna står fyra, två eller en per rad, så många som får plats med sin minsta bredd
+ * (--bar-min). De står två och två, och varje par är minst halva raden eller två Takter brett, så
+ * att det blir högst två par per rad. I paret är varje Takt minst halva paret eller en Takt bred.
+ */
 .bars {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, max(calc(2 * var(--bar-min)), 50%)), 1fr));
+  row-gap: 8px;
+  padding-right: 2px;
+}
+
+.barPair {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, max(var(--bar-min), 50%)), 1fr));
   row-gap: 8px;
 }
 
+/*
+ * Varje Takt har ett taktstreck till vänster och ett till höger, som hamnar ovanpå nästa Takts
+ * streck. Färgen är täckande, så att två streck ovanpå varandra inte blir mörkare.
+ */
 .bar {
+  --barline: color-mix(in srgb, var(--foreground) 45%, var(--background));
+
   display: flex;
-  border-left: 2px solid var(--line);
+  min-width: 0;
+  border-left: 2px solid var(--barline);
+  box-shadow: 2px 0 0 var(--barline);
   padding: 0 4px;
 }
 
-.bar:last-child {
-  border-right: 2px solid var(--line);
-}
-
 .pulse {
+  flex: 1;
   font: inherit;
   font-weight: bold;
   min-width: 3.25em;
@@ -86,6 +102,8 @@
   color: var(--foreground);
   cursor: pointer;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* I 6/8 och 12/8 grupperas Taktslagen tre och tre */
@@ -137,8 +155,34 @@
 }
 
 .play {
-  min-width: 5em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 5.5em;
+  border: none;
+  border-radius: 4px;
+  background: #2e7d32;
+  color: #fff;
+  font-weight: bold;
   cursor: pointer;
+}
+
+.play:hover {
+  background: #1b5e20;
+}
+
+.play.stop {
+  background: #c62828;
+}
+
+.play.stop:hover {
+  background: #8e0000;
+}
+
+.playIcon {
+  width: 0.9em;
+  height: 0.9em;
+  fill: currentColor;
 }
 
 .instruments {

@@ -144,6 +144,9 @@ export async function createProgressionAudio(context: AudioContext): Promise<Pro
     transport.schedule((t) => draw.schedule(() => onChord(atStart), t), ticks(start));
     for (const chord of plan.chords) {
       if (chord.start > 0) transport.schedule((t) => draw.schedule(() => onChord(chord.position), t), ticks(start + chord.start));
+      // Vid en Tystnad klingar inget Ackord förrän nästa börjar.
+      const silenced = chord.end < plan.length && !plan.chords.some((next) => next.start === chord.end);
+      if (silenced) transport.schedule((t) => draw.schedule(() => onChord(null), t), ticks(start + chord.end));
     }
   }
 

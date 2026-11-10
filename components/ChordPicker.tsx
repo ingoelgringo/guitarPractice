@@ -9,10 +9,13 @@ import {
   type ChordType,
   EXTENSIONS,
   type Key,
+  type Placement,
   progressionChordName,
   type ProgressionChord,
+  SILENCE,
   spellInKey,
   toggleExtension,
+  triad,
 } from "@/lib/progression";
 import styles from "./ProgressionEditor.module.css";
 
@@ -20,7 +23,7 @@ interface PickerProps {
   keyOfProgression: Key;
   noteNames: NoteNameMode;
   messages: Messages;
-  onPlace: (chord: ProgressionChord) => void;
+  onPlace: (chord: Placement) => void;
   onCancel: () => void;
 }
 
@@ -48,17 +51,32 @@ function isolateKeys(event: KeyboardEvent, onCancel: () => void) {
   }
 }
 
+const NONE = "none";
+
 /**
- * Panelen "Annat ackord…": grundton, ackordtyp, tillägg som kan kombineras och Bas. Ackordet
- * placeras först när man trycker Placera.
+ * Ackordrutan: grundton, ackordtyp, tillägg som kan kombineras och Bas för det som klingar på det
+ * markerade Taktslaget. Varje ändring placeras direkt på Taktslaget. Grundtonen Inget placerar
+ * Tystnad, och då finns ingen ackordtyp, inga tillägg och ingen Bas att välja.
  */
-export function ChordBuilder({ initial, keyOfProgression: key, noteNames, messages, onPlace, onCancel }: PickerProps & { initial: ProgressionChord }) {
-  const [chord, setChord] = useState(initial);
+export function ChordBuilder({
+  shown,
+  keyOfProgression: key,
+  noteNames,
+  messages,
+  onPlace,
+  onCancel,
+}: PickerProps & { /** Det som klingar på Taktslaget, eller `null` före det första Ackordet. */ shown: Placement | null }) {
+  const chord = shown === SILENCE ? null : shown;
   const spell = (pitch: number) => spellInKey(pitch, key, noteNames);
   const pitches = Array.from({ length: 12 }, (_, pitch) => pitch);
+  const change = (update: (chord: ProgressionChord) => ProgressionChord) => chord && onPlace(update(chord));
 
-  // Basen följer med när grundtonen byts, om den var grundtonen.
-  const setRoot = (root: number) => setChord((c) => ({ ...c, root, bass: c.bass === c.root ? root : c.bass }));
+  // Basen följer med när grundtonen byts, om den var grundtonen. Efter Inget blir det en durtreklang.
+  function setRoot(value: string) {
+    if (value === NONE) return onPlace(SILENCE);
+    const root = Number(value);
+    onPlace(chord ? { ...chord, root, bass: chord.bass === chord.root ? root : chord.bass } : triad(root, "major"));
+  }
 
   return (
     <div
@@ -70,7 +88,8 @@ export function ChordBuilder({ initial, keyOfProgression: key, noteNames, messag
       <div className={styles.pickerRow}>
         <label className={styles.setting}>
           {messages.chordRoot}
-          <select autoFocus value={chord.root} onChange={(event) => setRoot(Number(event.target.value))}>
+          <select value={chord?.root ?? NONE} onChange={(event) => setRoot(event.target.value)}>
+            <option value={NONE}>{messages.chordNone}</option>
             {pitches.map((pitch) => (
               <option key={pitch} value={pitch}>
                 {spell(pitch)}
@@ -80,7 +99,11 @@ export function ChordBuilder({ initial, keyOfProgression: key, noteNames, messag
         </label>
         <label className={styles.setting}>
           {messages.chordType}
-          <select value={chord.type} onChange={(event) => setChord((c) => ({ ...c, type: event.target.value as ChordType }))}>
+          <select
+            disabled={!chord}
+            value={chord?.type ?? "major"}
+            onChange={(event) => change((c) => ({ ...c, type: event.target.value as ChordType }))}
+          >
             {CHORD_TYPES.map((type) => (
               <option key={type} value={type}>
                 {typeLabel(type, messages)}
@@ -90,7 +113,12 @@ export function ChordBuilder({ initial, keyOfProgression: key, noteNames, messag
         </label>
         <label className={styles.setting}>
           {messages.chordBass}
-          <select value={chord.bass} onChange={(event) => setChord((c) => ({ ...c, bass: Number(event.target.value) }))}>
+          <select
+            disabled={!chord}
+            value={chord?.bass ?? NONE}
+            onChange={(event) => change((c) => ({ ...c, bass: Number(event.target.value) }))}
+          >
+            {!chord && <option value={NONE}>{messages.chordNone}</option>}
             {pitches.map((pitch) => (
               <option key={pitch} value={pitch}>
                 {spell(pitch)}
@@ -98,35 +126,27 @@ export function ChordBuilder({ initial, keyOfProgression: key, noteNames, messag
             ))}
           </select>
         </label>
+        <output className={styles.preview} aria-live="polite">
+          {chord ? progressionChordName(chord, key, noteNames) : shown === SILENCE ? messages.silence : ""}
+        </output>
       </div>
-      <fieldset className={styles.extensions}>
+      <fieldset className={styles.extensions} disabled={!chord}>
         <legend className={styles.extensionsLegend}>{messages.chordExtensions}</legend>
         {EXTENSIONS.map((extension) => {
-          const on = chord.extensions.includes(extension);
+          const on = !!chord?.extensions.includes(extension);
           return (
             <button
               key={extension}
               type="button"
               className={`${styles.extension} ${on ? styles.extensionOn : ""}`}
               aria-pressed={on}
-              onClick={() => setChord((c) => toggleExtension(c, extension))}
+              onClick={() => change((c) => toggleExtension(c, extension))}
             >
               {extension}
             </button>
           );
         })}
       </fieldset>
-      <div className={styles.pickerRow}>
-        <output className={styles.preview} aria-live="polite">
-          {progressionChordName(chord, key, noteNames)}
-        </output>
-        <button type="button" className={styles.chordChoice} onClick={() => onPlace(chord)}>
-          {messages.placeChord}
-        </button>
-        <button type="button" className={styles.chordChoice} onClick={onCancel}>
-          {messages.cancel}
-        </button>
-      </div>
     </div>
   );
 }
