@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { WHEEL_STEP, wheelSelection } from "./wheelSelect";
+import { WHEEL_STEP, wheelSelection, wheelStep } from "./wheelSelect";
 
 const options = (count: number, disabled: number[] = []) => Array.from({ length: count }, (_, i) => disabled.includes(i));
 
@@ -40,5 +40,17 @@ describe("att skrolla i en dropdown", () => {
 
   it("väljer det första alternativet när inget är valt", () => {
     expect(wheelSelection({ index: -1, disabled: options(3), pending: 0, delta: WHEEL_STEP }).index).toBe(0);
+  });
+});
+
+describe("hjulets steg", () => {
+  it("är ett steg nedåt eller uppåt per hack, hur stort det än är", () => {
+    expect(wheelStep(0, WHEEL_STEP)).toEqual({ step: 1, pending: 0 });
+    expect(wheelStep(0, -3 * WHEEL_STEP)).toEqual({ step: -1, pending: 0 });
+  });
+
+  it("samlar små rörelser tills de blir ett steg", () => {
+    expect(wheelStep(0, WHEEL_STEP / 2)).toEqual({ step: 0, pending: WHEEL_STEP / 2 });
+    expect(wheelStep(WHEEL_STEP / 2, WHEEL_STEP / 2)).toEqual({ step: 1, pending: 0 });
   });
 });

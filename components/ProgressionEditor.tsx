@@ -44,6 +44,7 @@ import { ChordBuilder, ChordTextField } from "./ChordPicker";
 import styles from "./ProgressionEditor.module.css";
 import { ProgressionFormRow } from "./ProgressionFormRow";
 import type { ProgressionPlayback } from "./useProgressionPlayback";
+import { useWheelNumber } from "./useWheelNumber";
 
 interface Props {
   progression: Progression;
@@ -432,6 +433,12 @@ function Settings({ progression, onChange, noteNames, messages }: Props) {
   const { key, tempo, timeSignature } = progression;
   const [tempoText, setTempoText] = useState<string | null>(null);
   const taps = useRef<number[]>([]);
+  const tempoField = useRef<HTMLInputElement>(null);
+  // Hjulet ändrar det sparade tempot direkt och släpper det man höll på att skriva.
+  useWheelNumber(tempoField, (step) => {
+    setTempoText(null);
+    onChange(setTempo(progression, tempo + step));
+  });
 
   const changeKey = (next: Key) => onChange(setKey(progression, next));
   const commitTempo = () => {
@@ -481,6 +488,7 @@ function Settings({ progression, onChange, noteNames, messages }: Props) {
       <label className={styles.setting}>
         {messages.tempo}
         <input
+          ref={tempoField}
           className={styles.tempo}
           type="number"
           min={MIN_TEMPO}

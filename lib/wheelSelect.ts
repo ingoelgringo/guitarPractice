@@ -1,6 +1,6 @@
 /**
- * Att skrolla igenom en dropdowns alternativ med musen över den, utan att öppna den. Ren logik;
- * komponenten `WheelSelect` kopplar den till hela sajten.
+ * Att skrolla igenom en dropdowns alternativ, eller ändra ett tal, med musen över fältet. Ren
+ * logik; `WheelSelect` och `useWheelNumber` kopplar den till sidorna.
  */
 
 /** Den minsta hjulrörelsen i pixlar som blir ett steg, ungefär ett hack på ett vanligt mushjul. */
@@ -18,15 +18,21 @@ export interface WheelInput {
 }
 
 /**
- * Alternativet efter hjulrörelsen: högst ett steg per rörelse, förbi avstängda alternativ, och
- * stopp vid första och sista. Ett hack ger alltså ett steg hur stort det än är, t.ex. med skalad
- * skärm. Små rörelser, t.ex. från en touchpad, sparas tills de blir `WHEEL_STEP`.
+ * Steget efter en hjulrörelse: −1, 0 eller 1, alltså högst ett steg per rörelse. Ett hack ger ett
+ * steg hur stort det än är, t.ex. med skalad skärm. Små rörelser, t.ex. från en touchpad, sparas
+ * i `pending` tills de blir `WHEEL_STEP`.
  */
-export function wheelSelection({ index, disabled, pending, delta }: WheelInput): { index: number; pending: number } {
+export function wheelStep(pending: number, delta: number): { step: number; pending: number } {
   const total = pending + delta;
-  if (Math.abs(total) < WHEEL_STEP) return { index, pending: total };
-  const direction = Math.sign(total);
-  let next = index + direction;
-  while (next >= 0 && next < disabled.length && disabled[next]) next += direction;
-  return { index: next >= 0 && next < disabled.length ? next : index, pending: 0 };
+  if (Math.abs(total) < WHEEL_STEP) return { step: 0, pending: total };
+  return { step: Math.sign(total), pending: 0 };
+}
+
+/** Alternativet efter hjulrörelsen: högst ett steg, förbi avstängda alternativ, och stopp vid första och sista. */
+export function wheelSelection({ index, disabled, pending, delta }: WheelInput): { index: number; pending: number } {
+  const { step, pending: rest } = wheelStep(pending, delta);
+  if (step === 0) return { index, pending: rest };
+  let next = index + step;
+  while (next >= 0 && next < disabled.length && disabled[next]) next += step;
+  return { index: next >= 0 && next < disabled.length ? next : index, pending: rest };
 }
