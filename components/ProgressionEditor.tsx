@@ -40,6 +40,8 @@ import {
   withQuality,
 } from "@/lib/progression";
 import { type Instrument, INSTRUMENTS } from "@/lib/progressionPlayback";
+import card from "./Card.module.css";
+import { CardIcon } from "./CardIcon";
 import { ChordBuilder, ChordTextField } from "./ChordPicker";
 import styles from "./ProgressionEditor.module.css";
 import { ProgressionFormRow } from "./ProgressionFormRow";
@@ -73,10 +75,11 @@ const positionKey = ({ section, bar, pulse }: Position) => `${section}:${bar}:${
 type TextPicker = { position: Position; initial: string };
 
 /**
- * Den minsta bredden för en Takt: Taktslagens knappar och, i 6/8 och 12/8, mellanrummen mellan
- * grupperna. Takterna står fyra, två eller en per rad, så många som får plats.
+ * Den minsta bredden för en Takt: Taktslagens kort med mellanrum, i 6/8 och 12/8 mellanrummen
+ * mellan grupperna, och Taktens egen kant. Takterna står fyra, två eller en per rad, så många som
+ * får plats.
  */
-const barMinWidth = (pulses: number) => `${pulses * 3.5 + (pulses > 4 ? (pulses / 3 - 1) * 0.5 : 0) + 0.75}em`;
+const barMinWidth = (pulses: number) => `${pulses * 3.6 + (pulses > 4 ? (pulses / 3 - 1) * 0.5 : 0) + 1.25}em`;
 
 /** Takterna två och två, så att raderna kan ha fyra, två eller en Takt. */
 const barPairs = (bars: number) => Array.from({ length: Math.ceil(bars / 2) }, (_, i) => [2 * i, 2 * i + 1].filter((bar) => bar < bars));
@@ -148,9 +151,16 @@ export function ProgressionEditor({
   }
 
   return (
-    <section className={styles.editor} aria-label={messages.progression}>
-      <h2 className={styles.heading}>{messages.progression}</h2>
-      <Settings progression={progression} onChange={change} noteNames={noteNames} messages={messages} />
+    <section className={`${card.card} ${styles.editor}`} aria-label={messages.progression}>
+      <div className={card.header}>
+        <h2 className={card.title}>
+          <CardIcon name="progression" />
+          {messages.progression}
+        </h2>
+        <div className={card.tools}>
+          <Settings progression={progression} onChange={change} noteNames={noteNames} messages={messages} />
+        </div>
+      </div>
       <Playback playback={playback} sections={progression.sections} messages={messages} />
       <p className={styles.help}>{messages.progressionHelp}</p>
       <div onKeyDown={onKeyDown}>
@@ -167,38 +177,43 @@ export function ProgressionEditor({
                 <div key={pair[0]} className={styles.barPair}>
                   {pair.map((bar) => (
                     <div key={bar} className={styles.bar}>
-                      {Array.from({ length: pulses }, (_, pulse) => {
-                        const position = { section: section.id, bar, pulse };
-                        const chord = chordAt(progression, position);
-                        const isSelected = samePosition(selection, position);
-                        const isSounding = samePosition(playback.sounding, position);
-                        const first = bar === 0 && pulse === 0 && section === progression.sections[0];
-                        const groupStart = pulses > 4 && pulse > 0 && pulse % 3 === 0;
-                        return (
-                          <button
-                            key={pulse}
-                            type="button"
-                            ref={(element) => {
-                              const k = positionKey(position);
-                              if (element) pulseRefs.current.set(k, element);
-                              else pulseRefs.current.delete(k);
-                            }}
-                            className={[
-                              styles.pulse,
-                              isSelected ? styles.selected : "",
-                              isSounding ? styles.sounding : "",
-                              groupStart ? styles.groupStart : "",
-                            ].join(" ")}
-                            tabIndex={isSelected || (!selection && first) ? 0 : -1}
-                            aria-pressed={isSelected}
-                            aria-label={messages.pulseLabel(bar + 1, pulse + 1, chord && label(chord))}
-                            onClick={() => setSelected(position)}
-                            onFocus={() => setSelected(position)}
-                          >
-                            {chord ? name(chord) : ""}
-                          </button>
-                        );
-                      })}
+                      <span className={styles.barNumber} aria-hidden="true">
+                        {bar + 1}
+                      </span>
+                      <div className={styles.pulses}>
+                        {Array.from({ length: pulses }, (_, pulse) => {
+                          const position = { section: section.id, bar, pulse };
+                          const chord = chordAt(progression, position);
+                          const isSelected = samePosition(selection, position);
+                          const isSounding = samePosition(playback.sounding, position);
+                          const first = bar === 0 && pulse === 0 && section === progression.sections[0];
+                          const groupStart = pulses > 4 && pulse > 0 && pulse % 3 === 0;
+                          return (
+                            <button
+                              key={pulse}
+                              type="button"
+                              ref={(element) => {
+                                const k = positionKey(position);
+                                if (element) pulseRefs.current.set(k, element);
+                                else pulseRefs.current.delete(k);
+                              }}
+                              className={[
+                                styles.pulse,
+                                isSelected ? styles.selected : "",
+                                isSounding ? styles.sounding : "",
+                                groupStart ? styles.groupStart : "",
+                              ].join(" ")}
+                              tabIndex={isSelected || (!selection && first) ? 0 : -1}
+                              aria-pressed={isSelected}
+                              aria-label={messages.pulseLabel(bar + 1, pulse + 1, chord && label(chord))}
+                              onClick={() => setSelected(position)}
+                              onFocus={() => setSelected(position)}
+                            >
+                              {chord ? name(chord) : ""}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -386,7 +401,7 @@ function Playback({
     pad: messages.synthPad,
   };
   return (
-    <div className={styles.settings}>
+    <div className={`${styles.settings} ${styles.transport}`}>
       <button type="button" className={`${styles.play} ${active ? styles.stop : ""}`} onClick={active ? stop : play}>
         <svg className={styles.playIcon} viewBox="0 0 16 16" aria-hidden="true">
           {active ? <rect x="3" y="3" width="10" height="10" rx="1" /> : <path d="M4 2.5v11l9.5-5.5z" />}
@@ -404,14 +419,14 @@ function Playback({
           ))}
         </select>
       </label>
-      <label className={styles.setting}>
+      <label className={styles.toggle}>
         <input type="checkbox" checked={countIn} onChange={(event) => setCountIn(event.target.checked)} />
         {messages.countIn}
       </label>
       <fieldset className={styles.instruments}>
         <legend className={styles.visuallyHidden}>{messages.instruments}</legend>
         {INSTRUMENTS.map((instrument) => (
-          <label key={instrument} className={styles.setting}>
+          <label key={instrument} className={styles.toggle}>
             <input
               type="checkbox"
               checked={!muted[instrument]}

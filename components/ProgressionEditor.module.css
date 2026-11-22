@@ -1,106 +1,262 @@
 .editor {
-  --line: color-mix(in srgb, var(--foreground) 45%, transparent);
-  --faint: color-mix(in srgb, var(--foreground) 12%, transparent);
-
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  --line: var(--border);
+  --faint: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --bar-gap: 10px;
 }
 
-.heading {
-  font-size: 1.25rem;
+/*
+ * Fälten, dropdownerna och knapparna i editorn har samma utseende. :where() håller nere
+ * specificiteten, så att klasserna nedan går före.
+ */
+.editor :where(select, input:not([type="checkbox"]), button) {
+  font: inherit;
+  font-size: 0.9375rem;
+  color: var(--foreground);
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-raised);
+}
+
+.editor :where(button) {
+  cursor: pointer;
+}
+
+.editor :where(button:not(:disabled):hover, select:hover) {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+}
+
+.editor :where(select, input, button):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.editor :where(button:disabled) {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .help {
-  font-size: 0.875rem;
-  color: color-mix(in srgb, var(--foreground) 65%, transparent);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--muted);
 }
 
 .settings {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 20px;
+  gap: 8px 16px;
 }
 
 .setting {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  color: var(--muted);
 }
 
-.settings select,
-.settings input,
-.settings button,
-.chordChoice {
-  font: inherit;
-  padding: 4px 6px;
+.setting :where(select, input) {
+  color: var(--foreground);
 }
 
 .tempo {
-  width: 4.5em;
+  width: 5em;
 }
 
-.tap {
+/* Play, loopen, inräkningen och Instrumenten, på en rad mellan två avdelare */
+.transport {
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.play {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 7.5em;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  box-shadow: var(--glow);
+}
+
+.play:hover {
+  background: color-mix(in srgb, var(--accent) 85%, #fff);
+}
+
+.play.stop {
+  background: #dc2626;
+  box-shadow: 0 0 14px rgb(220 38 38 / 0.45);
+}
+
+.play.stop:hover {
+  background: #b91c1c;
+}
+
+.playIcon {
+  width: 0.9em;
+  height: 0.9em;
+  fill: currentColor;
+}
+
+/* Inräkningen och Instrumenten: kryssrutor som ser ut som knappar, tända när de är ikryssade */
+.instruments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--muted);
+  font-size: 0.875rem;
   cursor: pointer;
+  user-select: none;
+}
+
+.toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.toggle::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--foreground) 25%, transparent);
+}
+
+.toggle:has(input:checked) {
+  color: var(--foreground);
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  background: var(--accent-soft);
+}
+
+.toggle:has(input:checked)::before {
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+}
+
+.toggle:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .section {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: 12px;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
-.sectionName {
-  font-size: 1rem;
+/* Delens namn, antal Takter och knappen som tar bort Delen, på en diskret rad ovanför Takterna */
+.sectionHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.sectionNameInput {
+  font-weight: 600;
+  width: 10em;
+  max-width: 100%;
+  background: transparent;
+  border-color: transparent;
+}
+
+.sectionNameInput:hover,
+.sectionNameInput:focus {
+  border-color: var(--border);
+  background: var(--surface-raised);
+}
+
+.barsInput {
+  width: 4.5em;
+}
+
+.removeSection {
+  line-height: 1;
+  padding: 4px 9px;
+  color: var(--muted);
+}
+
+.error {
+  font-size: 0.875rem;
+  color: var(--error, #ef4444);
+  flex-basis: 100%;
 }
 
 /*
  * Takterna står fyra, två eller en per rad, så många som får plats med sin minsta bredd
  * (--bar-min). De står två och två, och varje par är minst halva raden eller två Takter brett, så
  * att det blir högst två par per rad. I paret är varje Takt minst halva paret eller en Takt bred.
+ * Mellanrummet --bar-gap räknas bort från halvorna, så att två får plats bredvid varandra.
  */
 .bars {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, max(calc(2 * var(--bar-min)), 50%)), 1fr));
-  row-gap: 8px;
-  padding-right: 2px;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(min(100%, max(calc(2 * var(--bar-min) + var(--bar-gap)), calc(50% - var(--bar-gap) / 2))), 1fr)
+  );
+  gap: var(--bar-gap);
 }
 
 .barPair {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, max(var(--bar-min), 50%)), 1fr));
-  row-gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, max(var(--bar-min), calc(50% - var(--bar-gap) / 2))), 1fr));
+  gap: var(--bar-gap);
 }
 
-/*
- * Varje Takt har ett taktstreck till vänster och ett till höger, som hamnar ovanpå nästa Takts
- * streck. Färgen är täckande, så att två streck ovanpå varandra inte blir mörkare.
- */
+/* Takten: ett kort med taktnumret i hörnet och Taktslagen som mindre kort i en rad */
 .bar {
-  --barline: color-mix(in srgb, var(--foreground) 45%, var(--background));
-
-  display: flex;
   min-width: 0;
-  border-left: 2px solid var(--barline);
-  box-shadow: 2px 0 0 var(--barline);
-  padding: 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--surface-sunken);
+}
+
+.barNumber {
+  font-size: 11px;
+  line-height: 1;
+  color: var(--muted);
+}
+
+.pulses {
+  display: flex;
+  gap: 4px;
 }
 
 .pulse {
   flex: 1;
-  font: inherit;
-  font-weight: bold;
   min-width: 3.25em;
-  height: 2.5em;
+  height: 2.75em;
   padding: 0 4px;
-  border: 1px solid var(--faint);
-  border-radius: 4px;
-  margin: 0 1px;
-  background: none;
-  color: var(--foreground);
-  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -112,26 +268,50 @@
 }
 
 .pulse:hover {
-  background: var(--faint);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface-raised));
 }
 
 .pulse.selected {
-  border-color: var(--chord-highlight, var(--foreground));
-  box-shadow: inset 0 0 0 1px var(--chord-highlight, var(--foreground));
+  border-color: var(--chord-highlight, var(--accent));
+  box-shadow: var(--glow);
 }
 
 /* Det Ackord som klingar under uppspelningen */
 .pulse.sounding {
-  background: color-mix(in srgb, var(--chord-highlight, var(--foreground)) 30%, transparent);
+  background: var(--chord-highlight, var(--accent));
+  color: var(--chord-highlight-text, #fff);
 }
 
-.pulse:focus {
-  outline: none;
+/* "Lägg till Del": ett streckat kort */
+.addSection {
+  align-self: flex-start;
+  padding: 10px 18px;
+  border-style: dashed;
+  background: transparent;
+  color: var(--muted);
 }
 
-.pulse:focus-visible {
-  outline: 2px solid var(--chord-highlight, var(--foreground));
-  outline-offset: 1px;
+.addSection:hover {
+  color: var(--foreground);
+}
+
+/* Formen */
+.formItem {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-raised);
+}
+
+.form .formRemove {
+  border: none;
+  border-left: 1px solid var(--faint);
+  border-radius: 0 8px 8px 0;
+  background: none;
+  line-height: 1;
+  padding: 4px 8px;
+  color: var(--muted);
 }
 
 .chordList {
@@ -145,53 +325,9 @@
   margin-right: 4px;
 }
 
-.chordChoice {
-  cursor: pointer;
-}
-
 .degree {
   font-size: 0.8em;
   color: color-mix(in srgb, var(--foreground) 65%, transparent);
-}
-
-.play {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 5.5em;
-  border: none;
-  border-radius: 4px;
-  background: #2e7d32;
-  color: #fff;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.play:hover {
-  background: #1b5e20;
-}
-
-.play.stop {
-  background: #c62828;
-}
-
-.play.stop:hover {
-  background: #8e0000;
-}
-
-.playIcon {
-  width: 0.9em;
-  height: 0.9em;
-  fill: currentColor;
-}
-
-.instruments {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  border: none;
-  padding: 0;
-  margin: 0;
 }
 
 .visuallyHidden {
@@ -203,55 +339,12 @@
   white-space: nowrap;
 }
 
-.sectionHeader {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 12px;
-}
-
-.sectionHeader input,
-.addSection,
-.removeSection,
-.form select,
-.form button {
-  font: inherit;
-  padding: 4px 6px;
-}
-
-.barsInput {
-  width: 4.5em;
-}
-
 .formHeading {
   font-size: 1rem;
 }
 
 .addToForm {
   cursor: pointer;
-}
-
-.sectionNameInput {
-  font-weight: bold;
-  width: 10em;
-  max-width: 100%;
-}
-
-.error {
-  font-size: 0.875rem;
-  color: var(--error, #c62828);
-  flex-basis: 100%;
-}
-
-.addSection,
-.removeSection {
-  cursor: pointer;
-  align-self: flex-start;
-}
-
-.removeSection {
-  align-self: auto;
-  line-height: 1;
 }
 
 /* Formen: en rad med Delarnas namn som dras till en ny plats */
@@ -268,14 +361,6 @@
   list-style: none;
   padding: 0;
   margin: 0;
-}
-
-.formItem {
-  display: flex;
-  align-items: center;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--background);
 }
 
 .formItem.dragging {
@@ -299,16 +384,6 @@
   outline-offset: 1px;
 }
 
-.form .formRemove {
-  border: none;
-  border-left: 1px solid var(--faint);
-  background: none;
-  color: var(--foreground);
-  cursor: pointer;
-  line-height: 1;
-  padding: 4px 8px;
-}
-
 /* "Annat ackord…" och ackordfältet, under den markerade Delens Takter */
 .picker {
   display: flex;
@@ -326,13 +401,6 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 16px;
-}
-
-.picker select,
-.picker input,
-.picker button {
-  font: inherit;
-  padding: 4px 6px;
 }
 
 .extensions {
