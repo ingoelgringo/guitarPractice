@@ -12,6 +12,7 @@ const en = {
   // Headern. Flaggan (components/Flag.tsx) visar språket man byter till.
   switchLanguage: "På svenska",
   toggleTheme: "Toggle light/dark theme",
+  siteNav: "Guitar tools",
 
   // Gitarrsidan
   guitarIntro: "Tools for guitarists: write tabs with notation, and see scales on the fretboard.",
@@ -157,6 +158,7 @@ const sv: Messages = {
 
   switchLanguage: "In English",
   toggleTheme: "Växla mellan ljust och mörkt tema",
+  siteNav: "Gitarrverktyg",
 
   guitarIntro: "Verktyg för gitarrister: skriv tabulatur med noter, och se skalor på greppbrädan.",
   comingSoon: "Kommer snart",

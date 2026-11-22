@@ -1,0 +1,19 @@
+/* Menyn till vänster och sidan bredvid; på smala skärmar menyn som en rad ovanför sidan. */
+.shell {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 699px) {
+  .shell {
+    flex-direction: column;
+  }
+}

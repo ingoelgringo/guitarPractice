@@ -1,21 +1,69 @@
+/*
+ * Färgerna som CSS-variabler, ljusa här och mörka nedan. Ytor: --surface-sunken för menyn,
+ * --surface för korten och --surface-raised för knappar och fält i korten. Accenten och glöden
+ * används bara för det markerade, aktiva och klingande.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f3f5f9;
+  --foreground: #141a26;
+  --muted: #5b6475;
+  --surface-sunken: #e9edf4;
+  --surface: #ffffff;
+  --surface-raised: #f1f4f9;
+  --border: #d9dfe9;
+  --accent: #2563eb;
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
+  --accent-contrast: #ffffff;
+  --glow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent),
+    0 0 12px color-mix(in srgb, var(--accent) 25%, transparent);
+  --card-shadow: 0 1px 3px rgb(15 23 42 / 0.08);
+  --radius: 14px;
+  --radius-small: 10px;
   /* Headerns höjd, som editorn räknar bort från sin */
   --header-height: 32px;
+  /* Menyraden under headern på smala skärmar; annars står menyn till vänster och tar ingen höjd */
+  --nav-height: 0px;
+  /* Allt ovanför sidans innehåll */
+  --chrome-height: calc(var(--header-height) + var(--nav-height));
+}
+
+@media (max-width: 699px) {
+  :root {
+    --nav-height: 48px;
+  }
 }
 
 /* Mörkt när man valt det, eller när systemet vill ha mörkt och man inte valt ljust. Se lib/theme.ts. */
 :root[data-theme="dark"] {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --background: #0b1020;
+  --foreground: #e6eaf2;
+  --muted: #8b95a9;
+  --surface-sunken: #0d1324;
+  --surface: #121a2e;
+  --surface-raised: #18223a;
+  --border: #233050;
+  --accent: #3b82f6;
+  --accent-contrast: #ffffff;
+  --glow: 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 0 16px color-mix(in srgb, var(--accent) 45%, transparent);
+  --card-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
   color-scheme: dark;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0b1020;
+    --foreground: #e6eaf2;
+    --muted: #8b95a9;
+    --surface-sunken: #0d1324;
+    --surface: #121a2e;
+    --surface-raised: #18223a;
+    --border: #233050;
+    --accent: #3b82f6;
+    --accent-contrast: #ffffff;
+    --glow: 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent),
+      0 0 16px color-mix(in srgb, var(--accent) 45%, transparent);
+    --card-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
     color-scheme: dark;
   }
 }
@@ -36,7 +84,7 @@ body {
   flex-direction: column;
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -64,6 +112,7 @@ a {
   :root:not([data-theme="light"]) {
     --background: #ffffff;
     --foreground: #000000;
+    --nav-height: 0px;
     color-scheme: light;
   }
 }

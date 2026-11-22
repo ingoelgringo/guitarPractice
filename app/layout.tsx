@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import { SiteHeader } from "@/components/SiteHeader";
+import { SiteNav } from "@/components/SiteNav";
 import { WheelSelect } from "@/components/WheelSelect";
+import { isOwnerInPage } from "@/lib/auth";
 import { MESSAGES } from "@/lib/messages";
 import { siteLanguageInPage } from "@/lib/siteLanguageInPage";
+import { siteNavItems } from "@/lib/siteNav";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
+import styles from "./layout.module.css";
 
 export async function generateMetadata(): Promise<Metadata> {
   const messages = MESSAGES[await siteLanguageInPage()];
@@ -12,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const language = await siteLanguageInPage();
+  const [language, owner] = await Promise.all([siteLanguageInPage(), isOwnerInPage()]);
 
   return (
     // Skriptet sätter temaattributet före hydreringen, därav suppressHydrationWarning.
@@ -22,7 +26,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body>
         <SiteHeader language={language} />
-        {children}
+        <div className={styles.shell}>
+          <SiteNav items={siteNavItems(owner, language)} label={MESSAGES[language].siteNav} />
+          <div className={styles.content}>{children}</div>
+        </div>
         <WheelSelect />
       </body>
     </html>

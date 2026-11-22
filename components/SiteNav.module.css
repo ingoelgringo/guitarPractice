@@ -1,0 +1,111 @@
+/*
+ * Brett: en list med ikon över text. Mellanbrett: bara ikoner, med namnet som tooltip. Smalt: en
+ * rad under headern, i höjden --nav-height (globals.css), som Tab-editorn räknar bort från sin höjd.
+ */
+.nav {
+  flex: none;
+  width: 96px;
+  padding: 16px 8px;
+  border-right: 1px solid var(--border);
+  background: var(--surface-sunken);
+}
+
+.list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 4px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-small);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.link:hover {
+  color: var(--foreground);
+  background: var(--surface);
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.active,
+.active:hover {
+  color: var(--foreground);
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  box-shadow: var(--glow);
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.active .icon {
+  stroke: var(--accent);
+}
+
+@media (max-width: 1099px) {
+  .nav {
+    width: 60px;
+  }
+
+  .label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 699px) {
+  .nav {
+    width: auto;
+    height: var(--nav-height);
+    padding: 0 8px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+
+  .list {
+    flex-direction: row;
+    align-items: center;
+    height: 100%;
+  }
+
+  .link {
+    padding: 6px 10px;
+  }
+
+  .icon {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+@media print {
+  .nav {
+    display: none;
+  }
+}
