@@ -1,61 +1,95 @@
 .page {
-  /* Det markerade Ackordet är grönt, i Kvintcirkeln och i Tonnetzen */
-  --chord-highlight: #2e8b4f;
-  --chord-highlight-text: #ffffff;
-  --chord-major: color-mix(in srgb, var(--foreground) 6%, var(--background));
-  --chord-minor: color-mix(in srgb, var(--foreground) 13%, var(--background));
+  /* Det markerade Ackordet lyser i accentfärgen, i Kvintcirkeln, i Tonnetzen och i editorn */
+  --chord-highlight: var(--accent);
+  --chord-highlight-text: var(--accent-contrast);
+  --chord-highlight-glow: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 70%, transparent));
+  --chord-major: var(--surface-raised);
+  --chord-minor: color-mix(in srgb, var(--foreground) 5%, var(--surface-sunken));
+  --chord-line: var(--border);
 
   flex: 1;
   width: 100%;
-  max-width: 1440px;
+  max-width: 1480px;
   margin: 0 auto;
-  padding: 24px 16px 48px;
+  padding: 24px 24px 48px;
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
-/* Mörkt tema, se app/globals.css */
-:global(:root[data-theme="dark"]) .page {
-  --chord-highlight: #4cc47a;
-  --chord-highlight-text: #0a0a0a;
+/* Rubriken och introt till vänster och Notnamnsdropdownen längst upp till höger; radbryts på smal skärm */
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :global(:root:not([data-theme="light"])) .page {
-    --chord-highlight: #4cc47a;
-    --chord-highlight-text: #0a0a0a;
-  }
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
-/* Rutorna: bredvid varandra på bred skärm. Tonnetzen kommer före Kvintcirkeln. */
+.intro {
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+.noteNames {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.875rem;
+}
+
+.noteNamesLabel {
+  padding: 6px 4px 6px 14px;
+}
+
+.noteNames select {
+  font: inherit;
+  color: inherit;
+  padding: 6px 10px;
+  margin: 2px;
+  border: none;
+  border-left: 1px solid var(--border);
+  border-radius: 0 999px 999px 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.noteNames select:focus-visible {
+  outline: 2px solid var(--accent);
+}
+
+/* Korten: bredvid varandra på bred skärm. Tonnetzen kommer före Kvintcirkeln. */
 .layout {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
 }
 
-@media (min-width: 900px) {
+@media (min-width: 1100px) {
   .layout {
-    flex-direction: row;
-    align-items: flex-start;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
 
-.tonnetz {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* Rutan har fast höjd, och ytan i den dras utan att sidan scrollar */
+/*
+ * Rutan är minst 420 px hög och fyller annars kortet, så att den blir lika hög som Kvintcirkeln
+ * bredvid. Ytan i den dras utan att sidan scrollar.
+ */
 .tonnetzBox {
-  height: 420px;
+  flex: 1;
+  min-height: 420px;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--foreground) 20%, transparent);
-  border-radius: 8px;
+  border-radius: var(--radius-small);
+  background: var(--surface-sunken);
 }
 
 .tonnetzSvg {
@@ -78,7 +112,7 @@
 }
 
 .triangle {
-  stroke: color-mix(in srgb, var(--foreground) 30%, transparent);
+  stroke: var(--chord-line);
   stroke-width: 1;
 }
 
@@ -96,8 +130,12 @@
   pointer-events: none;
 }
 
+.minor .triangleLabel {
+  fill: var(--muted);
+}
+
 .major .triangleLabel {
-  font-weight: bold;
+  font-weight: 600;
 }
 
 /* Hörnen släpper igenom pekaren till triangeln under, så att ett klick på en ton inte räknas som utanför */
@@ -106,9 +144,9 @@
 }
 
 .vertex circle {
-  fill: var(--background);
-  stroke: color-mix(in srgb, var(--foreground) 45%, transparent);
-  stroke-width: 1.5;
+  fill: var(--surface);
+  stroke: color-mix(in srgb, var(--foreground) 30%, transparent);
+  stroke-width: 1.2;
 }
 
 .vertex text {
@@ -118,15 +156,17 @@
 
 .shown .triangle {
   fill: var(--chord-highlight);
+  filter: var(--chord-highlight-glow);
 }
 
-.shown .triangleLabel {
+.shown .triangleLabel,
+.minor.shown .triangleLabel {
   fill: var(--chord-highlight-text);
 }
 
 .vertex.shown circle {
   fill: var(--chord-highlight);
-  stroke: var(--foreground);
+  stroke: var(--chord-highlight-text);
   stroke-width: 2;
 }
 
@@ -135,18 +175,18 @@
   font-weight: bold;
 }
 
-.circle {
-  flex: 0 1 420px;
+/* Kvintcirkeln står i mitten av sitt kort och blir aldrig större än 460 px */
+.circleBox {
+  flex: 1;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-width: 420px;
-  width: 100%;
+  align-items: center;
+  justify-content: center;
 }
 
 .circleSvg {
   display: block;
   width: 100%;
+  max-width: 440px;
   height: auto;
   user-select: none;
   touch-action: manipulation;
@@ -167,7 +207,7 @@
 }
 
 .segment path {
-  stroke: var(--background);
+  stroke: var(--surface);
   stroke-width: 2;
 }
 
@@ -186,12 +226,17 @@
 }
 
 .major text {
-  font-weight: bold;
+  font-weight: 600;
   font-size: 19px;
+}
+
+.segment:hover path {
+  fill: color-mix(in srgb, var(--accent) 18%, var(--chord-major));
 }
 
 .segment.shown path {
   fill: var(--chord-highlight);
+  filter: var(--chord-highlight-glow);
 }
 
 .segment.shown text {
@@ -208,32 +253,6 @@
 .segment.focused path {
   stroke: var(--foreground);
   stroke-width: 3;
-}
-
-.help {
-  font-size: 0.875rem;
-  color: color-mix(in srgb, var(--foreground) 65%, transparent);
-}
-
-/* Rubriken till vänster och Notnamnsdropdownen längst upp till höger; radbryts på smal skärm */
-.header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px 24px;
-}
-
-.noteNames {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.noteNames select {
-  font: inherit;
-  padding: 4px 6px;
 }
 
 .visuallyHidden {

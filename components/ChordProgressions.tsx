@@ -7,6 +7,8 @@ import type { NoteNameMode } from "@/lib/noteNameMode";
 import type { ProgressionListEntry } from "@/lib/progressionLibraryClient";
 import { chordAt, placeChord, type Position, positionExists, SILENCE, triad } from "@/lib/progression";
 import type { SiteLanguage } from "@/lib/siteLanguage";
+import card from "./Card.module.css";
+import { CardIcon } from "./CardIcon";
 import styles from "./ChordProgressions.module.css";
 import { CHORD_ATTRIBUTE } from "./chordElement";
 import { CircleOfFifths } from "./CircleOfFifths";
@@ -81,35 +83,47 @@ export function ChordProgressions({
     // Klicket fångas här bara för att släppa låsningen; tangentbordet släpper med Esc i Kvintcirkeln.
     <main className={styles.page} onClick={releaseOutside}>
       <div className={styles.header}>
-        <h1>Chord Progressions</h1>
+        <div>
+          <h1 className={styles.title}>Chord Progressions</h1>
+          <p className={styles.intro}>{messages.chordProgressionsIntro}</p>
+        </div>
         <label className={styles.noteNames}>
-          {messages.noteNames}{" "}
+          <span className={styles.noteNamesLabel}>{messages.noteNames}</span>
           <select value={noteNames} onChange={(event) => setNoteNames(event.target.value as NoteNameMode)}>
             <option value="english">{messages.noteNamesEnglish}</option>
             <option value="swedish">{messages.noteNamesSwedish}</option>
           </select>
         </label>
       </div>
-      <p>{messages.chordProgressionsIntro}</p>
       <div className={styles.layout}>
-        <section className={styles.tonnetz}>
+        <section className={card.card} aria-labelledby="tonnetz-heading">
+          <h2 id="tonnetz-heading" className={`${card.header} ${card.title}`}>
+            <CardIcon name="tonnetz" />
+            {messages.tonnetz}
+          </h2>
           <Tonnetz noteNames={noteNames} shown={shown} label={messages.tonnetz} onHover={setHovered} onLock={lock} />
-          <p className={styles.help}>{messages.tonnetzHelp}</p>
+          <p className={card.help}>{messages.tonnetzHelp}</p>
         </section>
-        <section className={styles.circle}>
-          <CircleOfFifths
-            noteNames={noteNames}
-            tonic={progression && { root: progression.key.tonic, quality: progression.key.mode }}
-            locked={locked}
-            shown={shown}
-            focused={focused}
-            label={messages.circleOfFifths}
-            onHover={setHovered}
-            onFocusChord={setFocused}
-            onLock={lock}
-            onRelease={release}
-          />
-          <p className={styles.help}>{messages.circleOfFifthsHelp}</p>
+        <section className={card.card} aria-labelledby="circle-heading">
+          <h2 id="circle-heading" className={`${card.header} ${card.title}`}>
+            <CardIcon name="circle" />
+            {messages.circleOfFifths}
+          </h2>
+          <div className={styles.circleBox}>
+            <CircleOfFifths
+              noteNames={noteNames}
+              tonic={progression && { root: progression.key.tonic, quality: progression.key.mode }}
+              locked={locked}
+              shown={shown}
+              focused={focused}
+              label={messages.circleOfFifths}
+              onHover={setHovered}
+              onFocusChord={setFocused}
+              onLock={lock}
+              onRelease={release}
+            />
+          </div>
+          <p className={card.help}>{messages.circleOfFifthsHelp}</p>
         </section>
       </div>
       {progression && (
