@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 
-Ren omdesign av UI:t på `/chord-progressions` efter mockupen `public/Mörk dashboard för ackordprogressioner.png`. **Ingen funktionalitet läggs till eller tas bort.** Mockupen är en riktning, inte en exakt förlaga.
+Ren omdesign av UI:t på `/chord-progressions` efter mockupen `.scratch/ackordfoljder-omdesign/mockup.png`. **Ingen funktionalitet läggs till eller tas bort.** Mockupen är en riktning, inte en exakt förlaga.
 
 ## Beslut
 
