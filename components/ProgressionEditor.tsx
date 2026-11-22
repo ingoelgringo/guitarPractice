@@ -10,7 +10,6 @@ import {
   degreeChord,
   type Key,
   type KeyMode,
-  keyChords,
   keyTonicName,
   MAX_BARS,
   MAX_TEMPO,
@@ -32,7 +31,6 @@ import {
   setSectionBars,
   setTempo,
   setTimeSignature,
-  shownChordAt,
   SILENCE,
   tapTempo,
   TIME_SIGNATURES,
@@ -42,7 +40,8 @@ import {
 import { type Instrument, INSTRUMENTS } from "@/lib/progressionPlayback";
 import card from "./Card.module.css";
 import { CardIcon } from "./CardIcon";
-import { ChordBuilder, ChordTextField } from "./ChordPicker";
+import { ChordEditor, type TextPicker } from "./ChordEditor";
+import { EDITOR_ATTRIBUTE } from "./chordElement";
 import styles from "./ProgressionEditor.module.css";
 import { ProgressionFormRow } from "./ProgressionFormRow";
 import type { ProgressionPlayback } from "./useProgressionPlayback";
@@ -64,15 +63,15 @@ interface EditorProps extends Props {
   selection: Position | null;
   onSelect: (position: Position | null) => void;
   playback: ProgressionPlayback;
+  /** Klasserna som placerar Ackordföljdens kort och Ackordeditorns kort på sidan. */
+  className?: string;
+  chordEditorClassName?: string;
 }
 
 const samePosition = (a: Position | null, b: Position) =>
   a !== null && a.section === b.section && a.bar === b.bar && a.pulse === b.pulse;
 
 const positionKey = ({ section, bar, pulse }: Position) => `${section}:${bar}:${pulse}`;
-
-/** Ackordfältet, öppet vid ett Taktslag med texten man började skriva. */
-type TextPicker = { position: Position; initial: string };
 
 /**
  * Den minsta bredden för en Takt: Taktslagens kort med mellanrum, i 6/8 och 12/8 mellanrummen
@@ -85,8 +84,10 @@ const barMinWidth = (pulses: number) => `${pulses * 3.6 + (pulses > 4 ? (pulses 
 const barPairs = (bars: number) => Array.from({ length: Math.ceil(bars / 2) }, (_, i) => [2 * i, 2 * i + 1].filter((bar) => bar < bars));
 
 /**
- * Editorn för en Ackordföljd: Tonart, taktart och tempo, och Delarnas Takter med ett Taktslag per
- * puls. Ett markerat Taktslag får Ackord från tonartens lista eller med tangentbordet.
+ * Editorn för en Ackordföljd, i två kort: Ackordföljden med Tonart, taktart och tempo och Delarnas
+ * Takter med ett Taktslag per puls, och Ackordeditorn, där det markerade Taktslaget får Ackord.
+ * Ackord kan också placeras med tangentbordet, och en tonbokstav öppnar ackordfältet i
+ * Ackordeditorn. Båda korten är märkta som editorn, så att ett klick i dem inte släpper markeringen.
  */
 export function ProgressionEditor({
   progression,
@@ -96,6 +97,8 @@ export function ProgressionEditor({
   playback,
   noteNames,
   messages,
+  className = "",
+  chordEditorClassName,
 }: EditorProps) {
   const [picker, setPicker] = useState<TextPicker | null>(null);
   const pulseRefs = useRef(new Map<string, HTMLButtonElement>());
@@ -151,156 +154,103 @@ export function ProgressionEditor({
   }
 
   return (
-    <section className={`${card.card} ${styles.editor}`} aria-label={messages.progression}>
-      <div className={card.header}>
-        <h2 className={card.title}>
-          <CardIcon name="progression" />
-          {messages.progression}
-        </h2>
-        <div className={card.tools}>
-          <Settings progression={progression} onChange={change} noteNames={noteNames} messages={messages} />
-        </div>
-      </div>
-      <Playback playback={playback} sections={progression.sections} messages={messages} />
-      <p className={styles.help}>{messages.progressionHelp}</p>
-      <div onKeyDown={onKeyDown}>
-        {progression.sections.map((section) => (
-          <div key={section.id} className={styles.section}>
-            <SectionHeader section={section} progression={progression} onChange={change} messages={messages} />
-            <div
-              className={styles.bars}
-              style={{ "--bar-min": barMinWidth(pulses) } as CSSProperties}
-              role="group"
-              aria-label={`${section.name}: ${messages.bars}`}
-            >
-              {barPairs(section.bars).map((pair) => (
-                <div key={pair[0]} className={styles.barPair}>
-                  {pair.map((bar) => (
-                    <div key={bar} className={styles.bar}>
-                      <span className={styles.barNumber} aria-hidden="true">
-                        {bar + 1}
-                      </span>
-                      <div className={styles.pulses}>
-                        {Array.from({ length: pulses }, (_, pulse) => {
-                          const position = { section: section.id, bar, pulse };
-                          const chord = chordAt(progression, position);
-                          const isSelected = samePosition(selection, position);
-                          const isSounding = samePosition(playback.sounding, position);
-                          const first = bar === 0 && pulse === 0 && section === progression.sections[0];
-                          const groupStart = pulses > 4 && pulse > 0 && pulse % 3 === 0;
-                          return (
-                            <button
-                              key={pulse}
-                              type="button"
-                              ref={(element) => {
-                                const k = positionKey(position);
-                                if (element) pulseRefs.current.set(k, element);
-                                else pulseRefs.current.delete(k);
-                              }}
-                              className={[
-                                styles.pulse,
-                                isSelected ? styles.selected : "",
-                                isSounding ? styles.sounding : "",
-                                groupStart ? styles.groupStart : "",
-                              ].join(" ")}
-                              tabIndex={isSelected || (!selection && first) ? 0 : -1}
-                              aria-pressed={isSelected}
-                              aria-label={messages.pulseLabel(bar + 1, pulse + 1, chord && label(chord))}
-                              onClick={() => setSelected(position)}
-                              onFocus={() => setSelected(position)}
-                            >
-                              {chord ? name(chord) : ""}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-            {selection?.section === section.id && (
-              <ChordChoices
-                selection={selection}
-                progression={progression}
-                onChange={change}
-                picker={openPicker}
-                onPlaceText={placeFromPicker}
-                onCancel={closePicker}
-                onDismiss={() => setPicker(null)}
-                noteNames={noteNames}
-                messages={messages}
-              />
-            )}
-          </div>
-        ))}
-      </div>
-      <button
-        type="button"
-        className={styles.addSection}
-        onClick={() => change(addSection(progression, messages.newSectionName))}
-      >
-        {messages.addSection}
-      </button>
-      <ProgressionFormRow progression={progression} onChange={change} messages={messages} />
-    </section>
-  );
-}
-
-/** Tonartens ackord vid den markerade Delen, ackordrutan och ackordfältet. */
-function ChordChoices({
-  selection,
-  progression,
-  onChange,
-  picker,
-  onPlaceText,
-  onCancel,
-  onDismiss,
-  noteNames,
-  messages,
-}: {
-  selection: Position;
-  progression: Progression;
-  onChange: (progression: Progression) => void;
-  picker: TextPicker | null;
-  onPlaceText: (chord: Placement) => void;
-  onCancel: () => void;
-  onDismiss: () => void;
-  noteNames: NoteNameMode;
-  messages: Messages;
-}) {
-  const { key } = progression;
-  const current = chordAt(progression, selection);
-  const place = (chord: Placement) => onChange(placeChord(progression, selection, chord));
-  const pickerProps = { keyOfProgression: key, noteNames, messages, onCancel };
-  return (
     <>
-      <div className={styles.chordList} role="group" aria-label={messages.keyChords}>
-        <span className={styles.chordListLabel}>{messages.keyChords}</span>
-        {keyChords(key).map(({ degree, chord }) => (
-          <button key={degree} type="button" className={styles.chordChoice} onClick={() => place(chord)}>
-            <span className={styles.degree}>{degree}</span> {progressionChordName(chord, key, noteNames)}
-          </button>
-        ))}
+      <section
+        className={`${card.card} ${styles.editor} ${className}`}
+        aria-label={messages.progression}
+        {...{ [EDITOR_ATTRIBUTE]: "" }}
+      >
+        <div className={card.header}>
+          <h2 className={card.title}>
+            <CardIcon name="progression" />
+            {messages.progression}
+          </h2>
+          <div className={card.tools}>
+            <Settings progression={progression} onChange={change} noteNames={noteNames} messages={messages} />
+          </div>
+        </div>
+        <Playback playback={playback} sections={progression.sections} messages={messages} />
+        <p className={styles.help}>{messages.progressionHelp}</p>
+        <div onKeyDown={onKeyDown}>
+          {progression.sections.map((section) => (
+            <div key={section.id} className={styles.section}>
+              <SectionHeader section={section} progression={progression} onChange={change} messages={messages} />
+              <div
+                className={styles.bars}
+                style={{ "--bar-min": barMinWidth(pulses) } as CSSProperties}
+                role="group"
+                aria-label={`${section.name}: ${messages.bars}`}
+              >
+                {barPairs(section.bars).map((pair) => (
+                  <div key={pair[0]} className={styles.barPair}>
+                    {pair.map((bar) => (
+                      <div key={bar} className={styles.bar}>
+                        <span className={styles.barNumber} aria-hidden="true">
+                          {bar + 1}
+                        </span>
+                        <div className={styles.pulses}>
+                          {Array.from({ length: pulses }, (_, pulse) => {
+                            const position = { section: section.id, bar, pulse };
+                            const chord = chordAt(progression, position);
+                            const isSelected = samePosition(selection, position);
+                            const isSounding = samePosition(playback.sounding, position);
+                            const first = bar === 0 && pulse === 0 && section === progression.sections[0];
+                            const groupStart = pulses > 4 && pulse > 0 && pulse % 3 === 0;
+                            return (
+                              <button
+                                key={pulse}
+                                type="button"
+                                ref={(element) => {
+                                  const k = positionKey(position);
+                                  if (element) pulseRefs.current.set(k, element);
+                                  else pulseRefs.current.delete(k);
+                                }}
+                                className={[
+                                  styles.pulse,
+                                  isSelected ? styles.selected : "",
+                                  isSounding ? styles.sounding : "",
+                                  groupStart ? styles.groupStart : "",
+                                ].join(" ")}
+                                tabIndex={isSelected || (!selection && first) ? 0 : -1}
+                                aria-pressed={isSelected}
+                                aria-label={messages.pulseLabel(bar + 1, pulse + 1, chord && label(chord))}
+                                onClick={() => setSelected(position)}
+                                onFocus={() => setSelected(position)}
+                              >
+                                {chord ? name(chord) : ""}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
         <button
           type="button"
-          className={styles.chordChoice}
-          disabled={!current}
-          onClick={() => onChange(removeChord(progression, selection))}
+          className={styles.addSection}
+          onClick={() => change(addSection(progression, messages.newSectionName))}
         >
-          {messages.removeChord}
+          {messages.addSection}
         </button>
-      </div>
-      <ChordBuilder shown={shownChordAt(progression, selection)} onPlace={place} {...pickerProps} />
-      {picker && (
-        <ChordTextField
-          key={positionKey(selection)}
-          initial={picker.initial}
-          onDismiss={onDismiss}
-          onPlace={onPlaceText}
-          {...pickerProps}
-        />
-      )}
+        <ProgressionFormRow progression={progression} onChange={change} messages={messages} />
+      </section>
+      <ChordEditor
+        className={chordEditorClassName}
+        selection={selection}
+        progression={progression}
+        onChange={change}
+        picker={openPicker}
+        onPlaceText={placeFromPicker}
+        onCancel={closePicker}
+        onDismiss={() => setPicker(null)}
+        noteNames={noteNames}
+        messages={messages}
+      />
     </>
   );
 }

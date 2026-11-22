@@ -67,7 +67,10 @@
   outline: 2px solid var(--accent);
 }
 
-/* Korten: bredvid varandra på bred skärm. Tonnetzen kommer före Kvintcirkeln. */
+/*
+ * Korten i tre rader på bred skärm: Tonnetzen och Kvintcirkeln, Ackordföljden i full bredd, och
+ * Ackordeditorn och Biblioteket. På smalare skärm står de i en kolumn.
+ */
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -77,6 +80,11 @@
 @media (min-width: 1100px) {
   .layout {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  /* Ackordföljden, och för en Gäst, som inte har något Bibliotek, Ackordeditorn */
+  .wide {
+    grid-column: 1 / -1;
   }
 }
 

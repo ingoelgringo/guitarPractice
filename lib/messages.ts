@@ -111,6 +111,8 @@ const en = {
   chordTextHelp: "Type a chord, e.g. F#m7/C, and press Enter.",
   chordTextInvalid: "That is not a chord.",
   chordSuggestions: "Suggestions",
+  chordEditor: "Chord editor",
+  chordEditorHint: "Select a beat in the chord progression to give it a chord.",
 
   // Ackordföljder i Biblioteket
   progressionLibrary: "Library",
@@ -120,10 +122,8 @@ const en = {
   progressionNamePrompt: "Name of the chord progression:",
   progressionRenamePrompt: "New name of the chord progression:",
   untitledProgression: "Untitled",
-  columnName: "Name",
-  open: "Open",
   rename: "Rename",
-  copy: "Copy",
+  progressionChanged: (date: string) => `Changed ${date}`,
   openedProgression: (name: string) => `Open in the editor: ${name}`,
   progressionNotInLibrary: "The chord progression in the editor isn't in the library.",
   confirmReplaceProgression:
@@ -252,6 +252,8 @@ const sv: Messages = {
   chordTextHelp: "Skriv ett ackord, t.ex. F#m7/C, och tryck Enter.",
   chordTextInvalid: "Det är inget ackord.",
   chordSuggestions: "Förslag",
+  chordEditor: "Ackordeditor",
+  chordEditorHint: "Markera ett taktslag i ackordföljden för att ge det ett ackord.",
 
   progressionLibrary: "Bibliotek",
   progressionLibraryEmpty: "Det finns inga ackordföljder i biblioteket än.",
@@ -260,10 +262,8 @@ const sv: Messages = {
   progressionNamePrompt: "Ackordföljdens namn:",
   progressionRenamePrompt: "Ackordföljdens nya namn:",
   untitledProgression: "Namnlös",
-  columnName: "Namn",
-  open: "Öppna",
   rename: "Byt namn",
-  copy: "Kopiera",
+  progressionChanged: (date: string) => `Ändrad ${date}`,
   openedProgression: (name: string) => `Öppen i editorn: ${name}`,
   progressionNotInLibrary: "Ackordföljden i editorn ligger inte i biblioteket.",
   confirmReplaceProgression:

@@ -33,7 +33,7 @@ Ren omdesign av UI:t på `/chord-progressions` efter mockupen `.scratch/ackordfo
    - Tonart, taktart, tempo och Tap står i rubrikraden.
    - Transportraden har Play, Loop och Inräkning, och instrumenten som växelknappar.
    - Varje Takt är ett kort med Taktslagen som mindre kort.
-4. **Kvar**: Ackordeditorn och Biblioteket.
+4. **Klart**: Ackordeditorn och Biblioteket.
    - **Ackordeditorn** blir ett eget kort med ikonen `editor`, nedre raden till vänster. Den syns alltid.
      - Den innehåller det som i dag ligger i `ChordChoices` i `components/ProgressionEditor.tsx`: tonartens ackord och "Ta bort ackord" överst, sedan `ChordBuilder` och vid behov `ChordTextField`.
      - Kortet är inaktiverat med en hint ("Markera ett Taktslag") när inget Taktslag är markerat.

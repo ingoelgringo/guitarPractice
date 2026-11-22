@@ -384,16 +384,41 @@
   outline-offset: 1px;
 }
 
-/* "Annat ackord…" och ackordfältet, under den markerade Delens Takter */
+/*
+ * Ackordeditorns kort: tonartens ackord, ackordrutan och ackordfältet, åtskilda av linjer. Utan ett
+ * markerat Taktslag är allt inaktiverat och dämpat.
+ */
+.chordEditorBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.chordEditorBody:disabled {
+  opacity: 0.5;
+}
+
+/* Knapparna dämpas inte en gång till när hela kortet är inaktiverat */
+.chordEditorBody:disabled :where(button:disabled) {
+  opacity: 1;
+}
+
+/* Ackordrutan och ackordfältet */
 .picker {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  gap: 10px;
   max-width: 100%;
+}
+
+.picker + .picker {
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
 }
 
 .pickerRow {
@@ -449,8 +474,11 @@
 }
 
 .suggestion {
-  border: 1px solid var(--faint);
-  border-radius: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  cursor: pointer;
 }
 
 .suggestion:hover,

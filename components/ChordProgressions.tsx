@@ -10,7 +10,7 @@ import type { SiteLanguage } from "@/lib/siteLanguage";
 import card from "./Card.module.css";
 import { CardIcon } from "./CardIcon";
 import styles from "./ChordProgressions.module.css";
-import { CHORD_ATTRIBUTE } from "./chordElement";
+import { CHORD_ATTRIBUTE, EDITOR_ATTRIBUTE } from "./chordElement";
 import { CircleOfFifths } from "./CircleOfFifths";
 import { Tonnetz } from "./Tonnetz";
 import { ProgressionEditor } from "./ProgressionEditor";
@@ -20,15 +20,13 @@ import { setDraftProgression, useProgressionDraft } from "./useProgressionDraft"
 import { useProgressionHistory } from "./useProgressionHistory";
 import { useProgressionPlayback } from "./useProgressionPlayback";
 
-/** Märker editorn, så att ett klick i den inte släpper det markerade Taktslaget. */
-const EDITOR_ATTRIBUTE = "data-progression-editor";
-
 /**
  * Verktyget Ackordföljder. Markeringen har två nivåer: det låsta Ackordet och det hovrade. Fokus i
  * Kvintcirkeln räknas som hovring. Det som visas är det hovrade, annars det klingande Ackordets
  * treklang under uppspelning och sist det låsta. När ett Taktslag är markerat placerar ett klick på
  * ett Ackord i Tonnetzen eller Kvintcirkeln treklangen där i stället för att låsa den. Ägaren har
- * sina Ackordföljder i Biblioteket under editorn; en Gäst har bara sitt Utkast.
+ * sina Ackordföljder i Biblioteket bredvid Ackordeditorn; en Gäst har bara sitt Utkast, och då tar
+ * Ackordeditorn hela den nedre raden.
  */
 export function ChordProgressions({
   language,
@@ -125,10 +123,10 @@ export function ChordProgressions({
           </div>
           <p className={card.help}>{messages.circleOfFifthsHelp}</p>
         </section>
-      </div>
-      {progression && (
-        <div {...{ [EDITOR_ATTRIBUTE]: "" }}>
+        {progression && (
           <ProgressionEditor
+            className={styles.wide}
+            chordEditorClassName={library === null ? styles.wide : undefined}
             progression={progression}
             onChange={change}
             selection={selection}
@@ -137,9 +135,9 @@ export function ChordProgressions({
             noteNames={noteNames}
             messages={messages}
           />
-        </div>
-      )}
-      {draft && <ProgressionLibrary draft={draft} library={library} messages={messages} />}
+        )}
+        {draft && <ProgressionLibrary draft={draft} library={library} messages={messages} />}
+      </div>
       <p className={styles.visuallyHidden} aria-live="polite">
         {announced ? messages.highlightedChord(chordName(announced, noteNames)) : ""}
       </p>

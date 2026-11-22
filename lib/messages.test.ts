@@ -24,6 +24,8 @@ describe("sajtens texter", () => {
     expect(MESSAGES.sv.highlightedChord("Am")).toContain("Am");
     expect(MESSAGES.en.pulseLabel(2, 3, "Am")).toBe("Bar 2, beat 3: Am");
     expect(MESSAGES.sv.pulseLabel(2, 3, null)).toBe("Takt 2, taktslag 3");
+    expect(MESSAGES.en.progressionChanged("22 Nov 2026")).toBe("Changed 22 Nov 2026");
+    expect(MESSAGES.sv.progressionChanged("22 nov. 2026")).toBe("Ändrad 22 nov. 2026");
   });
 
   it("Verktygens beskrivningar finns på båda språken", () => {
