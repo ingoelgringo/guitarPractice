@@ -89,12 +89,12 @@
 }
 
 /*
- * Rutan är minst 420 px hög och fyller annars kortet, så att den blir lika hög som Kvintcirkeln
+ * Rutan är minst 320 px hög och fyller annars kortet, så att den blir lika hög som Kvintcirkeln
  * bredvid. Ytan i den dras utan att sidan scrollar.
  */
 .tonnetzBox {
   flex: 1;
-  min-height: 420px;
+  min-height: 320px;
   overflow: hidden;
   border-radius: var(--radius-small);
   background: var(--surface-sunken);
@@ -183,7 +183,7 @@
   font-weight: bold;
 }
 
-/* Kvintcirkeln står i mitten av sitt kort och blir aldrig större än 460 px */
+/* Kvintcirkeln står i mitten av sitt kort och blir aldrig större än 340 px */
 .circleBox {
   flex: 1;
   display: flex;
@@ -194,7 +194,7 @@
 .circleSvg {
   display: block;
   width: 100%;
-  max-width: 440px;
+  max-width: 340px;
   height: auto;
   user-select: none;
   touch-action: manipulation;
