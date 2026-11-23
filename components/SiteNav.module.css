@@ -1,10 +1,17 @@
 /*
  * Brett: en list med ikon över text. Mellanbrett: bara ikoner, med namnet som tooltip. Smalt: en
  * rad under headern, i höjden --nav-height (globals.css), som Tab-editorn räknar bort från sin höjd.
+ * Menyn sitter kvar under headern när sidan skrollas.
  */
 .nav {
+  position: sticky;
+  top: var(--header-height);
+  z-index: 10;
+  align-self: flex-start;
   flex: none;
   width: 96px;
+  height: calc(100dvh - var(--header-height));
+  overflow-y: auto;
   padding: 16px 8px;
   border-right: 1px solid var(--border);
   background: var(--surface-sunken);
@@ -80,8 +87,10 @@
 
 @media (max-width: 699px) {
   .nav {
+    align-self: stretch;
     width: auto;
     height: var(--nav-height);
+    overflow-y: hidden;
     padding: 0 8px;
     border-right: none;
     border-bottom: 1px solid var(--border);

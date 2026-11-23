@@ -72,10 +72,11 @@ html {
   height: 100%;
 }
 
+/* clip och inte hidden: hidden gör body till en skrollcontainer, och då fastnar inte headern och menyn */
 html,
 body {
   max-width: 100vw;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {

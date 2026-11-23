@@ -1,6 +1,13 @@
-/* En rad i höjden --header-height (globals.css), som editorn räknar bort från sin höjd */
+/*
+ * En rad i höjden --header-height (globals.css), som editorn räknar bort från sin höjd. Den sitter
+ * kvar överst när sidan skrollas, så den behöver en egen bakgrund.
+ */
 .header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   flex: none;
+  background: var(--background);
   height: var(--header-height);
   display: flex;
   align-items: center;
