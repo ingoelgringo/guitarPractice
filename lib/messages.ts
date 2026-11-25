@@ -1,7 +1,7 @@
 import type { SiteLanguage } from "./siteLanguage";
 
 /**
- * Texterna i headern, på Gitarrsidan, login-sidan, Library-sidan och Ackordföljder på båda
+ * Texterna i headern, på Gitarrsidan, login-sidan, Library-sidan, Ackordföljder och Stämmaren på båda
  * Sajtspråken. Tab-editorn och Greppbrädan är bara på engelska tills vidare. Verktygens namn och
  * tonnamnen översätts inte: tonnamnen följer Notnamnsläget.
  */
@@ -148,6 +148,38 @@ const en = {
   overwrite: "Overwrite",
   overwriteHelp: "Replace the saved version with yours",
   dismiss: "Dismiss",
+
+  // Stämmaren
+  tunerIntro: "Play a string and see how far it is from the target.",
+  instrument: "Instrument",
+  tuning: "Tuning",
+  instrumentGuitar6: "Guitar (6 strings)",
+  instrumentGuitar7: "Guitar (7 strings)",
+  instrumentGuitar12: "Guitar (12 strings)",
+  instrumentBass4: "Bass (4 strings)",
+  instrumentBass5: "Bass (5 strings)",
+  instrumentUkulele: "Ukulele",
+  instrumentMandolin: "Mandolin",
+  tunerStart: "Start",
+  tunerStop: "Stop",
+  tunerStarting: "Starting the microphone…",
+  tunerIdle: "Press Start and allow the microphone to begin tuning.",
+  tunerListening: "Play a string.",
+  tunerDenied:
+    "The microphone is blocked. Allow microphone access for this site in the browser's address bar or settings, then press Start again.",
+  tunerUnavailable: "No microphone was found, or this browser can't use one.",
+  tunerStrings: "Strings",
+  tunerStringsHelp: "Tap a string to tune only that one, and tap it again to let the tuner pick the nearest string.",
+  tunerString: (number: number, note: string) => `String ${number}, ${note}`,
+  tunerTuned: "in tune",
+  tunerDisplay: "Display",
+  tunerBar: "Bar",
+  tunerNeedle: "Needle",
+  tunerA4: "A4 reference",
+  tunerLower: "Lower",
+  tunerHigher: "Higher",
+  tunerFlat: "flat",
+  tunerSharp: "sharp",
 };
 
 export type Messages = typeof en;
@@ -288,6 +320,37 @@ const sv: Messages = {
   overwrite: "Skriv över",
   overwriteHelp: "Ersätt den sparade versionen med din",
   dismiss: "Stäng",
+
+  tunerIntro: "Spela en sträng och se hur långt den ligger från målet.",
+  instrument: "Instrument",
+  tuning: "Stämning",
+  instrumentGuitar6: "Gitarr (6 strängar)",
+  instrumentGuitar7: "Gitarr (7 strängar)",
+  instrumentGuitar12: "Gitarr (12 strängar)",
+  instrumentBass4: "Bas (4 strängar)",
+  instrumentBass5: "Bas (5 strängar)",
+  instrumentUkulele: "Ukulele",
+  instrumentMandolin: "Mandolin",
+  tunerStart: "Starta",
+  tunerStop: "Stoppa",
+  tunerStarting: "Startar mikrofonen…",
+  tunerIdle: "Tryck på Starta och tillåt mikrofonen för att börja stämma.",
+  tunerListening: "Spela en sträng.",
+  tunerDenied:
+    "Mikrofonen är blockerad. Tillåt mikrofonen för den här sajten i webbläsarens adressfält eller inställningar och tryck sedan på Starta igen.",
+  tunerUnavailable: "Ingen mikrofon hittades, eller så kan den här webbläsaren inte använda någon.",
+  tunerStrings: "Strängar",
+  tunerStringsHelp: "Tryck på en sträng för att bara stämma den, och tryck igen för att låta Stämmaren välja närmaste sträng.",
+  tunerString: (number: number, note: string) => `Sträng ${number}, ${note}`,
+  tunerTuned: "stämd",
+  tunerDisplay: "Visning",
+  tunerBar: "Stapel",
+  tunerNeedle: "Nål",
+  tunerA4: "Referenston A4",
+  tunerLower: "Sänk",
+  tunerHigher: "Höj",
+  tunerFlat: "för lågt",
+  tunerSharp: "för högt",
 };
 
 export const MESSAGES: Record<SiteLanguage, Messages> = { en, sv };

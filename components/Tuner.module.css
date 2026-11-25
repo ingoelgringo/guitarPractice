@@ -1,0 +1,432 @@
+/*
+ * Stämmaren: en kolumn för mobilen först, med visaren överst, strängknapparna och sist
+ * inställningarna. Färgerna kommer från app/globals.css, utom den gröna för "stämd".
+ */
+.page {
+  --in-tune: #16a34a;
+  --off-tune: var(--accent);
+
+  flex: 1;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+:global(html[data-theme="dark"]) .page {
+  --in-tune: #22c55e;
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(html:not([data-theme="light"])) .page {
+    --in-tune: #22c55e;
+  }
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.intro {
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+.pill {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.875rem;
+}
+
+.pillLabel {
+  padding: 6px 4px 6px 14px;
+}
+
+.pill select {
+  font: inherit;
+  color: inherit;
+  padding: 6px 10px;
+  margin: 2px;
+  border: none;
+  border-left: 1px solid var(--border);
+  border-radius: 0 999px 999px 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Visaren */
+.meterCard {
+  align-items: stretch;
+  gap: 18px;
+}
+
+.reading {
+  text-align: center;
+  transition: opacity 0.3s;
+}
+
+.silent {
+  opacity: 0.55;
+}
+
+.note {
+  font-size: clamp(3.5rem, 18vw, 5.5rem);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--foreground);
+  transition: color 0.15s;
+}
+
+.reading.inTune .note {
+  color: var(--in-tune);
+}
+
+.detail {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 16px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.dim {
+  opacity: 0.55;
+}
+
+.bar {
+  padding: 8px 0 0;
+  transition: opacity 0.3s;
+}
+
+.barTrack {
+  position: relative;
+  height: 44px;
+  border-radius: var(--radius-small);
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+
+.barTick,
+.barCenter {
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  width: 1px;
+  background: var(--border);
+}
+
+.barCenter {
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--muted);
+}
+
+.barFill {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  background: color-mix(in srgb, var(--off-tune) 35%, transparent);
+  transition:
+    left 0.08s linear,
+    width 0.08s linear;
+}
+
+.barMarker {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  width: 6px;
+  margin-left: -3px;
+  border-radius: 3px;
+  background: var(--off-tune);
+  transition:
+    left 0.08s linear,
+    background 0.15s;
+}
+
+.bar.inTune .barMarker {
+  background: var(--in-tune);
+}
+
+.bar.inTune .barFill {
+  background: color-mix(in srgb, var(--in-tune) 35%, transparent);
+}
+
+.meterLabels {
+  margin-top: 6px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.needle {
+  display: flex;
+  justify-content: center;
+  transition: opacity 0.3s;
+}
+
+.needle svg {
+  width: 100%;
+  max-width: 420px;
+}
+
+.needleArc {
+  fill: none;
+  stroke: var(--surface-sunken);
+  stroke-width: 14;
+  stroke-linecap: round;
+}
+
+.needleZone {
+  fill: none;
+  stroke: color-mix(in srgb, var(--in-tune) 45%, transparent);
+  stroke-width: 14;
+}
+
+.needleTick {
+  stroke: var(--border);
+  stroke-width: 1.5;
+}
+
+.needleCenterTick {
+  stroke: var(--muted);
+  stroke-width: 2.5;
+}
+
+.needleText {
+  font-size: 9px;
+  fill: var(--muted);
+}
+
+.needleHand {
+  transform-origin: 100px 104px;
+  transition: transform 0.08s linear;
+}
+
+.needleHand line {
+  stroke: var(--off-tune);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  transition: stroke 0.15s;
+}
+
+.needle.inTune .needleHand line {
+  stroke: var(--in-tune);
+}
+
+.needleHub {
+  fill: var(--foreground);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+.startButton,
+.stopButton {
+  font: inherit;
+  font-weight: 600;
+  min-width: 120px;
+  min-height: 48px;
+  padding: 0 24px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  cursor: pointer;
+}
+
+.startButton {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.stopButton {
+  background: transparent;
+  color: var(--accent);
+}
+
+.startButton:focus-visible,
+.stopButton:focus-visible,
+.string:focus-visible,
+.segmented button:focus-visible,
+.stepper button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.status {
+  flex: 1 1 220px;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+/* Strängknapparna: stora, i en rad som radbryts, med ett Strängpar med oktavsträng som en grupp */
+.strings {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Lika breda knappar på en rad. Bara Strängparen på 12-strängad gitarr behöver radbrytas på mobilen. */
+.strings > li {
+  flex: 1 1 0;
+  min-width: 38px;
+  display: flex;
+}
+
+.strings > li.course {
+  flex: 2 1 0;
+  min-width: 96px;
+  gap: 3px;
+  padding: 3px;
+  border-radius: calc(var(--radius-small) + 3px);
+  background: var(--surface-sunken);
+}
+
+.string {
+  flex: 1;
+  min-height: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font: inherit;
+  color: inherit;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--surface-raised);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.stringNote {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.stringCheck {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.activeString {
+  border-color: var(--accent);
+}
+
+.string[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: var(--glow);
+}
+
+.tunedString .stringCheck {
+  color: var(--in-tune);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+/* Inställningarna */
+.settings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px 20px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  border: none;
+  font-size: 0.875rem;
+}
+
+.field legend {
+  margin-bottom: 6px;
+}
+
+.field select {
+  font: inherit;
+  color: inherit;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--surface-raised);
+}
+
+.segmented,
+.stepper {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  overflow: hidden;
+  min-height: 40px;
+}
+
+.segmented button,
+.stepper button {
+  flex: 1;
+  font: inherit;
+  color: inherit;
+  border: none;
+  background: var(--surface-raised);
+  cursor: pointer;
+}
+
+.segmented button + button {
+  border-left: 1px solid var(--border);
+}
+
+.segmented button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.stepper button {
+  flex: 0 0 44px;
+  font-size: 1.125rem;
+}
+
+.stepper button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.stepper output {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}

@@ -2,11 +2,12 @@ import { describe, expect, it } from "vitest";
 import { TOOLS } from "./tools";
 
 describe("Verktygen på Gitarrsidan", () => {
-  it("är Tab Editor, Fretboard Practice och Chord Progressions", () => {
+  it("är Tab Editor, Fretboard Practice, Chord Progressions och Tuner", () => {
     expect(TOOLS.map((tool) => tool.title)).toEqual([
       "Tab Editor",
       "Fretboard Practice",
       "Chord Progressions",
+      "Tuner",
     ]);
   });
 
@@ -15,6 +16,7 @@ describe("Verktygen på Gitarrsidan", () => {
       "/tab-editor",
       "/fretboard",
       "/chord-progressions",
+      "/tuner",
     ]);
   });
 });

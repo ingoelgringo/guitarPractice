@@ -33,4 +33,12 @@ export const TOOLS: Tool[] = [
       sv: "Öva vanliga ackordföljder.",
     },
   },
+  {
+    href: "/tuner",
+    title: "Tuner",
+    description: {
+      en: "Tune guitar, bass, ukulele or mandolin with the microphone, in standard or your own tunings.",
+      sv: "Stäm gitarr, bas, ukulele eller mandolin med mikrofonen, i standardstämning eller egna stämningar.",
+    },
+  },
 ];

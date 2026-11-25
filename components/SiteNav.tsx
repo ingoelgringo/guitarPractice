@@ -35,6 +35,13 @@ const ICONS: Record<string, ReactNode> = {
       <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" />
     </>
   ),
+  // En stämgaffel
+  "/tuner": (
+    <>
+      <path d="M9 3v8a3 3 0 0 0 6 0V3" />
+      <path d="M12 14v7" />
+    </>
+  ),
   "/library": (
     <>
       <path d="M12 6c-2-1.5-5-2-8-1.5v14c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5v-14c-3-.5-6 0-8 1.5z" />

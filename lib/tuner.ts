@@ -1,3 +1,27 @@
+import { noteNameOf } from "./chordProgressions";
+import type { NoteNameMode } from "./noteNameMode";
+import { coursePitches, type StringInstrument } from "./tuning";
+
+/** Tonnamn med oktav, t.ex. "E2" eller "F♯2", med sajtens stavning och i svenskt Notnamnsläge H och B. */
+export function tunerNoteName(midi: number, mode: NoteNameMode): string {
+  return `${noteNameOf(midi % 12, mode)}${Math.floor(midi / 12) - 1}`;
+}
+
+/** En sträng som Stämmaren stämmer mot. Ett Strängpar med oktavsträng ger två. */
+export interface TunerString {
+  /** Numret som `tunerStep` använder, från 1. */
+  number: number;
+  /** Strängen eller Strängparet (från 1, närmast golvet) som den sitter i. */
+  course: number;
+  pitch: number;
+}
+
+/** Strängarna att stämma, sträng 1 först och den grövsta först inom ett Strängpar. */
+export function tunerStrings(instrument: StringInstrument, tuning: readonly number[]): TunerString[] {
+  const pitches = instrument.courses.flatMap((kind, i) => coursePitches(kind, tuning[i]).map((pitch) => ({ course: i + 1, pitch })));
+  return pitches.map((s, i) => ({ number: i + 1, ...s }));
+}
+
 export interface TunerConfig {
   /** Målton (MIDI) för varje sträng som stäms, sträng 1 först. */
   strings: readonly number[];
