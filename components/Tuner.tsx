@@ -35,6 +35,7 @@ import styles from "./Tuner.module.css";
 import { useCustomTunings } from "./useCustomTunings";
 import { useMicrophonePitch } from "./useMicrophonePitch";
 import { useNoteNameMode } from "./useNoteNameMode";
+import { useTunerServiceWorker } from "./useTunerServiceWorker";
 import { useTunerSettings } from "./useTunerSettings";
 
 /** Visarens omfång åt varje håll, i cent. */
@@ -71,6 +72,7 @@ export function Tuner({ language }: { language: SiteLanguage }) {
     setFrequency(next);
   }, []);
   const microphone = useMicrophonePitch(onPitch);
+  useTunerServiceWorker();
 
   /** Ny Stämning eller nytt Stränginstrument: bockarna och den låsta strängen nollställs. */
   function changeTuning(next: TunerSettings) {
