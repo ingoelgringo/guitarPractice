@@ -12,7 +12,7 @@ _Avoid_: Tab, projekt, dokument, låt
 
 **Spår** (`Track`):
 En stämma för ett instrument i ett Partitur, med egen Stämning och Capo. Version 1 har exakt ett spår per partitur: en 6-strängad gitarr.
-_Avoid_: Instrument, stämma
+_Avoid_: Instrument, Stränginstrument, stämma
 
 **Takt** (`Bar`):
 En tidsenhet som avgränsas av taktstreck och har en taktart, i ett Spår eller i en Del av en Ackordföljd. Taktarten och tempot gäller från Partiturets start eller från det senaste Bytet före. När Slag Skjuts flödar de över taktstrecken, medan Byten och repriser sitter kvar på sin Takt.
@@ -38,7 +38,7 @@ En fri kort text vid ett Slag, t.ex. "let ring". Den står under notsystemet, el
 _Avoid_: Sångtext, kommentar, text
 
 **Ton** (`Note`):
-Ett band på en sträng i ett Slag. Strängarna numreras från den ljusaste: sträng 1 är ljusa e i standardstämning.
+Ett band på en sträng i ett Slag. Strängarna numreras från den som sitter närmast golvet när man spelar, och det är normalt den ljusaste: sträng 1 är ljusa e i standardstämning. På en ukulele med hög G är sträng 4 ljusare än sträng 3.
 
 **Markör** (`Cursor`):
 Den position i Partituret (Spår, Takt, Slag, sträng) där nästa inmatning hamnar.
@@ -48,7 +48,7 @@ En följd av Slag i markörens Spår, från där markeringen började till Mark�
 _Avoid_: Urval, region
 
 **Stämning** (`Tuning`):
-Tonhöjden för varje lös sträng i ett Spår, t.ex. standard (EADGBE) eller Drop D.
+Tonhöjden för varje lös sträng i ett Spår eller ett Stränginstrument i Stämmaren, t.ex. standard (EADGBE) eller Drop D. Ett Spår använder bara stämningarna för 6-strängad gitarr.
 
 **Capo**:
 Det band som kapodastern sitter på. Bandnummer i tabben anges relativt capot.
@@ -222,12 +222,30 @@ _Avoid_: Paus (en paus är ett Slag utan toner i ett Partitur), N.C., tyst
 
 **Instrument**:
 En av de fyra stämmorna som spelar en Ackordföljd: trummor, bas, elpiano och synthpad. Varje Instrument kan bockas i eller ur, även under uppspelning.
-_Avoid_: Spår (det hör till ett Partitur), stämma
+_Avoid_: Spår (det hör till ett Partitur), stämma, Stränginstrument (det hör till Stämmaren)
+
+### Stämmare
+
+**Stämmare** (`Tuner`):
+Verktyget som lyssnar via mikrofonen och visar hur många cent den ton man spelar ligger från målet. Man väljer ett Stränginstrument och en Stämning. Man kan låsa en sträng, och utan låst sträng väljer Stämmaren den sträng i Stämningen som ligger närmast tonen. Den fungerar offline.
+_Avoid_: Tuner, stämapp
+
+**Stränginstrument** (`StringInstrument`):
+Det man stämmer i Stämmaren: gitarr 6, gitarr 7, gitarr 12, bas 4, bas 5, ukulele eller mandolin. Det avgör hur många strängar och Strängpar en Stämning har. Det finns inga egna Stränginstrument.
+_Avoid_: Instrument (det är en stämma i en Ackordföljd), Spår
+
+**Strängpar** (`Course`):
+Två strängar som spelas tillsammans, på 12-strängad gitarr och mandolin. Ett par med samma ton stäms som en sträng. Ett par med en oktavsträng stäms som två.
+_Avoid_: Kör, dubbelsträng
+
+**Egen stämning** (`CustomTuning`):
+En namngiven Stämning för ett Stränginstrument som användaren har skapat i Stämmaren. Den sparas i webbläsaren och går att ändra och ta bort, till skillnad från de färdiga stämningarna.
+_Avoid_: Användarstämning, preset
 
 ### Sajt
 
 **Verktyg** (`Tool`):
-En fristående gitarrfunktion som nås från Gitarrsidan, t.ex. Tab-editorn och Greppbrädan.
+En fristående gitarrfunktion som nås från Gitarrsidan, t.ex. Tab-editorn, Greppbrädan och Stämmaren.
 _Avoid_: Modul, app, sida
 
 **Gitarrsidan**:
