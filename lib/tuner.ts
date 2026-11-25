@@ -123,3 +123,21 @@ export function frequencyToNote(frequency: number, a4: number): { midi: number; 
   const midi = Math.round(exact);
   return { midi, cents: (exact - midi) * 100 };
 }
+
+/** Frekvensen i Hz för tonen `midi`, givet referenstonen A4 i Hz. Den som Stämmaren visar som rätt. */
+export function referenceFrequency(midi: number, a4: number): number {
+  return a4 * 2 ** ((midi - 69) / 12);
+}
+
+/**
+ * Strängen vars ton referenstonen spelar: den låsta strängen, annars den som visas, eller `null`
+ * när ingen sträng är låst eller visas.
+ */
+export function referenceString(
+  strings: readonly TunerString[],
+  lockedString: number | null,
+  target: TunerTarget | null,
+): TunerString | null {
+  const number = lockedString ?? (target?.kind === "string" ? target.string : null);
+  return strings.find((s) => s.number === number) ?? null;
+}

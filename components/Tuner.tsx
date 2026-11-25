@@ -16,6 +16,8 @@ import type { NoteNameMode } from "@/lib/noteNameMode";
 import type { SiteLanguage } from "@/lib/siteLanguage";
 import {
   initialTunerState,
+  referenceFrequency,
+  referenceString,
   tunerNoteName,
   tunerStep,
   tunerStrings,
@@ -35,6 +37,7 @@ import styles from "./Tuner.module.css";
 import { useCustomTunings } from "./useCustomTunings";
 import { useMicrophonePitch } from "./useMicrophonePitch";
 import { useNoteNameMode } from "./useNoteNameMode";
+import { useReferenceTone } from "./useReferenceTone";
 import { useTunerServiceWorker } from "./useTunerServiceWorker";
 import { useTunerSettings } from "./useTunerSettings";
 
@@ -72,6 +75,7 @@ export function Tuner({ language }: { language: SiteLanguage }) {
     setFrequency(next);
   }, []);
   const microphone = useMicrophonePitch(onPitch);
+  const referenceTone = useReferenceTone(microphone.pauseFor);
   useTunerServiceWorker();
 
   /** Ny Stämning eller nytt Stränginstrument: bockarna och den låsta strängen nollställs. */
@@ -110,6 +114,11 @@ export function Tuner({ language }: { language: SiteLanguage }) {
   const cents = target?.cents ?? null;
   const inTune = target?.kind === "string" && cents !== null && Math.abs(cents) <= IN_TUNE;
   const sounding = frequency !== null;
+  const toneString = referenceString(strings, lockedString, target);
+  const toneNote = toneString ? tunerNoteName(toneString.pitch, noteNames) : null;
+  // Medan Tone.js laddas går tonen också att stoppa.
+  const tonePlaying = referenceTone.status === "playing" || referenceTone.status === "loading";
+  const toneFailed = referenceTone.status === "failed";
 
   const statusText = {
     idle: messages.tunerIdle,
@@ -179,6 +188,27 @@ export function Tuner({ language }: { language: SiteLanguage }) {
           onToggle={(number) => setLockedString((current) => (current === number ? null : number))}
         />
         <p className={card.help}>{messages.tunerStringsHelp}</p>
+        <div className={styles.toneControls}>
+          <button
+            type="button"
+            className={styles.toneButton}
+            disabled={!tonePlaying && !toneString}
+            onClick={() =>
+              tonePlaying
+                ? referenceTone.stop()
+                : toneString && void referenceTone.play(referenceFrequency(toneString.pitch, settings.a4))
+            }
+          >
+            {tonePlaying
+              ? messages.tunerStopTone
+              : toneNote
+                ? messages.tunerPlayTone(toneNote)
+                : messages.tunerPlayToneNone}
+          </button>
+          <p className={card.help} role={toneFailed ? "alert" : undefined}>
+            {toneFailed ? messages.tunerToneFailed : messages.tunerToneHelp}
+          </p>
+        </div>
       </section>
 
       <section className={`${card.card} ${styles.settings}`} aria-label={messages.tuning}>

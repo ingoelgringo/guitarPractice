@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { frequencyToNote, initialTunerState, tunerNoteName, tunerStep, tunerStrings, type TunerConfig, type TunerState } from "./tuner";
+import { frequencyToNote, initialTunerState, referenceFrequency, referenceString, tunerNoteName, tunerStep, tunerStrings, type TunerConfig, type TunerState } from "./tuner";
 import { stringInstrument } from "./tuning";
 
 describe("Tonnamn i Stämmaren", () => {
@@ -185,5 +185,44 @@ describe("Frekvens till ton", () => {
     const note = frequencyToNote(frequency, a4);
     expect(note.midi).toBe(midi);
     expect(note.cents).toBeCloseTo(cents, 0);
+  });
+});
+
+describe("Referenstonen", () => {
+  it.each([
+    [69, 440, 440],
+    [57, 440, 220],
+    [40, 440, 82.4069],
+    [23, 440, 30.8677],
+    [69, 432, 432],
+    [64, 450, 337.1191],
+  ])("MIDI %d med A4 = %d Hz spelas på %d Hz", (midi, a4, hz) => {
+    expect(referenceFrequency(midi, a4)).toBeCloseTo(hz, 3);
+  });
+
+  it("är samma frekvens som Stämmaren visar som rätt", () => {
+    const note = frequencyToNote(referenceFrequency(45, 436), 436);
+    expect(note.midi).toBe(45);
+    expect(note.cents).toBeCloseTo(0, 6);
+  });
+
+  const guitar = stringInstrument("guitar6");
+  const strings = tunerStrings(guitar, guitar.tunings[0].tuning);
+
+  it("spelar den låsta strängen", () => {
+    expect(referenceString(strings, 6, { kind: "string", string: 1, cents: 0 })).toEqual(strings[5]);
+  });
+
+  it("spelar strängen som visas när ingen sträng är låst", () => {
+    expect(referenceString(strings, null, { kind: "string", string: 2, cents: 12 })).toEqual(strings[1]);
+  });
+
+  it("spelar inget när ingen sträng är låst eller visas", () => {
+    expect(referenceString(strings, null, null)).toBeNull();
+    expect(referenceString(strings, null, { kind: "chromatic", midi: 42, cents: 3 })).toBeNull();
+  });
+
+  it("spelar inget när strängen inte finns i stämningen", () => {
+    expect(referenceString(strings, null, { kind: "string", string: 9, cents: 0 })).toBeNull();
   });
 });

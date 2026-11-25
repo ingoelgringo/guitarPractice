@@ -8,6 +8,8 @@ export type MicrophoneStatus = "idle" | "starting" | "listening" | "denied" | "u
 
 /** Fönstret som analyseras: tillräckligt långt för låg B på bas 5 (cirka 31 Hz). */
 const WINDOW = 8192;
+/** Så länge ett ljud ligger kvar i analysfönstret, med marginal (8192 sampel vid 44,1 kHz är 186 ms). */
+const WINDOW_TAIL_MS = 300;
 
 /**
  * Lyssnar på mikrofonen och anropar `onPitch` med frekvensen (eller `null`) och tiden för varje
@@ -25,6 +27,16 @@ export function useMicrophonePitch(onPitch: (frequency: number | null, timeMs: n
 
   // Räknas upp vid varje stopp, så att en start som fortfarande väntar på mikrofonen avbryts.
   const generationRef = useRef(0);
+  // Fram till den här tiden (performance.now) analyseras inget, eftersom referenstonen hörs.
+  const pausedUntilRef = useRef(0);
+
+  /**
+   * Pausar analysen medan det kommer ljud ur högtalaren i `ms` millisekunder, och tills det ljudet
+   * har lämnat analysfönstret. Under pausen får `onPitch` `null`.
+   */
+  const pauseFor = useCallback((ms: number) => {
+    pausedUntilRef.current = performance.now() + ms + WINDOW_TAIL_MS;
+  }, []);
 
   const stop = useCallback(() => {
     generationRef.current++;
@@ -68,9 +80,13 @@ export function useMicrophonePitch(onPitch: (frequency: number | null, timeMs: n
     let frame = 0;
 
     const tick = (timeMs: number) => {
-      analyser.getFloatTimeDomainData(samples);
-      const reading = detectPitch(samples, context.sampleRate);
-      onPitchRef.current(reading?.frequency ?? null, timeMs);
+      if (timeMs < pausedUntilRef.current) {
+        onPitchRef.current(null, timeMs);
+      } else {
+        analyser.getFloatTimeDomainData(samples);
+        const reading = detectPitch(samples, context.sampleRate);
+        onPitchRef.current(reading?.frequency ?? null, timeMs);
+      }
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
@@ -99,5 +115,5 @@ export function useMicrophonePitch(onPitch: (frequency: number | null, timeMs: n
     };
   }, [stop]);
 
-  return { status, start, stop };
+  return { status, start, stop, pauseFor };
 }

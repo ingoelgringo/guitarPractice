@@ -248,7 +248,8 @@
 }
 
 .startButton,
-.stopButton {
+.stopButton,
+.toneButton {
   font: inherit;
   font-weight: 600;
   min-width: 120px;
@@ -264,13 +265,35 @@
   color: var(--accent-contrast);
 }
 
-.stopButton {
+.stopButton,
+.toneButton {
   background: transparent;
   color: var(--accent);
 }
 
+.toneButton:disabled {
+  border-color: var(--border);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+/* Referenstonen under strängknapparna */
+.toneControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin-top: 16px;
+}
+
+.toneControls p {
+  flex: 1 1 220px;
+  margin: 0;
+}
+
 .startButton:focus-visible,
 .stopButton:focus-visible,
+.toneButton:focus-visible,
 .string:focus-visible,
 .segmented button:focus-visible,
 .stepper button:focus-visible {

@@ -227,7 +227,7 @@ _Avoid_: Spår (det hör till ett Partitur), stämma, Stränginstrument (det hö
 ### Stämmare
 
 **Stämmare** (`Tuner`):
-Verktyget som lyssnar via mikrofonen och visar hur många cent den ton man spelar ligger från målet. Man väljer ett Stränginstrument och en Stämning. Man kan låsa en sträng, och utan låst sträng väljer Stämmaren den sträng i Stämningen som ligger närmast tonen. Den fungerar offline.
+Verktyget som lyssnar via mikrofonen och visar hur många cent den ton man spelar ligger från målet. Man väljer ett Stränginstrument och en Stämning. Man kan låsa en sträng, och utan låst sträng väljer Stämmaren den sträng i Stämningen som ligger närmast tonen. Den fungerar offline. Den kan också spela en **Referenston**: den låsta eller visade strängens ton, med A4-inställningen, så att man kan stämma på gehör. Medan den spelar lyssnar Stämmaren inte.
 _Avoid_: Tuner, stämapp
 
 **Stränginstrument** (`StringInstrument`):

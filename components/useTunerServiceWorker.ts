@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { withBasePath } from "@/lib/basePath";
+import { preloadReferenceTone } from "./referenceTone";
 
 // Sökvägarna och meddelandet `cache-static` måste stämma med public/sw.js.
 
@@ -10,7 +11,8 @@ import { withBasePath } from "@/lib/basePath";
  * produktion, eftersom utvecklingsserverns filer ändras hela tiden.
  *
  * Första gången styr service workern inte sidan, så de Next-filer sidan redan har laddat går inte
- * genom den. Därför skickar sidan dem till service workern, som sparar dem.
+ * genom den. Därför skickar sidan dem till service workern, som sparar dem. Tone.js laddas först
+ * när referenstonen spelas, så sidan laddar den i förväg för att den ska komma med.
  */
 export function useTunerServiceWorker() {
   useEffect(() => {
@@ -22,6 +24,11 @@ export function useTunerServiceWorker() {
           updateViaCache: "none",
         });
         const registration = await navigator.serviceWorker.ready;
+        try {
+          await preloadReferenceTone();
+        } catch {
+          // Referenstonen fungerar då bara med nät.
+        }
         const staticPath = withBasePath("/_next/static/");
         const urls = performance
           .getEntriesByType("resource")
