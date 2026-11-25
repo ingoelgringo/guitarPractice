@@ -1,6 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  deleteCustomTuning,
+  MAX_TUNING_NAME_LENGTH,
+  pitchRange,
+  putCustomTuning,
+  stepString,
+  tuningsFor,
+  type CustomTuningError,
+  type TunerTuning,
+} from "@/lib/customTunings";
 import { MESSAGES, type Messages } from "@/lib/messages";
 import type { NoteNameMode } from "@/lib/noteNameMode";
 import type { SiteLanguage } from "@/lib/siteLanguage";
@@ -13,9 +23,16 @@ import {
   type TunerString,
 } from "@/lib/tuner";
 import { MAX_A4, MIN_A4, type TunerDisplay, type TunerSettings } from "@/lib/tunerSettings";
-import { STRING_INSTRUMENTS, stringInstrument, type StringInstrumentId } from "@/lib/tuning";
+import {
+  displayCourses,
+  STRING_INSTRUMENTS,
+  stringInstrument,
+  type StringInstrument,
+  type StringInstrumentId,
+} from "@/lib/tuning";
 import card from "./Card.module.css";
 import styles from "./Tuner.module.css";
+import { useCustomTunings } from "./useCustomTunings";
 import { useMicrophonePitch } from "./useMicrophonePitch";
 import { useNoteNameMode } from "./useNoteNameMode";
 import { useTunerSettings } from "./useTunerSettings";
@@ -36,9 +53,12 @@ export function Tuner({ language }: { language: SiteLanguage }) {
   const [lockedString, setLockedString] = useState<number | null>(null);
   const [tuner, setTuner] = useState<TunerState>(initialTunerState);
   const [frequency, setFrequency] = useState<number | null>(null);
+  const [customs, setCustoms] = useCustomTunings();
+  const [editing, setEditing] = useState<TuningDraft | null>(null);
 
   const instrument = stringInstrument(settings.instrument);
-  const tuning = instrument.tunings.find((t) => t.name === settings.tuning) ?? instrument.tunings[0];
+  const tunings = useMemo(() => tuningsFor(instrument.id, customs), [instrument, customs]);
+  const tuning = tunings.find((t) => t.name === settings.tuning) ?? tunings[0];
   const strings = useMemo(() => tunerStrings(instrument, tuning.tuning), [instrument, tuning]);
 
   const configRef = useRef({ strings: strings.map((s) => s.pitch), a4: settings.a4, lockedString });
@@ -57,6 +77,27 @@ export function Tuner({ language }: { language: SiteLanguage }) {
     update(next);
     setLockedString(null);
     setTuner(initialTunerState());
+  }
+
+  /** Sparar den nya eller ändrade egna stämningen och väljer den. */
+  function saveDraft(draft: TuningDraft): CustomTuningError | null {
+    const result = putCustomTuning(
+      customs,
+      { instrument: instrument.id, name: draft.name, tuning: draft.tuning },
+      draft.previousName,
+    );
+    if ("error" in result) return result.error;
+    setCustoms(result.tunings);
+    changeTuning({ ...settings, tuning: draft.name.trim() });
+    setEditing(null);
+    return null;
+  }
+
+  function deleteSelected() {
+    if (!confirm(messages.tunerConfirmDelete(tuning.name))) return;
+    setCustoms(deleteCustomTuning(customs, instrument.id, tuning.name));
+    changeTuning({ ...settings, tuning: instrument.tunings[0].name });
+    setEditing(null);
   }
 
   const target = tuner.target;
@@ -145,6 +186,7 @@ export function Tuner({ language }: { language: SiteLanguage }) {
             value={instrument.id}
             onChange={(event) => {
               const next = stringInstrument(event.target.value as StringInstrumentId);
+              setEditing(null);
               changeTuning({ ...settings, instrument: next.id, tuning: next.tunings[0].name });
             }}
           >
@@ -155,16 +197,56 @@ export function Tuner({ language }: { language: SiteLanguage }) {
             ))}
           </select>
         </label>
-        <label className={styles.field}>
-          <span>{messages.tuning}</span>
-          <select value={tuning.name} onChange={(event) => changeTuning({ ...settings, tuning: event.target.value })}>
-            {instrument.tunings.map((t) => (
-              <option key={t.name} value={t.name}>
-                {t.name} ({instrumentCourseNames(t.tuning, noteNames)})
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className={styles.tuningField}>
+          <label className={styles.field}>
+            <span>{messages.tuning}</span>
+            <select
+              value={tuning.name}
+              onChange={(event) => {
+                setEditing(null);
+                changeTuning({ ...settings, tuning: event.target.value });
+              }}
+            >
+              {tunings.some((t) => t.custom) ? (
+                <>
+                  <optgroup label={messages.tunerPresetTunings}>
+                    {tuningOptions(tunings.filter((t) => !t.custom), noteNames)}
+                  </optgroup>
+                  <optgroup label={messages.tunerCustomTunings}>
+                    {tuningOptions(tunings.filter((t) => t.custom), noteNames)}
+                  </optgroup>
+                </>
+              ) : (
+                tuningOptions(tunings, noteNames)
+              )}
+            </select>
+          </label>
+          <div className={styles.tuningActions}>
+            <button type="button" onClick={() => setEditing({ from: tuning.name, name: "", tuning: [...tuning.tuning] })}>
+              {messages.tunerNewTuning}
+            </button>
+            {tuning.custom ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEditing({
+                      from: tuning.name,
+                      previousName: tuning.name,
+                      name: tuning.name,
+                      tuning: [...tuning.tuning],
+                    })
+                  }
+                >
+                  {messages.tunerEditTuning}
+                </button>
+                <button type="button" onClick={deleteSelected}>
+                  {messages.tunerDeleteTuning}
+                </button>
+              </>
+            ) : null}
+          </div>
+        </div>
         <fieldset className={styles.field}>
           <legend>{messages.tunerDisplay}</legend>
           <div className={styles.segmented}>
@@ -203,7 +285,149 @@ export function Tuner({ language }: { language: SiteLanguage }) {
           </div>
         </div>
       </section>
+
+      {editing ? (
+        <TuningEditor
+          key={`${instrument.id}:${editing.previousName ?? ""}:${editing.from}`}
+          instrument={instrument}
+          initial={editing}
+          noteNames={noteNames}
+          messages={messages}
+          onSave={saveDraft}
+          onCancel={() => setEditing(null)}
+        />
+      ) : null}
     </main>
+  );
+}
+
+/** En egen stämning som skapas eller ändras. */
+interface TuningDraft {
+  /** Stämningen man utgår från. */
+  from: string;
+  /** Namnet på den egna stämningen som ändras, eller inget för en ny. */
+  previousName?: string;
+  name: string;
+  tuning: number[];
+}
+
+function tuningOptions(tunings: readonly TunerTuning[], mode: NoteNameMode) {
+  return tunings.map((t) => (
+    <option key={t.name} value={t.name}>
+      {t.name} ({instrumentCourseNames(t.tuning, mode)})
+    </option>
+  ));
+}
+
+function errorMessage(messages: Messages, error: CustomTuningError): string {
+  return {
+    empty: messages.tunerNameEmpty,
+    tooLong: messages.tunerNameTooLong(MAX_TUNING_NAME_LENGTH),
+    taken: messages.tunerNameTaken,
+    invalid: messages.tunerTuningInvalid,
+  }[error];
+}
+
+/** Namn och halvtonssteg per sträng eller Strängpar, i samma ordning som strängknapparna. */
+function TuningEditor({
+  instrument,
+  initial,
+  noteNames,
+  messages,
+  onSave,
+  onCancel,
+}: {
+  instrument: StringInstrument;
+  initial: TuningDraft;
+  noteNames: NoteNameMode;
+  messages: Messages;
+  onSave: (draft: TuningDraft) => CustomTuningError | null;
+  onCancel: () => void;
+}) {
+  const [draft, setDraft] = useState(initial);
+  const [error, setError] = useState<CustomTuningError | null>(null);
+  const heading =
+    initial.previousName === undefined
+      ? messages.tunerNewTuningHeading
+      : messages.tunerEditTuningHeading(initial.previousName);
+
+  return (
+    <section className={`${card.card} ${styles.editor}`} aria-labelledby="tuner-editor-heading">
+      <h2 id="tuner-editor-heading" className={`${card.header} ${card.title}`}>
+        {heading}
+      </h2>
+      <p className={card.help}>{messages.tunerEditorHelp(initial.from)}</p>
+      <form
+        className={styles.editorForm}
+        onSubmit={(event) => {
+          event.preventDefault();
+          setError(onSave(draft));
+        }}
+      >
+        <label className={styles.field}>
+          <span>{messages.tunerTuningName}</span>
+          <input
+            type="text"
+            value={draft.name}
+            maxLength={MAX_TUNING_NAME_LENGTH}
+            autoFocus
+            aria-invalid={error !== null && error !== "invalid"}
+            aria-describedby={error ? "tuner-editor-error" : undefined}
+            onChange={(event) => {
+              setDraft({ ...draft, name: event.target.value });
+              setError(null);
+            }}
+          />
+        </label>
+        <ul className={styles.editorStrings}>
+          {displayCourses(instrument, draft.tuning).map(({ course, pitches }) => {
+            const index = course - 1;
+            const { min, max } = pitchRange(instrument, index);
+            const pitch = draft.tuning[index];
+            const notes = pitches.map((p) => tunerNoteName(p, noteNames)).join(" · ");
+            const step = (steps: number) =>
+              setDraft({ ...draft, tuning: stepString(instrument, draft.tuning, index, steps) });
+            return (
+              <li key={course} className={styles.stepper}>
+                <button
+                  type="button"
+                  aria-label={messages.tunerStepDown(course)}
+                  disabled={pitch <= min}
+                  onClick={() => step(-1)}
+                >
+                  −
+                </button>
+                <output aria-live="polite">
+                  <span className={styles.editorCourse}>{course}</span>
+                  <span>{notes}</span>
+                </output>
+                <button
+                  type="button"
+                  aria-label={messages.tunerStepUp(course)}
+                  disabled={pitch >= max}
+                  onClick={() => step(1)}
+                >
+                  +
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        {error ? (
+          <p id="tuner-editor-error" className={styles.editorError} role="alert">
+            {errorMessage(messages, error)}
+          </p>
+        ) : null}
+        <div className={styles.editorButtons}>
+          <button type="submit" className={styles.startButton}>
+            {messages.tunerSaveTuning}
+          </button>
+          <button type="button" className={styles.stopButton} onClick={onCancel}>
+            {messages.tunerCancel}
+          </button>
+        </div>
+      </form>
+    </section>
   );
 }
 

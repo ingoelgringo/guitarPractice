@@ -3,6 +3,7 @@
  * Stränginstrument, Stämning, visning och referenston.
  */
 
+import { readCustomTunings, tuningsFor } from "./customTunings";
 import { STANDARD_TUNING_NAME, STRING_INSTRUMENTS, stringInstrument, type StringInstrumentId } from "./tuning";
 
 export const TUNER_SETTINGS_KEY = "guitarPractice.tuner.settings";
@@ -17,7 +18,7 @@ export type TunerDisplay = "bar" | "needle";
 
 export interface TunerSettings {
   instrument: StringInstrumentId;
-  /** Namnet på Stämningen i Stränginstrumentets lista. */
+  /** Namnet på Stämningen bland Stränginstrumentets färdiga och egna stämningar. */
   tuning: string;
   display: TunerDisplay;
   /** Referenstonen A4 i Hz. */
@@ -31,7 +32,10 @@ export const DEFAULT_TUNER_SETTINGS: TunerSettings = {
   a4: 440,
 };
 
-/** De sparade inställningarna. Det som saknas eller inte går att läsa får förvalet. */
+/**
+ * De sparade inställningarna. Det som saknas eller inte går att läsa får förvalet, och en Stämning
+ * som inte finns längre, t.ex. en borttagen egen stämning, ger Stränginstrumentets standardstämning.
+ */
 export function readTunerSettings(storage: TunerSettingsStorage | null): TunerSettings {
   let data: unknown;
   try {
@@ -44,7 +48,8 @@ export function readTunerSettings(storage: TunerSettingsStorage | null): TunerSe
   // Ett okänt Stränginstrument ger förvalet för både instrument och Stämning.
   const known = STRING_INSTRUMENTS.find((i) => i.id === data.instrument);
   const instrument = known ?? stringInstrument(DEFAULT_TUNER_SETTINGS.instrument);
-  const tuning = (known && instrument.tunings.find((t) => t.name === data.tuning)) || instrument.tunings[0];
+  const tunings = tuningsFor(instrument.id, readCustomTunings(storage));
+  const tuning = (known && tunings.find((t) => t.name === data.tuning)) || tunings[0];
   const display = data.display === "needle" ? "needle" : "bar";
   const a4 =
     typeof data.a4 === "number" && Number.isFinite(data.a4)

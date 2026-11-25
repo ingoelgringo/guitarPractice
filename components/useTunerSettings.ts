@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { CUSTOM_TUNINGS_KEY } from "@/lib/customTunings";
 import { browserStorage } from "@/lib/draft";
 import {
   DEFAULT_TUNER_SETTINGS,
@@ -11,7 +12,8 @@ import {
 } from "@/lib/tunerSettings";
 
 // Inställningarna läses ur `localStorage`. Samma sparade text ger samma objekt, så att React inte
-// renderar om i onödan. Ändras de i en annan flik får den här veta det via `storage`.
+// renderar om i onödan. Ändras de i en annan flik får den här veta det via `storage`. De egna
+// stämningarna ingår i den sparade texten, eftersom en borttagen egen stämning ändrar valet.
 const listeners = new Set<() => void>();
 let cachedRaw: string | null | undefined;
 let cached: TunerSettings = DEFAULT_TUNER_SETTINGS;
@@ -30,7 +32,7 @@ function read(): TunerSettings {
   let raw: string | null;
   try {
     if (!storage) return cached;
-    raw = storage.getItem(TUNER_SETTINGS_KEY);
+    raw = rawSettings(storage);
   } catch {
     return cached;
   }
@@ -39,6 +41,10 @@ function read(): TunerSettings {
     cached = readTunerSettings(storage);
   }
   return cached;
+}
+
+function rawSettings(storage: Pick<Storage, "getItem">): string {
+  return JSON.stringify([storage.getItem(TUNER_SETTINGS_KEY), storage.getItem(CUSTOM_TUNINGS_KEY)]);
 }
 
 /** Stämmarens inställningar och en funktion som sparar nya. Servern renderar förvalen. */
@@ -52,9 +58,15 @@ function setTunerSettings(settings: TunerSettings) {
   // Utan fungerande lagring gäller valet ändå tills sidan laddas om.
   cached = settings;
   try {
-    cachedRaw = browserStorage()?.getItem(TUNER_SETTINGS_KEY);
+    const storage = browserStorage();
+    cachedRaw = storage ? rawSettings(storage) : null;
   } catch {
     // `read` behåller `cached`
   }
+  notifyTunerSettings();
+}
+
+/** Läser om inställningarna, t.ex. när de egna stämningarna har ändrats i den här fliken. */
+export function notifyTunerSettings() {
   listeners.forEach((listener) => listener());
 }

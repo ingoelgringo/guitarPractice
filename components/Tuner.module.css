@@ -430,3 +430,88 @@
   border-right: 1px solid var(--border);
   font-variant-numeric: tabular-nums;
 }
+
+/* Egna stämningar: knapparna under stämningsvalet och redigeraren */
+.tuningActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tuningActions button {
+  font: inherit;
+  color: var(--accent);
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  cursor: pointer;
+}
+
+.tuningActions button:focus-visible,
+.field input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.editor {
+  gap: 14px;
+}
+
+.editorForm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.field input {
+  font: inherit;
+  color: inherit;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--surface-raised);
+}
+
+.field input[aria-invalid="true"] {
+  border-color: var(--error, #ef4444);
+}
+
+.editorStrings {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.editorStrings output {
+  gap: 10px;
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+.editorCourse {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.editorError {
+  color: var(--error, #ef4444);
+  font-size: 0.875rem;
+}
+
+.editorButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tuningField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}

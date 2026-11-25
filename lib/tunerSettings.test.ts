@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { deleteCustomTuning, readCustomTunings, saveCustomTunings } from "./customTunings";
 import { DEFAULT_TUNER_SETTINGS, readTunerSettings, saveTunerSettings, TUNER_SETTINGS_KEY } from "./tunerSettings";
 
 function memoryStorage(initial: Record<string, string> = {}) {
@@ -66,5 +67,32 @@ describe("Stämmarens inställningar", () => {
     [Number.NaN, 440],
   ])("begränsar A4 = %s till %d Hz", (a4, expected) => {
     expect(readTunerSettings(stored({ a4 })).a4).toBe(expected);
+  });
+});
+
+const openA = { instrument: "guitar6", name: "Open A", tuning: [64, 61, 57, 52, 45, 40] } as const;
+const dropB = { instrument: "bass4", name: "Drop B", tuning: [43, 38, 33, 23] } as const;
+
+describe("En vald egen stämning", () => {
+  it("kan vara en egen stämning", () => {
+    const storage = memoryStorage();
+    saveCustomTunings(storage, [openA]);
+    saveTunerSettings(storage, { instrument: "guitar6", tuning: "Open A", display: "bar", a4: 440 });
+    expect(readTunerSettings(storage).tuning).toBe("Open A");
+  });
+
+  it("faller tillbaka på Stränginstrumentets standardstämning när den egna stämningen har tagits bort", () => {
+    const storage = memoryStorage();
+    saveCustomTunings(storage, [openA, dropB]);
+    saveTunerSettings(storage, { instrument: "bass4", tuning: "Drop B", display: "bar", a4: 440 });
+    saveCustomTunings(storage, deleteCustomTuning(readCustomTunings(storage), "bass4", "Drop B"));
+    expect(readTunerSettings(storage)).toMatchObject({ instrument: "bass4", tuning: "Standard" });
+  });
+
+  it("gäller bara för sitt eget Stränginstrument", () => {
+    const storage = memoryStorage();
+    saveCustomTunings(storage, [openA]);
+    saveTunerSettings(storage, { instrument: "guitar7", tuning: "Open A", display: "bar", a4: 440 });
+    expect(readTunerSettings(storage).tuning).toBe("Standard");
   });
 });

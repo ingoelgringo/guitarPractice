@@ -4,7 +4,7 @@ export interface PitchReading {
   clarity: number;
 }
 
-const MIN_FREQUENCY = 28;
+export const MIN_FREQUENCY = 28;
 const MAX_FREQUENCY = 1500;
 /** En topp väljs om den når minst så här stor del av den högsta toppen (McLeod: k). */
 const PEAK_THRESHOLD = 0.9;
