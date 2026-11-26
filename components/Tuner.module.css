@@ -147,9 +147,6 @@
   top: 14px;
   bottom: 14px;
   background: color-mix(in srgb, var(--off-tune) 35%, transparent);
-  transition:
-    left 0.08s linear,
-    width 0.08s linear;
 }
 
 .barMarker {
@@ -160,9 +157,8 @@
   margin-left: -3px;
   border-radius: 3px;
   background: var(--off-tune);
-  transition:
-    left 0.08s linear,
-    background 0.15s;
+  /* Bara färgen glider. En övergång på läget startas om varje bildruta, och då hänger Safari på iPhone kvar markören. */
+  transition: background 0.15s;
 }
 
 .bar.inTune .barMarker {
@@ -218,11 +214,6 @@
 .needleText {
   font-size: 9px;
   fill: var(--muted);
-}
-
-.needleHand {
-  transform-origin: 100px 104px;
-  transition: transform 0.08s linear;
 }
 
 .needleHand line {

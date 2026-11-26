@@ -617,7 +617,8 @@ function NeedleMeter({ cents, inTune, dim, flat, sharp }: MeterProps) {
           {sharp}
         </text>
         {cents !== null ? (
-          <g className={styles.needleHand} style={{ transform: `rotate(${angle}deg)` }}>
+          // SVG:s egen vridning och ingen CSS-övergång: Safari på iPhone hänger annars kvar nålen.
+          <g className={styles.needleHand} transform={`rotate(${angle} 100 104)`}>
             <line x1="100" y1="104" x2="100" y2="22" />
           </g>
         ) : null}
